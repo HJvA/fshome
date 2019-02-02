@@ -1,3 +1,6 @@
 [submodule "bottle"]
 	path = bottle
 	url = https://github.com/bottlepy/bottle
+[submodule "HAP-python"]
+	path = HAP-python
+	url = https://github.com/ikalchev/HAP-python
