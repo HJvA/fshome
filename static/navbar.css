@@ -1,0 +1,128 @@
+/*General styles for body*/
+/*
+body{
+/*
+  margin:0;
+  padding:2em 0;
+  font-family:Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  background:#eee;
+  color:#222;
+}*/
+
+/*Style for the first level menu bar*/
+.menubar{
+  position:relative;
+  display: flex;
+  top:.1em;
+  width:100% - 2em;
+  height:3em +6px;
+  margin:0;
+  padding:0;
+  padding-left: .3em;
+  background:#333;
+  color:#eee;
+  box-shadow:0 -3px rgba(0,0,0,.5) inset;
+  border-radius: .5em;
+}
+
+.menuitem, .menuselect {
+  float:left;
+  position:relative;
+  display: block;
+  height: 3em;
+  line-height: 3;
+  margin: 3px;
+  background: #4c4e50;
+  overflow: hidden;
+  border-radius: .25em;
+  margin-right: .3em;
+}
+
+div a:hover, .dropdown:hover .dropbtn {
+    background-color: red;
+}
+.menuitem a {
+  color: #eee;
+    /*padding: 12px 16px;*/
+  padding-left: 1em;
+  padding-right: 1em;
+  text-decoration: none;
+  display: block;
+  text-align: left;
+}
+.menuitem button {
+  color: #eee;
+  font-size: 1em;
+  margin: 0;
+  background: transparent;
+  border: none;
+  /* padding: 1em; */
+  text-decoration: none;
+  display: block;
+  text-align: left;
+  height:100%;
+}
+.menuitem button:hover {
+  background:red;
+}
+/* clickable div rest of menubar */
+.overlay {
+  position: fixed;
+  display: none;
+  /*background-color: #999;*/
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+/* Reset Select */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  -ms-appearance: none;
+  appearance: none;
+  outline: 0;
+  box-shadow: none;
+  border: 0 !important;
+  background-image: none;
+}
+
+.menuselect {
+  height: 100%;
+}
+.menuselect select {
+  width: 10em;
+  margin: 0;
+  padding-left: 1em;
+  font-size:1em;
+  color: #eee;
+  cursor: pointer;
+}
+
+select::-ms-expand {
+  display: none;
+}
+/* Arrow */
+.menuselect::after {
+  content: '\25BC';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 1em;
+  background: #54695e;
+  pointer-events: none;
+}
+.sel {
+
+}
+/* Transition */
+.menuitem:hover::after {
+  color: #f39c12;
+}
+.menuitem::after {
+  transition: .25s all ease;
+}

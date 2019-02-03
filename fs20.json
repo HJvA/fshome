@@ -1,0 +1,86 @@
+{
+  "terras": {
+    "devadr": "5",
+    "aid": 3,
+    "typ": 1
+  },
+  "_42": {
+    "devadr": "42",
+    "typ": "98"
+  },
+  "_71": {
+    "devadr": "71"
+  },
+  "kgb": {
+    "devadr": "8",
+    "aid": 8,
+    "typ": 1
+  },
+  "magnetron": {
+    "devadr": "32",
+    "hausc": "1212",
+    "aid": 5,
+    "typ": 12
+  },
+  "movgang": {
+    "devadr": "10",
+    "hausc": "1212",
+    "aid": 6,
+    "typ": 11
+  },
+  "zoldim": {
+    "devadr": "72",
+    "hausc": "1212",
+    "aid": 12,
+    "typ": 14
+  },
+  "kamer": {
+    "devadr": "4",
+    "aid": 4,
+    "typ": 1
+  },
+  "burolicht": {
+    "devadr": "30",
+    "hausc": "1212",
+    "typ": 13
+  },
+  "testbel": {
+    "devadr": "70",
+    "hausc": "1212",
+    "aid": 11,
+    "typ": 10
+  },
+  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
+  "banklicht": {
+    "devadr": "31",
+    "hausc": "1212",
+    "typ": 13
+  },
+  "breeBridge": {
+    "aid": 1
+  },
+  "zolder": {
+    "devadr": "1",
+    "aid": 2,
+    "typ": 1
+  },
+  "_70_1": {
+    "devadr": "70",
+    "typ": 1
+  },
+  "deurb": {
+    "devadr": "00",
+    "hausc": "4CFA",
+    "aid": 10,
+    "typ": 10
+  },
+  "_20": {
+    "devadr": "20"
+  },
+  "traplicht": {
+    "devadr": "33",
+    "hausc": "1212",
+    "aid": 9,
+    "typ": 11
+  }
+}

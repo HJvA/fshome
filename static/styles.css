@@ -1,0 +1,57 @@
+body {
+    background-color: #b2e9e4;
+}
+.headng {
+  color: red;
+  display: block;
+  font-size: large;
+  border: solid bisque;
+  border-radius: 10px;
+  text-align: center;
+  padding: 1em;
+}
+
+article{margin:10px;}
+svg.graph {
+  background-color: #b2d9d0;
+}
+svg.graph .plotarea {
+  background-color: #b2a9d0;
+}
+
+svg.graph .grid {
+  stroke: white;
+  stroke-dasharray: 1 2;
+  stroke-width: 1px;
+  opacity:0.8;
+}
+
+svg.graph .points {
+  stroke: white;
+  stroke-width: 3;
+}
+svg.graph .first_set {
+  fill: #00554d;
+}
+
+svg.graph .surfaces {
+  fill-opacity: 0.5;
+}
+
+svg.graph {
+  /*font-family: Arial; */
+  font-size: 24px;
+  kerning: 1;
+}
+svg.graph .x-labels {
+  /*font-family: Arial; 
+  font-size: 24px;  */
+  kerning: 1;
+}
+svg.graph .labels.x-labels {
+  text-anchor: middle;
+}
+
+svg.graph .labels.y-labels {
+  text-anchor: end;
+}
