@@ -8,16 +8,11 @@ import signal
 import time
 import sys
 
-#from pyhap.accessory import Bridge
 from pyhap.accessory_driver import AccessoryDriver
-#import pyhap.loader as loader
 
 sys.path.append(r"accessories/fs20")	# search path for imports
 from fs20_hap import get_FS20_bridge,persist_FS20_config
 
-__credits__ = ["Ivan Kalchev","Henk Jan van Aalderen"]
-__license__ = "GPL"
-__version__ = "1.0.0"
 __maintainer__ = "Henk Jan van Aalderen"
 __email__ = "hjva@homail.nl"
 __status__ = "Development"

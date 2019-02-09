@@ -66,17 +66,7 @@ div a:hover, .dropdown:hover .dropbtn {
 .menuitem button:hover {
   background:red;
 }
-/* clickable div rest of menubar */
-.overlay {
-  position: fixed;
-  display: none;
-  /*background-color: #999;*/
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-}
+
 
 /* Reset Select */
 select {
@@ -94,7 +84,7 @@ select {
   height: 100%;
 }
 .menuselect select {
-  width: 10em;
+  width: 8em;
   margin: 0;
   padding-left: 1em;
   font-size:1em;
@@ -116,9 +106,7 @@ select::-ms-expand {
   background: #54695e;
   pointer-events: none;
 }
-.sel {
 
-}
 /* Transition */
 .menuitem:hover::after {
   color: #f39c12;

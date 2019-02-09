@@ -45,9 +45,13 @@ First cleanup your devices configured in your IOS home app. Also delete the acce
 The application consist of 2 python3 programs: fsmain.py for aquistion and storage of the measured quantity values. and fssite.py serving graphical results to a browser.
 
 Execute the following commands in a terminal:
-cd ~/fshome
-nohup python3 fsmain.py &
-python3 fssite.py
+
+```bash  
+cd ~/fshome  
+nohup python3 fsmain.py &  
+python3 fssite.py  
+```
+
 See the log files for error conditions to be resolved.
 
 After a while when enough data has been acquired open a browser window on

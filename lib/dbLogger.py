@@ -168,7 +168,7 @@ class sqlLogger(txtLogger):
 			"FROM logdat,quantities "
 			"WHERE ID=quantity AND ddJulian>julianday('now')-%d " 
 			"GROUP BY %s "
-			"ORDER BY cnt DESC;" % (flds,ndays,flds))
+			"ORDER BY ID;" % (flds,ndays,flds))
 		recs= cur.fetchall()
 		for rec in recs:
 			if 'name' in rec and 'source' in rec:

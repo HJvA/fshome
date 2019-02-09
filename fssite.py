@@ -9,8 +9,8 @@ except ImportError:
 	import bottle
 	
 sys.path.append(r"accessories/fs20")	# search path for imports
-from devConfig import devConfig
-from dbLogger import sqlLogger,julianday,prettydate
+from lib.devConfig import devConfig
+from lib.dbLogger import sqlLogger,julianday,prettydate
 
 __copyright__="<p>Copyright &copy; 2019, hjva</p>"
 TITLE=r"graphing temperature monitor"
@@ -22,6 +22,7 @@ AN1=60*60*24*365.25  # one year
 plWIDTH = 800
 plHEIGHT = 400
 plMARG=50
+tmBACKs=[(5,'5d back'),(30,'1mnth back'),(180,'6mnth back'),(365,'1yr back')]
 app =bottle.Bottle()
 
 @app.route("/")
@@ -32,14 +33,17 @@ def index(name=TITLE):
 	cookie = bottle.request.get_cookie(COOKIE)
 	if cookie:
 		logger.info('using cookie :"%s"' % cookie)
-		src,selqs = tuple(json.loads(cookie))
+		cookie = list(json.loads(cookie))
+		cookie.extend([None,None,None])
+		src,selqs,ndays = tuple(cookie[:3])
 	else:
 		selqs=list(dbStore.quantities([src]))[:2]
-		bottle.response.set_cookie(COOKIE, json.dumps((src,selqs)), max_age=AN1)
+		ndays=4
+		bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
 	logger.info("src:%s,selqs:%s len:%d" % (src,selqs,len(selqs)))
 	if len(selqs)==0 or len(selqs)>5:
 		selqs=['temperature']
-	page = dict(menitms=buildMenu(srcs,src,dbStore.quantities(),selqs))
+	page = dict(menitms=buildMenu(srcs,src,dbStore.quantities(),selqs,ndays))
 	#page = redraw(src,selqs,julianday())
 	page.update( dict(title=name, footer=__copyright__))
 	return bottle.template(TPL, page)
@@ -109,7 +113,7 @@ def buildChart(jdats, ydats, jdnow):
 	logger.info("ndays=%.4g scl='%s' yofs=%.4g xlbls=%s xgrid=%s" % (ndays,scale,yofs,xlbls,xgrid))
 	return dict( title=TITLE+"   dd:%s" % prettydate(jdnow), curves=data, scale=scale ,yofs="%.4g" % yofs, xgrid=xgrid, xlbls=xlbls)
 
-def buildMenu(sources,selsrc,quantities,selqs):
+def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	''' data for menu.tpl '''
 	logger.info("bldmenu: srcs:%s qtts:%s selqs:%s" % (sources,quantities,selqs))
 	menu =[]
@@ -117,6 +121,8 @@ def buildMenu(sources,selsrc,quantities,selqs):
 	'cls':[{'nm':src,'cls':'sel' if src==selsrc else ''} for src in sources]})
 	menu.append({'rf':'/action/sel','nm':'quantities','typ':'multiple',
 	'cls':[{'nm':qtt,'cls':'sel' if qtt in selqs else ''} for qtt in quantities]})
+	menu.append({'rf':'/action/sel','nm':'tmback',
+	'cls':[{'nm':tnm,'cls':'sel' if tm==ndays else ''} for tm,tnm in tmbacks]})
 	menu.append({'rf':'','nm':'ok','cls':'submit'})
 	#logger.info("menu=%s" % menu)
 	return menu
@@ -127,13 +133,15 @@ def formhandler():
 	logger.info("form post:%s" % bottle.request.body.read())   #.decode('utf-8'))
 	selqs = bottle.request.forms.getall('quantities')
 	src=bottle.request.forms.get('source')
+	tnm=bottle.request.forms.get('tmback')
 	jdnow=julianday()
-	logger.info("form post:qtt=%s src=%s jd=%s" % (selqs, src, prettydate(jdnow)))
-	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs)), max_age=AN1)
-	return bottle.template(TPL, redraw(src, selqs, jdnow))
+	logger.info("form post:qtt=%s src=%s jd=%s ndys=%s" % (selqs, src, prettydate(jdnow), tnm))
+	ndays=next(x[0] for x in tmBACKs if tnm in x[1])
+	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
+	return bottle.template(TPL, redraw(src, selqs, jdnow, ndays))
 	
 	
-def redraw(src, selqs, jdnow):
+def redraw(src, selqs, jdnow, ndays=4):
 	''' create data for main TPL page '''
 	srcs=list(dbStore.sources())
 	quantities=list(dbStore.quantities())
@@ -141,11 +149,16 @@ def redraw(src, selqs, jdnow):
 
 	jdats=[]
 	ydats=[]
+	avgminutes =60
+	if ndays>10:
+		avgminutes=3600
+	if ndays>30:
+		avgminutes *= 24
 	for qs in selqs:
-		recs = dbStore.fetchavg(qs,tstep=60,daysback=4,source=src)
+		recs = dbStore.fetchavg(qs,tstep=avgminutes,daysback=ndays,source=src)
 		ydats.append([rec[1] for rec in recs])
 		jdats.append([rec[0] for rec in recs])
-	page = dict(menitms=buildMenu(srcs,src,quantities,selqs), **buildChart(jdats, ydats, jdnow))
+	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays), **buildChart(jdats, ydats, jdnow))
 	return page
 	
 

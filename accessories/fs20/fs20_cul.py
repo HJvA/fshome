@@ -8,6 +8,9 @@ info: https://wiki.fhem.de/wiki/CUL
 
 import time
 import logging
+import os,sys
+print (os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../lib'))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../lib'))
 from serComm import serComm,serDevice,DEVT,forever,DEVICE
 
 __author__ = "Henk Jan van Aalderen"

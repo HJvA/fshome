@@ -3,7 +3,7 @@
 """
 
 import sys,logging
-sys.path.append(r"accessories/fs20")	# search path for imports
+#sys.path.append(r"accessories/fs20")	# search path for imports
 from dbLogger import sqlLogger,prettyprint,graphyprint
 from devConfig import devConfig
 

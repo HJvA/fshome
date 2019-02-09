@@ -8,7 +8,8 @@ import logging
 from threading import Lock
 lock = Lock()
 
-from devConfig import devConfig
+#from lib import devConfig
+import devConfig
 
 __author__ = "Henk Jan van Aalderen"
 __credits__ = ["Henk Jan van Aalderen"]
@@ -144,7 +145,7 @@ class serDevice(object):
 	@staticmethod
 	def setConfig(devConfigName,newItemPrompt=None):
 		'''loads devices configuration/map from disk'''
-		serDevice.config = devConfig(devConfigName,newItemPrompt=None)
+		serDevice.config = devConfig.devConfig(devConfigName,newItemPrompt=None)
 		
 	@staticmethod
 	def getConfig():
