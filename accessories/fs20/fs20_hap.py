@@ -13,16 +13,14 @@ import logging
 from pyhap.accessory import Accessory,Bridge
 from pyhap.const import CATEGORY_SENSOR,CATEGORY_SWITCH,CATEGORY_PROGRAMMABLE_SWITCH,CATEGORY_LIGHTBULB
 
-from fs20_cul import devFS20,fs20commands
+from .fs20_cul import devFS20,fs20commands
 from lib.serComm import DEVT,serDevice
 from lib.dbLogger import sqlLogger
 
 __author__ = "Henk Jan van Aalderen"
 __credits__ = ["Henk Jan van Aalderen", "Ivan Kalchev"]
-__license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Henk Jan van Aalderen"
-__email__ = "hjva@homail.nl"
+__email__ = "hjva@notmail.nl"
 __status__ = "Development"
 
 logger = logging.getLogger(__name__)	# get logger from main program
@@ -52,7 +50,6 @@ def persist_FS20_config(driver):
 def get_FS20_bridge(driver,config="fs20.json"):
 	""" creates a HAP bridge which combines a number of fs20 accessories according to config"""
 	serDevice.setConfig(config, newItemPrompt=None)
-
 	bridge = FS20_Bridge(driver, 'breeBridge')
 	bridge.dbStore=None
 	logger.critical("pincode=%s" % driver.state.pincode.decode())

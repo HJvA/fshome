@@ -8,7 +8,7 @@ try:
 except ImportError:
 	import bottle
 	
-sys.path.append(r"accessories/fs20")	# search path for imports
+#sys.path.append(r"accessories/fs20")	# search path for imports
 from lib.devConfig import devConfig
 from lib.dbLogger import sqlLogger,julianday,prettydate
 
@@ -22,7 +22,8 @@ AN1=60*60*24*365.25  # one year
 plWIDTH = 800
 plHEIGHT = 400
 plMARG=50
-tmBACKs=[(5,'5d back'),(30,'1mnth back'),(180,'6mnth back'),(365,'1yr back')]
+# ndays, lbl, bar minutes
+tmBACKs={5:('5d back',5),30:('1mnth back',60),180:('6mnth back',1440),365:('1yr back',1440)}
 app =bottle.Bottle()
 
 @app.route("/")
@@ -122,7 +123,7 @@ def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	menu.append({'rf':'/action/sel','nm':'quantities','typ':'multiple',
 	'cls':[{'nm':qtt,'cls':'sel' if qtt in selqs else ''} for qtt in quantities]})
 	menu.append({'rf':'/action/sel','nm':'tmback',
-	'cls':[{'nm':tnm,'cls':'sel' if tm==ndays else ''} for tm,tnm in tmbacks]})
+	'cls':[{'nm':tnm[0],'cls':'sel' if tm==ndays else ''} for tm,tnm in tmbacks.items()]})
 	menu.append({'rf':'','nm':'ok','cls':'submit'})
 	#logger.info("menu=%s" % menu)
 	return menu
@@ -136,7 +137,7 @@ def formhandler():
 	tnm=bottle.request.forms.get('tmback')
 	jdnow=julianday()
 	logger.info("form post:qtt=%s src=%s jd=%s ndys=%s" % (selqs, src, prettydate(jdnow), tnm))
-	ndays=next(x[0] for x in tmBACKs if tnm in x[1])
+	ndays=next(tb for tb,tup in tmBACKs.items() if tnm in tup[0])
 	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
 	return bottle.template(TPL, redraw(src, selqs, jdnow, ndays))
 	
@@ -146,7 +147,7 @@ def redraw(src, selqs, jdnow, ndays=4):
 	srcs=list(dbStore.sources())
 	quantities=list(dbStore.quantities())
 	logger.info("redraw src:%s,selqs:%s" % (src,selqs))
-
+	
 	jdats=[]
 	ydats=[]
 	avgminutes =60

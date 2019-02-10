@@ -9,20 +9,15 @@ info: https://wiki.fhem.de/wiki/CUL
 import time
 import logging
 import os,sys
-print (os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../lib'))
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../lib'))
-from serComm import serComm,serDevice,DEVT,forever,DEVICE
+if __name__ == "__main__":
+	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../lib'))
+	from serComm import serComm,serDevice,DEVT,forever,DEVICE
+else:
+	from lib.serComm import serComm,serDevice,DEVT,forever,DEVICE
 
 __author__ = "Henk Jan van Aalderen"
-__credits__ = ["Henk Jan van Aalderen", ""]
-__license__ = "GPL"
-__version__ = "1.0.0"
-__maintainer__ = "Henk Jan van Aalderen"
-__email__ = "hjva@homail.nl"
-__status__ = "Development"
+__email__ = "hjva@notmail.nl"
 
-
- 
 """  https://github.com/hobbyquaker/cul  """
 fs20commands = [
   "off",   
@@ -128,6 +123,7 @@ class devS300TH(serDevice):
 					temperature *= -1
 				humidity = float(msg[7] + msg[8] + "." + msg[5])
 				rec.update({"typ":typ,"devadr":"%d" % cde,"Tmp":temperature,"Hum":humidity})
+			logger.debug("s300 rec:%s" % rec)
 		return rec
 		
 

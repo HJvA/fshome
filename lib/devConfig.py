@@ -6,11 +6,7 @@ import logging
 import os
 
 __author__ = "Henk Jan van Aalderen"
-__credits__ = ["Henk Jan van Aalderen", "Ivan Kalchev"]
-__license__ = "GPL"
-__version__ = "1.0.0"
-__maintainer__ = "Henk Jan van Aalderen"
-__email__ = "hjva@homail.nl"
+__email__ = "hjva@notmail.nl"
 __status__ = "Development"
 
 class devConfig(object):
@@ -25,7 +21,7 @@ class devConfig(object):
 		if os.path.isfile(self.fname):
 			with open(self.fname, 'r') as fl:
 				self.itstore = json.load(fl)
-		logger.debug("loading config:%s \n" % (self.fname,))
+		logger.debug("loading config:%s isfile:%s len:%d\n" % (self.fname, os.path.isfile(self.fname), len(self.itstore)))
 	
 	def prettyValStr(self, items=None):
 		if items is None:
@@ -33,7 +29,7 @@ class devConfig(object):
 		return json.dumps(items, ensure_ascii=False, indent=2, sort_keys=True)
 		
 	def updateConfig(self, config):
-		''' updates item store with config items (kvp) '''
+		''' updates item store with config dict  '''
 		for devkey,itms in config.items():
 			self.updateItems(devkey, itms)
 			#self.itstore.update(config)

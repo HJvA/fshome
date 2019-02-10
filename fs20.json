@@ -1,86 +1,86 @@
 {
-  "banklicht": {
-    "devadr": "31",
-    "hausc": "1212",
-    "typ": 13
-  },
   "kgb": {
     "aid": 8,
     "typ": 1,
     "devadr": "8"
-  },
-  "traplicht": {
-    "aid": 9,
-    "typ": 11,
-    "hausc": "1212",
-    "devadr": "33"
-  },
-  "_71": {
-    "devadr": "71"
-  },
-  "breeBridge": {
-    "aid": 1
-  },
-  "zoldim": {
-    "aid": 12,
-    "typ": 14,
-    "hausc": "1212",
-    "devadr": "72"
-  },
-  "testbel": {
-    "aid": 11,
-    "typ": 10,
-    "hausc": "1212",
-    "devadr": "70"
-  },
-  "_70_1": {
-    "devadr": "70",
-    "typ": 1
-  },
-  "terras": {
-    "aid": 3,
-    "typ": 1,
-    "devadr": "5"
-  },
-  "_20": {
-    "devadr": "20"
-  },
-  "movgang": {
-    "aid": 6,
-    "typ": 11,
-    "hausc": "1212",
-    "devadr": "10"
-  },
-  "kamer": {
-    "aid": 4,
-    "typ": 1,
-    "devadr": "4"
   },
   "zolder": {
     "aid": 2,
     "typ": 1,
     "devadr": "1"
   },
-  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
-  "magnetron": {
-    "aid": 5,
-    "typ": 12,
-    "hausc": "1212",
-    "devadr": "32"
-  },
   "deurb": {
-    "aid": 10,
-    "typ": 10,
     "hausc": "4CFA",
+    "typ": 10,
+    "aid": 10,
     "devadr": "00"
   },
-  "burolicht": {
-    "devadr": "30",
+  "movgang": {
     "hausc": "1212",
-    "typ": 13
+    "typ": 11,
+    "aid": 6,
+    "devadr": "10"
   },
   "_42": {
-    "devadr": "42",
-    "typ": "98"
+    "typ": "98",
+    "devadr": "42"
+  },
+  "breeBridge": {
+    "aid": 1
+  },
+  "_70_1": {
+    "typ": 1,
+    "devadr": "70"
+  },
+  "traplicht": {
+    "hausc": "1212",
+    "typ": 11,
+    "aid": 9,
+    "devadr": "33"
+  },
+  "terras": {
+    "aid": 3,
+    "typ": 1,
+    "devadr": "5"
+  },
+  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
+  "testbel": {
+    "hausc": "1212",
+    "typ": 10,
+    "aid": 11,
+    "devadr": "70"
+  },
+  "burolicht": {
+    "hausc": "1212",
+    "typ": 13,
+    "devadr": "30"
+  },
+  "kamer": {
+    "aid": 4,
+    "typ": 1,
+    "devadr": "4"
+  },
+  "magnetron": {
+    "hausc": "1212",
+    "typ": 12,
+    "aid": 5,
+    "devadr": "32"
+  },
+  "banklicht": {
+    "hausc": "1212",
+    "typ": 13,
+    "devadr": "31"
+  },
+  "_20": {
+    "devadr": "20"
+  },
+  "zoldim": {
+    "hausc": "1212",
+    "typ": 14,
+    "aid": 12,
+    "devadr": "72"
+  },
+  "_71": {
+    "devadr": "71"
   }
 }

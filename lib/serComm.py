@@ -9,14 +9,14 @@ from threading import Lock
 lock = Lock()
 
 #from lib import devConfig
-import devConfig
+if __name__ == "__main__":
+	from devConfig import devConfig
+else:
+	from .devConfig import devConfig
 
 __author__ = "Henk Jan van Aalderen"
-__credits__ = ["Henk Jan van Aalderen"]
-__license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Henk Jan van Aalderen"
-__email__ = "hjva@homail.nl"
+__email__ = "hjva@notmail.nl"
 __status__ = "Development"
 
 
@@ -113,7 +113,7 @@ class serDevice(object):
 		keeps internal state dict of recognised devices
 	"""
 	config = None  #devConfig("fs20.json")
-	devdat={}	# parsed messages last one per device
+	devdat={}	# last parsed messages per device
 	commPort=None
 
 	def __init__(self, devkey=None, transceiver=None):
@@ -145,7 +145,7 @@ class serDevice(object):
 	@staticmethod
 	def setConfig(devConfigName,newItemPrompt=None):
 		'''loads devices configuration/map from disk'''
-		serDevice.config = devConfig.devConfig(devConfigName,newItemPrompt=None)
+		serDevice.config = devConfig(devConfigName,newItemPrompt=None)
 		
 	@staticmethod
 	def getConfig():
@@ -200,7 +200,7 @@ class serDevice(object):
 					if newdev:
 						logger.warning("new device received:%s with:%s now having:%s" % (devkey,signature, serDevice.devdat.keys()))
 			else:
-				logger.error("unknown device:%s" % msg)
+				logger.error("unknown device:%s config:%s" % (msg,serDevice.config))
 			logger.debug("rec:%s" % rec)
 		return rec
 	

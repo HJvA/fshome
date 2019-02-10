@@ -10,11 +10,11 @@ import sys
 
 from pyhap.accessory_driver import AccessoryDriver
 
-sys.path.append(r"accessories/fs20")	# search path for imports
-from fs20_hap import get_FS20_bridge,persist_FS20_config
+#sys.path.append(r"accessories/fs20")	# search path for imports
+from accessories.fs20.fs20_hap import get_FS20_bridge,persist_FS20_config
 
 __maintainer__ = "Henk Jan van Aalderen"
-__email__ = "hjva@homail.nl"
+__email__ = "hjva@notmail.nl"
 __status__ = "Development"
 
 # setup logging for console and error log and generic log
