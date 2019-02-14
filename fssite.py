@@ -1,3 +1,10 @@
+#!/usr/bin/env python3.5
+""" 
+application to display measured quantities graphically and interactively
+uses bottle web-framework and sqlite database
+get values and picklists from a database which was filled by fsmain.py et al.
+"""
+
 import os
 import sys
 import datetime
@@ -8,9 +15,8 @@ try:
 except ImportError:
 	import bottle
 	
-#sys.path.append(r"accessories/fs20")	# search path for imports
 from lib.devConfig import devConfig
-from lib.dbLogger import sqlLogger,julianday,prettydate
+from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate
 
 __copyright__="<p>Copyright &copy; 2019, hjva</p>"
 TITLE=r"graphing temperature monitor"
@@ -21,14 +27,24 @@ COOKIE="FSSITE"
 AN1=60*60*24*365.25  # one year
 plWIDTH = 800
 plHEIGHT = 400
-plMARG=50
-# ndays, lbl, bar minutes
-tmBACKs={5:('5d back',5),30:('1mnth back',60),180:('6mnth back',1440),365:('1yr back',1440)}
+plYMARG= 50
+plXMARG=100
+# ndays:(lbl, bar minutes, grid step days, lbl format)
+tmBACKs={ 5:(u'\u251C 5days \u2524',20,1,'%a'), 
+	30.44:(u'\u251C 1mnth \u2524',6*60,7,'%V'), 
+	182.6:(u'\u251C 6mnth \u2524',24*60,30.44,'%b'), 
+	365.25:(u'\u251C 1yr \u2524',2*24*60,30.44,'%b') }
+tmBACKs={ 5:(u'5days',20,1,'%a'), 
+	30.44:(u'1mnth',6*60,7,'%V'), 
+	182.6:(u'6mnth',24*60,30.44,'%b'), 
+	365.25:(u'1yr',2*24*60,30.44,'%b') }
+qCOUNTING = ['motion','ringing','switch']  # quantity counting types
 app =bottle.Bottle()
 
 @app.route("/")
 @bottle.view(TPL)
 def index(name=TITLE):
+	''' standard opening page (having only menu i.e. no data )'''
 	srcs=list(dbStore.sources())
 	src=srcs[0]
 	cookie = bottle.request.get_cookie(COOKIE)
@@ -48,27 +64,37 @@ def index(name=TITLE):
 	#page = redraw(src,selqs,julianday())
 	page.update( dict(title=name, footer=__copyright__))
 	return bottle.template(TPL, page)
-	
-def buildPath(xdat, ydat, xofs, ybas):
-	''' build svg path from xy data '''
-	crv="M%g,%g" % (xdat[0]-xofs, ybas)
-	for i in range(0,len(xdat)):
-		crv += " L%.3g,%.3g" % (xdat[i]-xofs,ydat[i])
-	crv += " L%g,%gZ" % (max(xdat)-xofs,ybas)
-	return crv
-	
-def buildCurve(xdat, ydat, xofs, ybas):
+
+def buildCurve(xdat, ydat, xsize, ysize, xstart,ystart):
+	''' build svg polyline '''
+	xscl=plWIDTH/xsize
+	yscl=-plHEIGHT/ysize
+	xofs=plXMARG-xstart*xscl
+	yofs=plYMARG+plHEIGHT-ystart*yscl
 	crv=""
 	for i in range(0,len(xdat)):
-		crv += " %.3g,%.3g" % (xdat[i]-xofs,ydat[i])	
+		crv += " %.3g,%.3g" % (xdat[i]*xscl+xofs,ydat[i]*yscl+yofs)	
 	return crv
 
-def buildLbls(dat, nr):
+def buildHistogram(xdat, ydat, xsize, ysize, xstart,ystart):
+	''' build svg path '''
+	xscl=plWIDTH/xsize
+	yscl=-plHEIGHT/ysize
+	xofs=plXMARG-xstart*xscl
+	yofs=plYMARG+plHEIGHT-ystart*yscl
+	crv=""
+	for i in range(0,len(xdat)):
+		crv += " M%.3g %d V%.3g" % (xdat[i]*xscl+xofs,plYMARG+plHEIGHT, ydat[i]*yscl+yofs)
+	crv += " Z"
+	return crv
+
+
+def buildLbls(vmin,vmax, nr):
 	''' axis labels '''
-	if len(dat)==0:
-		return [float(i) for i in range(nr)]
-	vmin=min(dat)
-	vmax=max(dat)
+	#if len(dat)==0:
+	#	return [float(i) for i in range(nr)]
+	#vmin=min(dat)
+	#vmax=max(dat)
 	return [vmin+i*(vmax-vmin)/(nr-1) for i in range(nr)]
 
 def bld_dy_lbls(jdats, form="%a"):
@@ -77,12 +103,11 @@ def bld_dy_lbls(jdats, form="%a"):
 		return [""]
 	return [prettydate(jd, form) for jd in jdats]
 	
-def buildChart(jdats, ydats, jdnow):
-	''' build data for svg chart '''
+def buildChart(jdats, ydats,selqs, jdnow, ndays):
+	''' build data for svg chart including axes,labels,gridlines,curves,histogram'''
 	data=[]
-	ndays=1
-	stroke="#0074d9"
-	for jdat,ydat in zip(jdats,ydats):
+	strokes=("#0074d9","#9420d9","#a040d0")
+	for jdat,ydat,stroke,selq in zip(jdats,ydats,strokes,selqs):
 		if len(ydat)>0:
 			vmax = max(ydat)
 			vmin = min(ydat)
@@ -90,29 +115,48 @@ def buildChart(jdats, ydats, jdnow):
 				vmin = vmax-1
 		
 		if len(jdat)>0:
-			nd =jdnow-min(jdat)
-			if nd>ndays:
-				ndays = nd
-				xscl=plWIDTH/ndays
-			height = vmax-vmin
-			yscl=plHEIGHT/(height)
-			yofs=plHEIGHT+plMARG + yscl*vmin  # bottom of chart viewport		
-			scale="%.4g,%.4g" % (xscl,-yscl)
-			crv = buildCurve(jdat,ydat,jdnow-ndays,vmin)
-			curve=dict(crv=crv,yofs=yofs,scale=scale,stroke=stroke, ylbls=buildLbls(ydat,4))
+			if selq in qCOUNTING:
+				vmin=0
+				vmax=next(3*i for i in range(10) if 3*i>=vmax)
+				crv = buildHistogram(jdat,ydat, ndays,vmax, jdnow-ndays,vmin)
+			else:
+				crv = buildCurve(jdat,ydat, ndays,vmax-vmin, jdnow-ndays,vmin)
+			#logger.debug("crv=%s" % crv)
+			ylbls=buildLbls(vmin,vmax,4)
+			logger.debug("ylbls:%s" % ylbls)
+			curve=dict(crv=crv, stroke=stroke, ylbls=ylbls, selq=selq, qtyp=1 if selq in qCOUNTING else 0)
 			data.append(curve)
-			stroke="#9420d9"
 	if len(data)==0:
 		return dict (title=TITLE, curves=[])
 	
-	xlbls=bld_dy_lbls([jdnow-ndays+d+1 for d in range(int(ndays)+1)])
+	xlbltup = tmBACKs[ndays]
+	lblformat=xlbltup[3]
+	gridstep=xlbltup[2]
+	barwdt=xlbltup[1]
+	xscl=plWIDTH/ndays
+		
+	if gridstep==7:  # a week
+		fracd = (jdnow+1.5) % 7
+		logger.info("day of week:%s" % fracd)
+		fracd /= 7
+	elif int(gridstep)==30:  # a month
+		fracd = datetime.datetime.fromtimestamp(unixsecond(jdnow))
+		logger.info("date %s hour %s" % (fracd.day,fracd.hour))
+		fracd = fracd.day + fracd.hour/24.0
+		fracd /= 30.44
+	else:
+		fracd = jdnow-0.5  #noon to midnight
+		fracd = fracd/gridstep - int(fracd/gridstep)
+
+	gridlocs = [jdnow-(f+fracd)*gridstep for f in range(int(ndays/gridstep+0.1))]
+	gridlocs.reverse()
+	logger.debug("jdnow=%s gridlocs=%s" % (jdnow,gridlocs))
 	
-	fracd = jdnow-0.5  #noon to midnight
-	fracd = fracd - int(fracd)
-	xgrid =[(i-fracd+1)*xscl+100 for i in range(int(ndays+0.1))]
-	
-	logger.info("ndays=%.4g scl='%s' yofs=%.4g xlbls=%s xgrid=%s" % (ndays,scale,yofs,xlbls,xgrid))
-	return dict( title=TITLE+"   dd:%s" % prettydate(jdnow), curves=data, scale=scale ,yofs="%.4g" % yofs, xgrid=xgrid, xlbls=xlbls)
+	xgrid =[plXMARG+plWIDTH-(jdnow-jd)*xscl for jd in gridlocs]
+	xlbls=bld_dy_lbls([jd+gridstep/2 for jd in gridlocs[:-1]],lblformat)
+
+	logger.info("ndays=%.4g xlbls=%s xgrid=%s" % (ndays,xlbls,xgrid))
+	return dict( title=TITLE+"   dd:%s" % prettydate(jdnow), curves=data, xgrid=xgrid, xlbls=xlbls)
 
 def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	''' data for menu.tpl '''
@@ -135,14 +179,23 @@ def formhandler():
 	selqs = bottle.request.forms.getall('quantities')
 	src=bottle.request.forms.get('source')
 	tnm=bottle.request.forms.get('tmback')
+	#logger.debug("choice:%s typ:%s" % (tnm,type(tnm)))
+	#tnm=tnm.encode('utf-8',errors='ignore')
+	#tnm = tnm[1:-3]
+	#tnm = tnm.split(' ')
 	jdnow=julianday()
 	logger.info("form post:qtt=%s src=%s jd=%s ndys=%s" % (selqs, src, prettydate(jdnow), tnm))
-	ndays=next(tb for tb,tup in tmBACKs.items() if tnm in tup[0])
+	try:
+		#if len(tnm)>5:
+		#	tnm= tnm[2:-2]
+		ndays=next(tb for tb,tup in tmBACKs.items() if tnm in tup[0])
+	except StopIteration:
+		ndays=5
 	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
 	return bottle.template(TPL, redraw(src, selqs, jdnow, ndays))
 	
 	
-def redraw(src, selqs, jdnow, ndays=4):
+def redraw(src, selqs, jdnow, ndays=7):
 	''' create data for main TPL page '''
 	srcs=list(dbStore.sources())
 	quantities=list(dbStore.quantities())
@@ -150,16 +203,18 @@ def redraw(src, selqs, jdnow, ndays=4):
 	
 	jdats=[]
 	ydats=[]
-	avgminutes =60
-	if ndays>10:
-		avgminutes=3600
-	if ndays>30:
-		avgminutes *= 24
+	xlbltup = tmBACKs[ndays]
+
+	avgminutes = xlbltup[1]
 	for qs in selqs:
 		recs = dbStore.fetchavg(qs,tstep=avgminutes,daysback=ndays,source=src)
-		ydats.append([rec[1] for rec in recs])
-		jdats.append([rec[0] for rec in recs])
-	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays), **buildChart(jdats, ydats, jdnow))
+		if qs in qCOUNTING:
+			iy=2	# counting quantity
+		else:
+			iy=1
+		ydats.append([rec[iy] for rec in recs])
+		jdats.append([rec[0] for rec in recs])  # julian days
+	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays),  **buildChart(jdats,ydats,selqs,jdnow,ndays))
 	return page
 	
 

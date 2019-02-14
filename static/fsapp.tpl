@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- page.tpl -->
+<!-- template for fssite.py bottle application to show svg chart of measured values -->
 <html lang="en">
  <head>
      <link rel="stylesheet" type="text/css" href="styles.css">
@@ -17,7 +17,7 @@
   %setdefault('xgrid',[100,300,500,700,900])
   %setdefault('ygrid',[50,183,317,450])
   %setdefault('xlbls',[1,2,3,4,5])
-  %setdefault('curves',[{'yofs':780,'scale':"200,-33",'stroke':"#0074d9",'ylbls':[10,14,18,22],'crv':"M0,10 L0,12 L1,12.2 L2,12.3 L3,13 L4,13.1 L5,13.1 L6,13.3 L6,10Z"}])
+  %setdefault('curves',[{'stroke':"#0074d9",'qtyp':1,'ylbls':[10,14,18,22],'crv':"M0,10 L0,12 L1,12.2 L2,12.3 L3,13 L4,13.1 L5,13.1 L6,13.3 L6,10Z"}])
   %setdefault('xaxlbl',"")
   %setdefault('yaxlbl',"")
   %setdefault('footer',"")
@@ -48,19 +48,20 @@
   </defs>
   <rect class="grid" x="100" y="50" width="800" height="400"> </rect>
 
-  %side=70
-  %for curve in curves:
-     <g class="surfaces" -webkit-clip-path="url(#clpPth)" transform="translate(100,{{curve['yofs']}}) scale({{curve['scale']}})" > 
-       <polyline fill="none" stroke={{curve['stroke']}} stroke-width="0.03" 
-         points="{{curve['crv']}}" />
+  %for curve,side in zip(curves,[80,960,90,990]):
+     <g class="surfaces" clip-path="url(#clpPth)">
+     	%if curve['qtyp']==1:
+     	 <path  fill="none" stroke={{curve['stroke']}} stroke-width="2.8" d="{{curve['crv']}}" />
+     	%else:
+       <polyline fill="none" stroke={{curve['stroke']}} stroke-width="1.8" points="{{curve['crv']}}" />
+      %end
      </g>
      <g class="labels y-labels" stroke={{curve['stroke']}}>
        <text  x="-50%" y="2%" transform="rotate(270)">{{yaxlbl}}</text>       
-       %for y in ygrid:
-         <text y="{{y}}" x="{{side}}">{{"%.3g" % curve['ylbls'][-ygrid.index(y)-1]}}</text>
+       %for i in range(len(ygrid)):
+         <text y="{{ygrid[i]}}" x="{{side}}">{{"{:{align}4.3g}".format(curve['ylbls'][-i-1], align='>' if side<400 else '<')}}</text>
        %end
      </g>
-     %side=970
   %end
      
      <g class="grid x-grid" transform="ref(svg)" >
@@ -76,7 +77,7 @@
      <g class="labels x-labels" transform="ref(svg)">
        <text  x="50%" y="98%">{{xaxlbl}}</text>
        %for d in range(len(xgrid)-1):
-         <text  x="{{(xgrid[d]+xgrid[d+1])/2}}" y="470">{{xlbls[d]}}</text>
+         <text  x="{{(xgrid[d]+xgrid[d+1])/2}}" y="475">{{xlbls[d]}}</text>
        %end
      </g>
 </svg>
