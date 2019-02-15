@@ -158,7 +158,7 @@ class devFS20(devS300TH):
 		if hausc is None:
 			hausc=self.getRecordItem('hausc')
 		if devadr is None:
-			devadr=self.getConfigItem('devadr')
+			devadr=self.getRecordItem('devadr')
 		cde = fs20commands.index(cmd)
 		ee=""
 		if not dur is None:

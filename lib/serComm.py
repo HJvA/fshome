@@ -138,9 +138,9 @@ class serDevice(object):
 		''' get item from actual device state '''
 		if self.devkey is None:
 			return None
-		if self.devkey in serDevice.devdat:
+		if self.devkey in serDevice.devdat:  # known device
 			return serDevice.devdat[self.devkey][itkey]
-		return self.getConfigItem(itkey)
+		return serDevice.getConfigItem(self.devkey, itkey)  # look in config
 	
 	@staticmethod
 	def setConfig(devConfigName,newItemPrompt=None):

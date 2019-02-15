@@ -1,86 +1,86 @@
 {
   "kgb": {
-    "aid": 8,
     "typ": 1,
-    "devadr": "8"
+    "devadr": "8",
+    "aid": 8
   },
-  "zolder": {
-    "aid": 2,
-    "typ": 1,
-    "devadr": "1"
+  "zoldim": {
+    "typ": 14,
+    "hausc": "1212",
+    "devadr": "72",
+    "aid": 12
+  },
+  "banklicht": {
+    "typ": 13,
+    "devadr": "31",
+    "hausc": "1212"
   },
   "deurb": {
-    "hausc": "4CFA",
     "typ": 10,
-    "aid": 10,
-    "devadr": "00"
+    "hausc": "4CFA",
+    "devadr": "00",
+    "aid": 10
   },
-  "movgang": {
-    "hausc": "1212",
-    "typ": 11,
-    "aid": 6,
-    "devadr": "10"
+  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
+  "_71": {
+    "devadr": "71"
   },
   "_42": {
     "typ": "98",
     "devadr": "42"
   },
+  "traplicht": {
+    "typ": 11,
+    "hausc": "1212",
+    "devadr": "33",
+    "aid": 9
+  },
   "breeBridge": {
     "aid": 1
   },
-  "_70_1": {
+  "zolder": {
     "typ": 1,
-    "devadr": "70"
+    "devadr": "1",
+    "aid": 2
   },
-  "traplicht": {
-    "hausc": "1212",
-    "typ": 11,
-    "aid": 9,
-    "devadr": "33"
-  },
-  "terras": {
-    "aid": 3,
-    "typ": 1,
-    "devadr": "5"
-  },
-  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
   "testbel": {
-    "hausc": "1212",
     "typ": 10,
-    "aid": 11,
-    "devadr": "70"
-  },
-  "burolicht": {
     "hausc": "1212",
-    "typ": 13,
-    "devadr": "30"
+    "devadr": "70",
+    "aid": 11
   },
   "kamer": {
-    "aid": 4,
     "typ": 1,
-    "devadr": "4"
+    "devadr": "4",
+    "aid": 4
+  },
+  "terras": {
+    "typ": 1,
+    "devadr": "5",
+    "aid": 3
+  },
+  "movgang": {
+    "typ": 11,
+    "hausc": "1212",
+    "devadr": "10",
+    "aid": 6
   },
   "magnetron": {
-    "hausc": "1212",
     "typ": 12,
-    "aid": 5,
-    "devadr": "32"
-  },
-  "banklicht": {
     "hausc": "1212",
-    "typ": 13,
-    "devadr": "31"
+    "devadr": "32",
+    "aid": 5
   },
   "_20": {
     "devadr": "20"
   },
-  "zoldim": {
-    "hausc": "1212",
-    "typ": 14,
-    "aid": 12,
-    "devadr": "72"
+  "burolicht": {
+    "typ": 13,
+    "devadr": "30",
+    "hausc": "1212"
   },
-  "_71": {
-    "devadr": "71"
+  "_70_1": {
+    "typ": 1,
+    "devadr": "70"
   }
 }
