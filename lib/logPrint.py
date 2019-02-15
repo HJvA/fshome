@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """ just print selection from fs20 database to console
+	shows latest records both tabular and graphically
+	quantity can be selected as cmd line arg
 """
 
 import sys,logging
-#sys.path.append(r"accessories/fs20")	# search path for imports
 from dbLogger import sqlLogger,prettyprint,graphyprint
 from devConfig import devConfig
 

@@ -28,11 +28,23 @@ RTSCTS = False
 XONXOFF = False
 TIMEOUT = 1
 
-# device / accessoiry type enumeration
+# device / accessoiry type enumeration, codes to be used in fs20.json
 DEVT ={
-	"temp":0, "temp/hum":1, "rain":2, "wind":3, "temp/hum/press":4, "brightness":5,
-	"pyro":6, "fs20":9,
-	"doorbell":10, "motion":11, "switch":12, "light":13, "dimmer":14, "secluded":98, "unknown":99}
+	"temp":0,      # temperature sensor
+	"temp/hum":1,  # temperature + humidity sensor
+	"rain":2,      # precipitation meter
+	"wind":3,      # wind speed meter
+	"temp/hum/press":4, # incl air pressure
+	"brightness":5,# brightness actuator
+	"pyro":6,      # pyro detector
+	"fs20":9,      # unknown fs20 device
+	"doorbell":10, # doorbell button
+	"motion":11,   # motion detector
+	"switch":12,   # mains switch 
+	"light":13, 
+	"dimmer":14,   # mains (light) dimmer
+	"secluded":98, # known device but to be ignored
+	"unknown":99 } # unknown device
 
 
 class serComm(object):
@@ -98,7 +110,6 @@ class serComm(object):
 					logger.debug("interv:%.2f read:%s remains:%s" % (cnt*tres, data, self.buf))
 					return data.decode('ascii')
 		return None
-
 		
 	def write(self, data):
 		self.ser.write(data)
@@ -113,7 +124,7 @@ class serDevice(object):
 		keeps internal state dict of recognised devices
 	"""
 	config = None  #devConfig("fs20.json")
-	devdat={}	# last parsed messages per device
+	devdat={}	   # last parsed messages per device
 	commPort=None
 
 	def __init__(self, devkey=None, transceiver=None):
@@ -158,8 +169,7 @@ class serDevice(object):
 		''' virtual : to be enhanced to convert string to dict of items'''
 		return {"msg":data.strip(' \r\n'),"len":len(data)}
 		
-	async def receive_message(self, timeout=2, minlen=8, termin='\r\n',
-		signkeys=('typ','devadr')):
+	async def receive_message(self, timeout=2, minlen=8, termin='\r\n', signkeys=('typ','devadr')):
 		'''receive dict of items from a (any) device
 			recognises device from signkeys in parsed/received items
 			tries to add unknown devices to config'''

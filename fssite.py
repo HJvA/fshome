@@ -24,12 +24,15 @@ CONFFILE = "./fs20.json"
 dbfile = '~/fs20store.sqlite'
 TPL='static/fsapp.tpl'
 COOKIE="FSSITE"
-AN1=60*60*24*365.25  # one year
+AN1=60*60*24*365.25  # one year for cookie
+# definition of plot area
 plWIDTH = 800
 plHEIGHT = 400
 plYMARG= 50
 plXMARG=100
-# ndays:(lbl, bar minutes, grid step days, lbl format)
+# definition of x time axis in svg graph
+# ndays:(label, bar minutes, grid step days, time ax lbl format)
+# problem having these unicode chars recognizing choice response
 tmBACKs={ 5:(u'\u251C 5days \u2524',20,1,'%a'), 
 	30.44:(u'\u251C 1mnth \u2524',6*60,7,'%V'), 
 	182.6:(u'\u251C 6mnth \u2524',24*60,30.44,'%b'), 
@@ -91,10 +94,6 @@ def buildHistogram(xdat, ydat, xsize, ysize, xstart,ystart):
 
 def buildLbls(vmin,vmax, nr):
 	''' axis labels '''
-	#if len(dat)==0:
-	#	return [float(i) for i in range(nr)]
-	#vmin=min(dat)
-	#vmax=max(dat)
 	return [vmin+i*(vmax-vmin)/(nr-1) for i in range(nr)]
 
 def bld_dy_lbls(jdats, form="%a"):
@@ -106,7 +105,7 @@ def bld_dy_lbls(jdats, form="%a"):
 def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	''' build data for svg chart including axes,labels,gridlines,curves,histogram'''
 	data=[]
-	strokes=("#0074d9","#9420d9","#a040d0")
+	strokes=("#1084e9","#a430e9","#a040d0")
 	for jdat,ydat,stroke,selq in zip(jdats,ydats,strokes,selqs):
 		if len(ydat)>0:
 			vmax = max(ydat)

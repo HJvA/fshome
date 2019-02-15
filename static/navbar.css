@@ -67,7 +67,6 @@ div a:hover, .dropdown:hover .dropbtn {
   background:red;
 }
 
-
 /* Reset Select */
 select {
   -webkit-appearance: none;
@@ -86,7 +85,7 @@ select {
 .menuselect select {
   width: 8em;
   margin: 0;
-  padding-left: 1em;
+  padding-left: 0.8em;
   font-size:1em;
   color: #eee;
   cursor: pointer;

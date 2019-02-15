@@ -139,8 +139,6 @@ class devFS20(devS300TH):
 			devadr = msg[5:7]
 			cde =int(msg[7:9],16)
 			dur=None
-			#typ=self.getConfigItem('typ')
-			#if typ is None:
 			typ=DEVT['fs20']  # device is recognised
 			if cde & 0x20:	# extension bit
 				ee=int(msg[9:11],16)

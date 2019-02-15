@@ -2,16 +2,16 @@
 # fshome
 
 Application to embed fs20 type devices to the Apple homekit eco system.
-Fs20 represents a family of devices with many functions which communicate via the 868 MHz radio frequency.  
+Fs20 represents a family of devices with many actuators and sensors which communicate via the 868 MHz radio frequency.  
 The application operates as a homekit bridge e.g. on a Raspberry pi which is connected to your home network. 
 Uses a CUL transceiver to receive and send fs20 messages on the 868 MHz RF network  
 
-This project is an extension of the HAP-python project by Ivan Kalchev <ikalchev>.
-It is cloned from https://github.com/ikalchev/HAP-python
+The project leans heavily on the HAP-python project by Ivan Kalchev.
+It is cloned as a submodule from <https://github.com/ikalchev/HAP-python>
 
-The results will be stored in a sqlite database. The quantities measured will have to be assigned to a source / room in a fs20.json file.
+The results will be stored in a sqlite database. The quantities recorded will have to be assigned to a source / room in a fs20.json file.
 
-The measured temeratures and humidities can be displayed in a svg chart in a browser, with selectable quantities and sources. For this a web server is available using the bottle web-framework cloned from https://github.com/bottlepy/bottle 
+The measured temeratures and humidities and other recorded events can be displayed in a svg chart in a browser, with selectable quantities and sources. For this a web server is available using the bottle web-framework cloned from <https://github.com/bottlepy/bottle> by Marcel Hellkamp.
 
 ## Table of Contents
 1. [Installation](#Installation)
@@ -23,13 +23,11 @@ The measured temeratures and humidities can be displayed in a svg chart in a bro
 
 ## Installation <a name="Installation"></a>
 
-Starting on a standard Raspberry pi on Raspbian (a debian clone)
-fist make sure you have Python 3.5 or later installed
-also install git and pip3 (e.g. using apt-get ,install <package>)
-then download the fshome project 
+Starting on a standard Raspberry pi on Raspbian (a debian clone, but almost any linux computer probably will be ok) fist make sure you have Python 3.5 or later installed. Also install git and pip3 (e.g. using ```apt-get install <package>```  ). Then download the fshome project  
+```bash
 git clone git://github.com/HJvA/fshome
-
-Connect the CUL transceiver to a USB port of your Raspberry. Have the CUL transceiver flashed with the latest firmware from http://culfw.de. Assure that /dev/ttyACM0 appears on your system (it represents a serial port used for the CUL). Maybe you should enable it using raspi-config.
+```  
+Connect the CUL transceiver to a USB port of your Raspberry. Have the CUL transceiver flashed with the latest firmware from <http://culfw.de>. Assure that ```/dev/ttyACM0``` appears on your system (it represents a serial port used for the CUL). Maybe you should enable it using raspi-config.
 
 ## Configuring devices <a name="Configure"></a>
 
@@ -38,7 +36,7 @@ The fs20.json file should contain the json representation of the fs20 devices th
 ## Configuring homekit <a name="Homekit"></a>
 
 To have a fresh install:
-First cleanup your devices configured in your IOS home app. Also delete the accessory.state file on your Raspberry. Now run the fsmain.py for a while, and make a screenshot when you see the homekit id number appear on it. Use this number to register the accessory bridge in your IOS Home app. 
+First cleanup your devices configured in your IOS home app. Also delete the accessory.state file on your Raspberry. Now run the fsmain.py for a while, and make a screenshot when you see the homekit id number appear on it (or look for 'pincode' in the log files). Use this number to register the accessory bridge in your IOS Home app. 
 
 ## Using the application <a name="Usage"></a>
 
@@ -48,14 +46,16 @@ Execute the following commands in a terminal:
 
 ```bash  
 cd ~/fshome  
-nohup python3 fsmain.py &  
+nohup python3 fsmain.py 2>stderr.log &  
 python3 fssite.py  
 ```
 
 See the log files for error conditions to be resolved.
 
-After a while when enough data has been acquired open a browser window on
-http://<ip.of.rasp.berry>:8080
+After a while when enough data has been acquired open a browser window on  
+```
+<http://<ip.of.rasp.berry>:8080>
+```
 Select the room source and select some quantities from the multi select boxes.
 
 
@@ -66,5 +66,5 @@ Homekit Rules can be used to trigger actions when a certain value passes a bound
 ## Notice <a name="Notice"></a>
 
 Most of the credits to get this working must go to Ivan. Many thanks for that.  
-The knowledge about the fs20 devices with the CUL interface is comming from Rudolf Koenig from his fhem project: https://fhem.de
-Fs20 devices are/were distributed by https://www.elv.de/fs20-funkschaltsystem.html. (can also be ordered from amazon.de)
+The knowledge about the fs20 devices with the CUL interface is comming from Rudolf Koenig from his fhem project: <https://fhem.de>
+Fs20 devices are/were distributed by <https://www.elv.de/fs20-funkschaltsystem.html>. (can also be ordered from amazon.de)

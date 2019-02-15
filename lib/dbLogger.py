@@ -7,11 +7,8 @@ import os
 import time
 
 __author__ = "Henk Jan van Aalderen"
-__credits__ = ["Henk Jan van Aalderen"]
-__license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Henk Jan van Aalderen"
-__email__ = "hjva@homail.nl"
+__email__ = "hjva@notmail.nl"
 __status__ = "Development"
 
 
@@ -38,6 +35,7 @@ class txtLogger(object):
 		logger.debug('adding item %s,%s with id=%d' % (iname,isource,id))
 	
 	def sources(self, quantities=None):
+		''' set of actual sources that have been saved to the store '''
 		return set([tup[1] for id,tup in self.items.items() if quantities is None or tup[0] in quantities])
 		
 	def quantities(self, sources=None):
@@ -163,6 +161,7 @@ class sqlLogger(txtLogger):
 		return cur.fetchall()  # list of tuples with field-vals
 
 	def statistics(self, ndays=10, flds="source,quantity,name"):
+		''' queries database for quantity prevalence. keeps list of them internaly '''
 		cur = self.con.cursor()
 		cur.execute("SELECT %s,COUNT(*) as cnt,AVG(numval) as avgval,MIN(ddJulian) jdFirst "
 			"FROM logdat,quantities "
@@ -213,9 +212,11 @@ def julianday(tunix = None):
 	
 #@staticmethod
 def unixsecond(julianday):
+	''' convert julianday to '''
 	return (julianday - 2440587.5) * 86400.0
 
 def prettydate(julianday, format="%d %H:%M:%S"):
+	''' generates string representation of julianday '''
 	return time.strftime(format, time.localtime(unixsecond(julianday)))
 
 def prettyprint(fetchrecs):
@@ -232,6 +233,7 @@ def graphyprint(fetchrecs, ddfrm = "%a %H:%M", xcol=0, ycol=1):
 	printTimeAx(jdays)
 
 def printTimeAx(jddata):
+	''' print time x axis to console '''
 	def diffxh(julday, hr24=0):
 		julday -= 0.5
 		julday += hr24/24.0

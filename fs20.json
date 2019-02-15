@@ -1,83 +1,83 @@
 {
-  "kgb": {
-    "typ": 1,
-    "devadr": "8",
-    "aid": 8
+  "deurb": {
+    "hausc": "4CFA",
+    "typ": 10,
+    "aid": 10,
+    "devadr": "00"
+  },
+  "burolicht": {
+    "hausc": "1212",
+    "typ": 13,
+    "devadr": "30"
+  },
+  "_20": {
+    "devadr": "20"
   },
   "zoldim": {
-    "typ": 14,
     "hausc": "1212",
-    "devadr": "72",
-    "aid": 12
+    "typ": 14,
+    "aid": 12,
+    "devadr": "72"
   },
   "banklicht": {
+    "hausc": "1212",
     "typ": 13,
-    "devadr": "31",
-    "hausc": "1212"
-  },
-  "deurb": {
-    "typ": 10,
-    "hausc": "4CFA",
-    "devadr": "00",
-    "aid": 10
-  },
-  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
-  "_71": {
-    "devadr": "71"
+    "devadr": "31"
   },
   "_42": {
     "typ": "98",
     "devadr": "42"
   },
-  "traplicht": {
-    "typ": 11,
+  "movgang": {
     "hausc": "1212",
-    "devadr": "33",
-    "aid": 9
+    "typ": 11,
+    "aid": 6,
+    "devadr": "10"
   },
-  "breeBridge": {
-    "aid": 1
+  "testbel": {
+    "hausc": "1212",
+    "typ": 10,
+    "aid": 11,
+    "devadr": "70"
+  },
+  "kgb": {
+    "typ": 1,
+    "aid": 8,
+    "devadr": "8"
   },
   "zolder": {
     "typ": 1,
-    "devadr": "1",
-    "aid": 2
+    "aid": 2,
+    "devadr": "1"
   },
-  "testbel": {
-    "typ": 10,
+  "magnetron": {
     "hausc": "1212",
-    "devadr": "70",
-    "aid": 11
+    "typ": 12,
+    "aid": 5,
+    "devadr": "32"
+  },
+  "_71": {
+    "devadr": "71"
+  },
+  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
+  "traplicht": {
+    "hausc": "1212",
+    "typ": 11,
+    "aid": 9,
+    "devadr": "33"
   },
   "kamer": {
     "typ": 1,
-    "devadr": "4",
-    "aid": 4
+    "aid": 4,
+    "devadr": "4"
   },
   "terras": {
     "typ": 1,
-    "devadr": "5",
-    "aid": 3
+    "aid": 3,
+    "devadr": "5"
   },
-  "movgang": {
-    "typ": 11,
-    "hausc": "1212",
-    "devadr": "10",
-    "aid": 6
-  },
-  "magnetron": {
-    "typ": 12,
-    "hausc": "1212",
-    "devadr": "32",
-    "aid": 5
-  },
-  "_20": {
-    "devadr": "20"
-  },
-  "burolicht": {
-    "typ": 13,
-    "devadr": "30",
-    "hausc": "1212"
+  "breeBridge": {
+    "aid": 1
   },
   "_70_1": {
     "typ": 1,

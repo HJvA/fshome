@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- template for fssite.py bottle application to show svg chart of measured values -->
+<!-- template for fssite.py bottle application to show svg chart of measured/recorded values -->
 <html lang="en">
  <head>
      <link rel="stylesheet" type="text/css" href="styles.css">
@@ -23,8 +23,6 @@
   %setdefault('footer',"")
   
   %setdefault('ylbls',[10,14,18,22])
-  %setdefault('scale',"200,-33")   # effWdt/xsiz,-effHgt/ysiz
-  %setdefault('yofs',"780")        # 450 + ymin*yscl
 
  </head>
  

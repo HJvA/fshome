@@ -59,8 +59,6 @@
    </div>
  %end
 %end
-<!-- <div class="menuitem"> <a href="javascript:document.forms['mmenu'].submit();">submit</a>
-     </div> -->
    </div>
    </fieldset>
   </form>

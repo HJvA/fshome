@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+""" general purpose configuration settings handler
 """
 import json
 import logging
