@@ -5,8 +5,8 @@ body {
   color: red;
   display: block;
   font-size: large;
-  border: solid bisque;
-  border-radius: 10px;
+  border: 4px solid bisque;
+  border-radius: 1em;
   text-align: center;
   padding: 1em;
 }
@@ -14,9 +14,13 @@ body {
 article{margin:10px;}
 svg.graph {
   background-color: #b2d9d0;
+  border: 8px solid #cccccc; 
+  border-radius: 1em;
 }
 svg.graph .plotarea {
   background-color: #b2a9d0;
+  border: solid bisque;
+  border-radius: 1em;
 }
 
 svg.graph .grid {
@@ -25,7 +29,7 @@ svg.graph .grid {
   stroke-width: 1px;
   opacity:0.8;
 }
-
+/*
 svg.graph .points {
   stroke: white;
   stroke-width: 3;
@@ -33,13 +37,15 @@ svg.graph .points {
 svg.graph .first_set {
   fill: #00554d;
 }
-
+*/
 svg.graph .surfaces {
   fill-opacity: 0.5;
 }
 
 svg.graph {
-  /*font-family: Arial; */
+  /*font-family: Arial;
+  
+   */
   font-size: 24px;
   kerning: 1;
 }

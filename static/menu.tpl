@@ -25,7 +25,7 @@
  </HEAD>
  <BODY>
 
-  <form method="post" action="/menu" id="mmenu">
+  <form method="post" action="/menu" id="mmenu" >
    <fieldset>
    
   <div class="menubar" id="menu">

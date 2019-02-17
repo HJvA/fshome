@@ -14,7 +14,7 @@ from pyhap.accessory import Accessory,Bridge
 from pyhap.const import CATEGORY_SENSOR,CATEGORY_SWITCH,CATEGORY_PROGRAMMABLE_SWITCH,CATEGORY_LIGHTBULB
 
 from .fs20_cul import devFS20,fs20commands
-from lib.serComm import DEVT,serDevice
+from lib.serDevice import DEVT,serDevice
 from lib.dbLogger import sqlLogger
 
 __author__ = "Henk Jan van Aalderen"

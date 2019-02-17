@@ -14,16 +14,17 @@ body{
 .menubar{
   position:relative;
   display: flex;
-  top:.1em;
   width:100% - 2em;
   height:3em +6px;
+  border-radius: .5em;
+  border: 4px solid bisque;
+  top:.1em;
   margin:0;
   padding:0;
   padding-left: .3em;
   background:#333;
   color:#eee;
-  box-shadow:0 -3px rgba(0,0,0,.5) inset;
-  border-radius: .5em;
+  box-shadow:0 -3px rgba(0,0,0,.5) inset; 
 }
 
 .menuitem, .menuselect {

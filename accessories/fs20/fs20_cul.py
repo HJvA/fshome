@@ -10,10 +10,11 @@ import time
 import logging
 import os,sys
 if __name__ == "__main__":
-	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../lib'))
-	from serComm import serComm,serDevice,DEVT,forever,DEVICE
+	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../..'))
+	from lib.serDevice import serDevice,DEVT
+	from lib.serComm import serComm,DEVICE,forever
 else:
-	from lib.serComm import serComm,serDevice,DEVT,forever,DEVICE
+	from lib.serDevice import serDevice,DEVT
 
 __author__ = "Henk Jan van Aalderen"
 __email__ = "hjva@notmail.nl"

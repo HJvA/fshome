@@ -7,7 +7,7 @@ get values and picklists from a database which was filled by fsmain.py et al.
 
 import os
 import sys
-import datetime
+import datetime,time
 import logging
 import json
 try:
@@ -37,8 +37,9 @@ tmBACKs={ 5:(u'\u251C 5days \u2524',20,1,'%a'),
 	30.44:(u'\u251C 1mnth \u2524',6*60,7,'%V'), 
 	182.6:(u'\u251C 6mnth \u2524',24*60,30.44,'%b'), 
 	365.25:(u'\u251C 1yr \u2524',2*24*60,30.44,'%b') }
-tmBACKs={ 5:(u'5days',20,1,'%a'), 
-	30.44:(u'1mnth',6*60,7,'%V'), 
+tmBACKs={ 1:(u'1day',15,0.25,'%H:%M'), 
+	5:(u'5days',20,1,'%a'),
+	30.44:(u'1mnth',6*60,7,'wk%V'), 
 	182.6:(u'6mnth',24*60,30.44,'%b'), 
 	365.25:(u'1yr',2*24*60,30.44,'%b') }
 qCOUNTING = ['motion','ringing','switch']  # quantity counting types
@@ -75,8 +76,14 @@ def buildCurve(xdat, ydat, xsize, ysize, xstart,ystart):
 	xofs=plXMARG-xstart*xscl
 	yofs=plYMARG+plHEIGHT-ystart*yscl
 	crv=""
+	xprv=plXMARG
 	for i in range(0,len(xdat)):
-		crv += " %.3g,%.3g" % (xdat[i]*xscl+xofs,ydat[i]*yscl+yofs)	
+		x = xdat[i]*xscl+xofs
+		if x-xprv>100:
+			crv += " %.3g,%.3g" % (xprv, plYMARG+plHEIGHT)
+			crv += " %.3g,%.3g" % (x, plYMARG+plHEIGHT)
+		crv += " %.3g,%.3g" % (x,ydat[i]*yscl+yofs)
+		xprv=x
 	return crv
 
 def buildHistogram(xdat, ydat, xsize, ysize, xstart,ystart):
@@ -105,7 +112,7 @@ def bld_dy_lbls(jdats, form="%a"):
 def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	''' build data for svg chart including axes,labels,gridlines,curves,histogram'''
 	data=[]
-	strokes=("#1084e9","#a430e9","#a040d0")
+	strokes=("#1084e9","#a430e9","#a040f0","#c060d0","#c040f0","#f040d0","#f060d0")
 	for jdat,ydat,stroke,selq in zip(jdats,ydats,strokes,selqs):
 		if len(ydat)>0:
 			vmax = max(ydat)
@@ -116,7 +123,8 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 		if len(jdat)>0:
 			if selq in qCOUNTING:
 				vmin=0
-				vmax=next(3*i for i in range(10) if 3*i>=vmax)
+				#vmax=next(3*(i*i) for i in range(11) if 3*i*i>=vmax or i==10)
+				vmax = int(vmax/3)*3+3
 				crv = buildHistogram(jdat,ydat, ndays,vmax, jdnow-ndays,vmin)
 			else:
 				crv = buildCurve(jdat,ydat, ndays,vmax-vmin, jdnow-ndays,vmin)
@@ -133,9 +141,14 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	gridstep=xlbltup[2]
 	barwdt=xlbltup[1]
 	xscl=plWIDTH/ndays
+	utcoff = time.localtime().tm_gmtoff/3600/24   #time.localtime()-time.gmtime()
 		
-	if gridstep==7:  # a week
-		fracd = (jdnow+1.5) % 7
+	if gridstep==0.25:   # 6hrs
+		fracd= (jdnow+utcoff) % 0.25
+		fracd *= 4.0
+		logger.info("frac in 6hrs %s utcofs=%s now=%s" % (fracd,utcoff,prettydate(jdnow)))
+	elif gridstep==7:  # a week
+		fracd = (jdnow+1.5+utcoff) % 7
 		logger.info("day of week:%s" % fracd)
 		fracd /= 7
 	elif int(gridstep)==30:  # a month
@@ -144,7 +157,7 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 		fracd = fracd.day + fracd.hour/24.0
 		fracd /= 30.44
 	else:
-		fracd = jdnow-0.5  #noon to midnight
+		fracd = jdnow-0.5+utcoff  #noon utc to midnight this tz
 		fracd = fracd/gridstep - int(fracd/gridstep)
 
 	gridlocs = [jdnow-(f+fracd)*gridstep for f in range(int(ndays/gridstep+0.1))]
@@ -166,7 +179,7 @@ def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	menu.append({'rf':'/action/sel','nm':'quantities','typ':'multiple',
 	'cls':[{'nm':qtt,'cls':'sel' if qtt in selqs else ''} for qtt in quantities]})
 	menu.append({'rf':'/action/sel','nm':'tmback',
-	'cls':[{'nm':tnm[0],'cls':'sel' if tm==ndays else ''} for tm,tnm in tmbacks.items()]})
+	'cls':[{'nm':tnm[0],'cls':'sel' if tm==ndays else ''} for tm,tnm in sorted(tmbacks.items())]})
 	menu.append({'rf':'','nm':'ok','cls':'submit'})
 	#logger.info("menu=%s" % menu)
 	return menu
@@ -196,8 +209,8 @@ def formhandler():
 	
 def redraw(src, selqs, jdnow, ndays=7):
 	''' create data for main TPL page '''
-	srcs=list(dbStore.sources())
-	quantities=list(dbStore.quantities())
+	srcs=sorted(dbStore.sources())
+	quantities=sorted(dbStore.quantities())
 	logger.info("redraw src:%s,selqs:%s" % (src,selqs))
 	
 	jdats=[]
