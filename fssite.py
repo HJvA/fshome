@@ -19,7 +19,7 @@ from lib.devConfig import devConfig
 from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate
 
 __copyright__="<p>Copyright &copy; 2019, hjva</p>"
-TITLE=r"graphing temperature monitor"
+TITLE=r"fshome quantity viewer"
 CONFFILE = "./fs20.json"
 dbfile = '~/fs20store.sqlite'
 TPL='static/fsapp.tpl'
@@ -37,12 +37,12 @@ tmBACKs={ 5:(u'\u251C 5days \u2524',20,1,'%a'),
 	30.44:(u'\u251C 1mnth \u2524',6*60,7,'%V'), 
 	182.6:(u'\u251C 6mnth \u2524',24*60,30.44,'%b'), 
 	365.25:(u'\u251C 1yr \u2524',2*24*60,30.44,'%b') }
-tmBACKs={ 1:(u'1day',15,0.25,'%H:%M'), 
+tmBACKs={ 1:(u'1day',15,0.25,'#j4'),  #'%H:%M'), 
 	5:(u'5days',20,1,'%a'),
 	30.44:(u'1mnth',6*60,7,'wk%V'), 
 	182.6:(u'6mnth',24*60,30.44,'%b'), 
 	365.25:(u'1yr',2*24*60,30.44,'%b') }
-qCOUNTING = ['motion','ringing','switch']  # quantity counting types
+qCOUNTING = ['motion','ringing','switch','doorbell']  # quantity counting types
 app =bottle.Bottle()
 
 @app.route("/")
@@ -123,7 +123,6 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 		if len(jdat)>0:
 			if selq in qCOUNTING:
 				vmin=0
-				#vmax=next(3*(i*i) for i in range(11) if 3*i*i>=vmax or i==10)
 				vmax = int(vmax/3)*3+3
 				crv = buildHistogram(jdat,ydat, ndays,vmax, jdnow-ndays,vmin)
 			else:
@@ -146,14 +145,14 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	if gridstep==0.25:   # 6hrs
 		fracd= (jdnow+utcoff) % 0.25
 		fracd *= 4.0
-		logger.info("frac in 6hrs %s utcofs=%s now=%s" % (fracd,utcoff,prettydate(jdnow)))
+		logger.debug("frac in 6hrs %s utcofs=%s now=%s" % (fracd,utcoff,prettydate(jdnow)))
 	elif gridstep==7:  # a week
 		fracd = (jdnow+1.5+utcoff) % 7
-		logger.info("day of week:%s" % fracd)
+		logger.debug("day of week:%s" % fracd)
 		fracd /= 7
 	elif int(gridstep)==30:  # a month
 		fracd = datetime.datetime.fromtimestamp(unixsecond(jdnow))
-		logger.info("date %s hour %s" % (fracd.day,fracd.hour))
+		logger.debug("date %s hour %s" % (fracd.day,fracd.hour))
 		fracd = fracd.day + fracd.hour/24.0
 		fracd /= 30.44
 	else:
@@ -191,15 +190,9 @@ def formhandler():
 	selqs = bottle.request.forms.getall('quantities')
 	src=bottle.request.forms.get('source')
 	tnm=bottle.request.forms.get('tmback')
-	#logger.debug("choice:%s typ:%s" % (tnm,type(tnm)))
-	#tnm=tnm.encode('utf-8',errors='ignore')
-	#tnm = tnm[1:-3]
-	#tnm = tnm.split(' ')
 	jdnow=julianday()
 	logger.info("form post:qtt=%s src=%s jd=%s ndys=%s" % (selqs, src, prettydate(jdnow), tnm))
 	try:
-		#if len(tnm)>5:
-		#	tnm= tnm[2:-2]
 		ndays=next(tb for tb,tup in tmBACKs.items() if tnm in tup[0])
 	except StopIteration:
 		ndays=5

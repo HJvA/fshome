@@ -217,6 +217,9 @@ def unixsecond(julianday):
 
 def prettydate(julianday, format="%d %H:%M:%S"):
 	''' generates string representation of julianday '''
+	if format=="#j4":
+		fd = int(4*(julianday % 1))
+		return ('after noon','evening','night','morning')[fd]	
 	return time.strftime(format, time.localtime(unixsecond(julianday)))
 
 def prettyprint(fetchrecs):

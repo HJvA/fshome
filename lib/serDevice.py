@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.5
-""" classes for serial transceiver devices
-	maintaining state internally
+""" class for serial transceiver devices
+	maintaining state per dev internally
 """
 # device / accessoiry type enumeration, codes to be used in fs20.json
 
@@ -42,6 +42,7 @@ class serDevice(object):
 		parses messages for a pool of devices
 		keeps internal state dict of recognised devices
 	"""
+	# static data i.e. common for all devices
 	config = None  #devConfig("fs20.json")
 	devdat={}	   # last parsed messages per device
 	commPort=None
