@@ -26,7 +26,7 @@ logger.addHandler(logging.FileHandler(filename='fs20.log', mode='w')) #details t
 handler = logging.FileHandler(filename='error.log', mode='a')
 handler.setLevel(logging.ERROR)	# only for error and critical messages
 logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)  #INFO)  #DEBUG)
+logger.setLevel(logging.INFO)  #INFO)  #DEBUG)
 
 logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S")))
 

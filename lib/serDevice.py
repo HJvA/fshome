@@ -10,32 +10,17 @@ if __name__ == "__main__":
 	import asyncio,time
 	from devConfig import devConfig
 	from serComm import serComm,forever,DEVICE
+	from devConst import DEVT
 else:
 	from lib.devConfig import devConfig
 	from lib.serComm import serComm
+	from lib.devConst import DEVT
 
 __author__ = "Henk Jan van Aalderen"
 __version__ = "1.0.0"
 __email__ = "hjva@notmail.nl"
 __status__ = "Development"
 
-# known device types enumeration
-DEVT ={
-	"temp":0,      # temperature sensor
-	"temp/hum":1,  # temperature + humidity sensor
-	"rain":2,      # precipitation meter
-	"wind":3,      # wind speed meter
-	"temp/hum/press":4, # incl air pressure
-	"brightness":5,# brightness actuator
-	"pyro":6,      # pyro detector
-	"fs20":9,      # unknown fs20 device
-	"doorbell":10, # doorbell button
-	"motion":11,   # motion detector
-	"switch":12,   # mains switch 
-	"light":13, 
-	"dimmer":14,   # mains (light) dimmer
-	"secluded":98, # known device but to be ignored
-	"unknown":99 } # unknown device
 
 class serDevice(object):
 	""" generic serial device 

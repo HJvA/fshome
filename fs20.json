@@ -1,86 +1,76 @@
 {
-  "movgang": {
-    "typ": 11,
-    "devadr": "10",
-    "aid": 6,
-    "hausc": "1212"
-  },
-  "deurb": {
+  "testbel": {
     "typ": 10,
-    "devadr": "00",
-    "aid": 10,
-    "hausc": "4CFA"
+    "hausc": "1212",
+    "devadr": "70",
+    "aid": 11
   },
-  "kgb": {
-    "typ": 1,
-    "devadr": "8",
-    "aid": 8
-  },
-  "traplicht": {
-    "typ": 11,
-    "devadr": "33",
-    "aid": 9,
-    "hausc": "1212"
+  "zoldim": {
+    "typ": 14,
+    "hausc": "1212",
+    "devadr": "72",
+    "aid": 12
   },
   "magnetron": {
     "typ": 12,
+    "hausc": "1212",
     "devadr": "32",
-    "aid": 5,
-    "hausc": "1212"
+    "aid": 5
   },
   "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
-  "zoldim": {
-    "typ": 14,
-    "devadr": "72",
-    "aid": 12,
-    "hausc": "1212"
-  },
-  "kamer": {
-    "typ": 1,
-    "devadr": "4",
-    "aid": 4
-  },
-  "banklicht": {
-    "typ": 13,
-    "devadr": "31",
-    "hausc": "1212"
+  "_42": {
+    "typ": "98",
+    "devadr": "42"
   },
   "burolicht": {
     "typ": 13,
-    "devadr": "30",
-    "hausc": "1212"
+    "hausc": "1212",
+    "devadr": "30"
   },
   "zolder": {
     "typ": 1,
     "devadr": "1",
     "aid": 2
   },
-  "testbel": {
-    "typ": 10,
-    "devadr": "70",
-    "aid": 11,
-    "hausc": "1212"
-  },
   "breeBridge": {
     "aid": 1
   },
-  "_71": {
-    "devadr": "71"
+  "woon": {
+    "typ": 1,
+    "devadr": "4",
+    "aid": 4
   },
-  "_42": {
-    "typ": "98",
-    "devadr": "42"
+  "traplicht": {
+    "typ": 11,
+    "hausc": "1212",
+    "devadr": "33",
+    "aid": 9
+  },
+  "banklicht": {
+    "typ": 13,
+    "hausc": "1212",
+    "devadr": "31"
+  },
+  "kgb": {
+    "typ": 1,
+    "devadr": "8",
+    "aid": 8
   },
   "terras": {
     "typ": 1,
     "devadr": "5",
     "aid": 3
   },
-  "_70_1": {
-    "typ": 1,
-    "devadr": "70"
+  "gang": {
+    "typ": 11,
+    "hausc": "1212",
+    "devadr": "10",
+    "aid": 6
   },
-  "_20": {
-    "devadr": "20"
+  "ringer": {
+    "typ": 10,
+    "hausc": "4CFA",
+    "devadr": "00",
+    "aid": 10
   }
 }

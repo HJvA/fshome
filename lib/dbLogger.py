@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ general purpose storage handler e.g. for devices continuously spitting numeric values 
 """
-from sqlite3 import connect
+from sqlite3 import connect,OperationalError
 import logging
 import os
 import time
@@ -29,53 +29,58 @@ class txtLogger(object):
 		id = self.checkitem(iname)
 		self.file.write('%d\t%.6f\t%s\t%s\n' % (id,tstamp,iname,itemval))
 	
-	def additem(self, id, iname, isource):
+	def additem(self, ikey, iname, isource, itype=None):
 		''' adds item type i.e. quantity descriptor '''
-		self.items.update({id:(iname,isource)})
-		logger.debug('adding item %s,%s with id=%d' % (iname,isource,id))
+		self.items.update({ikey:(iname,isource,itype)})
+		logger.debug('adding item %s,%s,%d with ikey=%d' % (iname,isource,itype,ikey))
 	
 	def sources(self, quantities=None):
 		''' set of actual sources that have been saved to the store '''
 		return set([tup[1] for id,tup in self.items.items() if quantities is None or tup[0] in quantities])
 		
-	def quantities(self, sources=None):
-		''' set of quantity names '''
-		return set([tup[0] for id,tup in self.items.items() if sources is None or tup[1] in sources])
+	def quantities(self, sources=None, prop=0):
+		''' set of quantity properties: 0=name,1=source,2=typ '''
+		return set([tup[prop] for id,tup in self.items.items() if len(tup)>prop and (sources is None or tup[1] in sources)])
 		
-	def checkitem(self, iname, isource=None, addUnknown=True):
+	def quantity(self, source, typ):
+		for ikey,tup in self.items.items():
+			if tup[1]==source and tup[2] % 100==typ:
+				return ikey
+		
+	def checkitem(self, iname, isource=None,itype=None, addUnknown=True):
 		''' check whether item has been seen before, adds it if not 
 			returns unique itemid
 		'''
 		ids=[]
-		for id,val in self.items.items():
-			if iname==val[0]:
+		for ikey,val in self.items.items():
+			if iname==val[0] and (itype is None or itype==val[2]):
 				if isource is None:
-					ids.append(id)
+					ids.append(ikey)
 				elif isource==val[1]:
-					return id
+					return ikey
 		if isource is None:
 			return tuple(ids)  # multiple sources for same item
 		if addUnknown:
 			if len(self.items)>0:
-				id = max(self.items.keys())+1
+				ikey = max(self.items.keys())+1
 			else:
-				id=100
-			self.additem(id,iname,isource)
-			return id
+				ikey=100
+			self.additem(ikey,iname,isource,itype)
+			return ikey
 		else:
 			return -1
 		
 	def fetch(self, iname, daysback=100):
 		''' gets filtered list of items from store '''
-		id = self.checkitem(iname,addUnknown=False)
+		ikey = self.checkitem(iname,addUnknown=False)
 		self.file.flush()
 		rfl = open(self.file.name,'r')
 		after = time.time() - (daysback * 86400)
 		buf=[]
 		for ln in rfl:
 			itms=ln.split('\t')
-			if id==int(itms[0]) and after<float(itms[1]):
-				buf.append(tuple(itms[1:])) # strip id
+			if ikey==int(itms[0]) and after<float(itms[1]):
+				buf.append(tuple(itms[1:])) # strip ikey
 		return buf
 
 
@@ -102,16 +107,22 @@ class sqlLogger(txtLogger):
 				'ID	 INT PRIMARY KEY	NOT NULL,'
 				"name  TEXT NOT NULL,"
 				"source   TEXT,"
+				"type  INT,"
 				"firstseen REAL);")
 			cur.close()
 		else:
 			self.con=connect(store)
 			logger.info("opening sqlStore in %s with %s" % (store,self.con.isolation_level))
 			cur = self.con.cursor()
-			cur.execute('SELECT ID,name,source FROM quantities;')
+			try:
+				cur.execute('SELECT ID,name,source,type FROM quantities;')
+			except OperationalError:
+				cur.execute('ALTER TABLE quantities ADD COLUMN type INT;')
+				cur.execute('SELECT ID,name,source,type FROM quantities;')
+				logger.error('db error now adding type field')
 			rows=cur.fetchall()
 			for rec in rows:
-				self.items.update({rec[0]:(rec[1],rec[2])})
+				self.items.update({rec[0]:(rec[1],rec[2],rec[3])})
 			cur.close()
 	
 	def close(self):
@@ -144,23 +155,29 @@ class sqlLogger(txtLogger):
 			takes averaged numval of name over tstep minutes intervals'''
 		ids = self.checkitem(name,source,addUnknown=False) # get all quantity ids for source
 		logger.info("nm:%s src:%s ids:%s" % (name,source,ids))
+		return fetchiavg(ids, tstep, daysback, source)
+		
+	def fetchiavg(self, ikey, tstep=30, daysback=100, source=None):
+		''' fetch averaged interval values from the database '''
 		where =""
 		if not source is None:
 			where=" AND source='%s'" % source
-		if isinstance(ids, tuple):
-			where+=" AND quantity IN (%s)" % ','.join(map(str,ids))
+		if isinstance(ikey, tuple):
+			where+=" AND quantity IN (%s)" % ','.join(map(str,ikey))
 		else: # len(ids)==1:
-			where+=" AND quantity=%d" % ids
+			where+=" AND quantity=%d" % ikey
 		cur = self.con.cursor()
 		# minperday=1440
-		cur.execute("SELECT ROUND(ddJulian*1440/%d)/1440*%d AS dd,AVG(numval) AS nval,COUNT(*) AS cnt,source "
-			"FROM logdat,quantities "
-			"WHERE ID=quantity AND ddJulian>julianday('now')-%d %s " 
-			"GROUP BY quantity,source,dd "
-			"ORDER BY ddJulian;" % (tstep,tstep,daysback,where))
+		sql = "SELECT ROUND(ddJulian*1440/%d)/1440*%d AS dd,AVG(numval) AS nval,COUNT(*) AS cnt,source,type " \
+			"FROM logdat,quantities " \
+			"WHERE ID=quantity AND ddJulian>julianday('now')-%d %s " \
+			"GROUP BY quantity,source,dd " \
+			"ORDER BY ddJulian;" % (tstep,tstep,daysback,where)
+		logger.info('sql:%s' % sql)
+		cur.execute(sql)
 		return cur.fetchall()  # list of tuples with field-vals
 
-	def statistics(self, ndays=10, flds="source,quantity,name"):
+	def statistics(self, ndays=10, flds="source,quantity,name,type"):
 		''' queries database for quantity prevalence. keeps list of them internaly '''
 		cur = self.con.cursor()
 		cur.execute("SELECT %s,COUNT(*) as cnt,AVG(numval) as avgval,MIN(ddJulian) jdFirst "
@@ -171,46 +188,59 @@ class sqlLogger(txtLogger):
 		recs= cur.fetchall()
 		for rec in recs:
 			if 'name' in rec and 'source' in rec:
-				self.checkitem(rec.name, rec.source)
+				self.checkitem(rec.name, rec.source, rec.type)
 		return recs
-					
-	def log(self, itemname, numval, strval=None, source=None, tstamp=None):
-		''' add a log message to the log store '''
+	
+	def logi(self, ikey, numval, strval=None, tstamp=None):
+		''' save value to the database '''
 		if tstamp is None:
 			tstamp = round(time.time(),0)	# granularity 1s
-		itemid = self.checkitem(itemname,source)
-		logger.debug('logging %s=%g with id=%d @jd:%.6f' % (itemname,numval,itemid,julianday(tstamp)))
+		logger.debug('logging %g with id=%d @jd:%.6f' % (numval,ikey,julianday(tstamp)))
 		cur = self.con.cursor()
 		cur.execute('INSERT INTO logdat (ddJulian,quantity,numval) '
-			'VALUES (%.6f,%d,%g)' % (julianday(tstamp),itemid,numval))
+			'VALUES (%.6f,%d,%g)' % (julianday(tstamp),ikey,numval))
 		if not strval is None:
 			cur.execute('UPDATE logdat SET strval="%s" WHERE ddJulian=%.6f AND quantity=%d' %
-				(strval,julianday(tstamp),itemid))
+				(strval,julianday(tstamp),ikey))
 		self.con.commit()
 		cur.close()
-
-	def additem(self, id, iname, isource):
-		''' add a quantity descriptor (will be called automatic for unknown quantities) '''
-		super(sqlLogger,self).additem(id,iname,isource)
-		if isource is None:
-			isource='NULL'
-		else:
-			isource='"%s"' % isource
+	
+					
+	def log(self, iname, numval, strval=None, source=None, tstamp=None):
+		''' add a log message to the log store 
+		creates quantity when it does not exist '''
+		ikey = self.checkitem(iname,source)
+		self.logi(ikey, numval, strval, tstamp)
+		
+	def additem(self, ikey, iname, isource, itype=None):
+		''' add or update a quantity descriptor (will be called automatic for unknown quantities) '''
+		super().additem(ikey,iname,isource,itype)
 		cur=self.con.cursor()
-		cur.execute('INSERT INTO quantities (ID,name,source,firstseen) '
-			'VALUES (%d,"%s",%s,julianday("now"))' % (id,iname,isource))
+		cur.execute('SELECT name FROM quantities WHERE ID=%d' % ikey)
+		if cur.fetchone() is None:
+			if isource is None:
+				isource='NULL'
+			else:
+				isource='"%s"' % isource
+			cur.execute('INSERT INTO quantities (ID,name,source,type,firstseen) '
+			'VALUES (%d,"%s",%s,%s,julianday("now"))' % (ikey,iname,isource,'NULL' if itype is None else itype))
+		else: 
+			logger.debug('db updating %s %s with %s typ %s' %(ikey,iname,isource,itype))
+			cur.execute('UPDATE quantities SET name=?,source=?,type=? WHERE ID=%d' % ikey, (iname,isource,itype))
 		cur.close()
 		self.con.commit()
 
 #some small helpers
-#@staticmethod
+
 def julianday(tunix = None):
 	''' convert unix time to julianday i.e. days since noon on Monday, January 1 4713 BC '''
 	if tunix is None:
 		tunix = time.time()
 	return (tunix / 86400.0 ) + 2440587.5
 	
-#@staticmethod
+def localtime(julianday):
+	return time.localtime(unixsecond(julianday))
+
 def unixsecond(julianday):
 	''' convert julianday to '''
 	return (julianday - 2440587.5) * 86400.0
@@ -284,7 +314,7 @@ def printCurve(data, height=10, vmax=None, vmin=None, backgndchar=0x2581):
 
 				
 if __name__ == "__main__":		# for testing
-	import time,random
+	import random
 	#os.remove('~/tstlogdata.db')
 	logger = logging.getLogger()
 	[logger.removeHandler(h) for h in logger.handlers[::-1]]

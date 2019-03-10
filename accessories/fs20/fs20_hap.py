@@ -14,14 +14,9 @@ from pyhap.accessory import Accessory,Bridge
 from pyhap.const import CATEGORY_SENSOR,CATEGORY_SWITCH,CATEGORY_PROGRAMMABLE_SWITCH,CATEGORY_LIGHTBULB
 
 from .fs20_cul import devFS20,fs20commands
-from lib.serDevice import DEVT,serDevice
+from lib.serDevice import serDevice
 from lib.dbLogger import sqlLogger
-
-__author__ = "Henk Jan van Aalderen"
-__credits__ = ["Henk Jan van Aalderen", "Ivan Kalchev"]
-__version__ = "1.0.0"
-__email__ = "hjva@notmail.nl"
-__status__ = "Development"
+from lib.devConst import DEVT
 
 logger = logging.getLogger(__name__)	# get logger from main program
 
@@ -59,7 +54,7 @@ def get_FS20_bridge(driver,config="fs20.json"):
 			aid=None
 			if 'aid' in rec:
 				aid=rec['aid']
-			if rec['typ']==DEVT['temp/hum']:
+			if rec['typ']==DEVT['humidity']:
 				acce = S300_TmpHumSensor(driver, name, aid=aid)
 			elif rec['typ']==DEVT['switch']: 
 				acce = FS20_Switch(driver, name, aid=aid)
@@ -85,28 +80,37 @@ def get_FS20_bridge(driver,config="fs20.json"):
 
 class FS20_Bridge(Bridge):
 	""" is a HAP bridge which combines a number of fs20 accessories """	
+	
+	def __init__(self, *args, **kwargs):
+		''' would like to setup dbStore here but .... '''
+		self.dbStore=None
+		super().__init__(*args, **kwargs)
+
+
+	#@Accessory.run_at_interval(3)  # not working ? => just use loop inside
 	async def run(self):
 		''' called by HAP accessorie_driver class
 			receive message from serial port, update device states, store results
 		'''
 		#super().run()  # run bridge accessoiries
-		
-		dbfile = serDevice.config.getItem('dbFile','~/fs20store.sqlite')
-		self.dbStore = sqlLogger(dbfile)	# must be created in same thread
-		
+		if self.dbStore is None:
+			dbfile = serDevice.config.getItem('dbFile','~/fs20store.sqlite')
+			self.dbStore = sqlLogger(dbfile)	# must be created in same thread
+				
 		try:
-			while not self.driver.loop.is_closed():  # run forever until stopped
-			#while self.driver.loop.is_running():  # run forever until stopped
+			while self.driver.loop.is_running():# run until stopped (however gets terminated in await)
 				for acc in self.accessories.values():
-					await acc.device.receive_message() # check if some device has send a message
+					await acc.device.receive_message()   # check if some device has send a message
 					rec = acc.check_status(self.dbStore)	
 		finally:
+			#if not self.driver.loop.is_running():
 			if not self.dbStore is None:
 				self.dbStore.close()
 				self.dbStore=None
 			if not serDevice.config is None:
 				serDevice.config.save()	# persist newly found devices
 		
+			
 	async def stop(self):
 		persist_FS20_config(self.driver)
 		await super().stop()

@@ -17,6 +17,7 @@ except ImportError:
 	
 from lib.devConfig import devConfig
 from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate
+from lib.devConst import DEVT,qCOUNTING
 
 __copyright__="<p>Copyright &copy; 2019, hjva</p>"
 TITLE=r"fshome quantity viewer"
@@ -42,8 +43,10 @@ tmBACKs={ 1:(u'1day',15,0.25,'#j4'),  #'%H:%M'),
 	30.44:(u'1mnth',6*60,7,'wk%V'), 
 	182.6:(u'6mnth',24*60,30.44,'%b'), 
 	365.25:(u'1yr',2*24*60,30.44,'%b') }
-qCOUNTING = ['motion','ringing','switch','doorbell']  # quantity counting types
 app =bottle.Bottle()
+
+def typnames(devTyps):
+	return [dnm for dnm,tp in DEVT.items() if tp in devTyps or tp+100 in devTyps]
 
 @app.route("/")
 @bottle.view(TPL)
@@ -58,7 +61,7 @@ def index(name=TITLE):
 		cookie.extend([None,None,None])
 		src,selqs,ndays = tuple(cookie[:3])
 	else:
-		selqs=list(dbStore.quantities([src]))[:2]
+		selqs=typnames(dbStore.quantities([src],prop=2))[:2]
 		ndays=4
 		bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
 	logger.info("src:%s,selqs:%s len:%d" % (src,selqs,len(selqs)))
@@ -75,16 +78,21 @@ def buildCurve(xdat, ydat, xsize, ysize, xstart,ystart):
 	yscl=-plHEIGHT/ysize
 	xofs=plXMARG-xstart*xscl
 	yofs=plYMARG+plHEIGHT-ystart*yscl
+	crvs=[]
 	crv=""
 	xprv=plXMARG
 	for i in range(0,len(xdat)):
 		x = xdat[i]*xscl+xofs
 		if x-xprv>100:
-			crv += " %.3g,%.3g" % (xprv, plYMARG+plHEIGHT)
-			crv += " %.3g,%.3g" % (x, plYMARG+plHEIGHT)
+			crvs.append(crv)
+			crv = ""
+			#crv += " %.3g,%.3g" % (xprv, plYMARG+plHEIGHT)
+			#crv += " %.3g,%.3g" % (x, plYMARG+plHEIGHT)
 		crv += " %.3g,%.3g" % (x,ydat[i]*yscl+yofs)
 		xprv=x
-	return crv
+	if len(crv)>0:
+		crvs.append(crv)
+	return crvs
 
 def buildHistogram(xdat, ydat, xsize, ysize, xstart,ystart):
 	''' build svg path '''
@@ -112,7 +120,7 @@ def bld_dy_lbls(jdats, form="%a"):
 def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	''' build data for svg chart including axes,labels,gridlines,curves,histogram'''
 	data=[]
-	strokes=("#1084e9","#a430e9","#a040f0","#c060d0","#c040f0","#f040d0","#f060d0")
+	strokes=("#1084e9","#a430e9","#90e090","#c060d0","#c040f0","#f040d0","#f060d0")
 	for jdat,ydat,stroke,selq in zip(jdats,ydats,strokes,selqs):
 		if len(ydat)>0:
 			vmax = max(ydat)
@@ -121,18 +129,21 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 				vmin = vmax-1
 		
 		if len(jdat)>0:
-			if selq in qCOUNTING:
+			if selq in DEVT and DEVT[selq] in qCOUNTING:
 				vmin=0
 				vmax = int(vmax/3)*3+3
 				crv = buildHistogram(jdat,ydat, ndays,vmax, jdnow-ndays,vmin)
+				qtyp=1
 			else:
 				crv = buildCurve(jdat,ydat, ndays,vmax-vmin, jdnow-ndays,vmin)
+				qtyp=0
 			#logger.debug("crv=%s" % crv)
 			ylbls=buildLbls(vmin,vmax,4)
-			logger.debug("ylbls:%s" % ylbls)
-			curve=dict(crv=crv, stroke=stroke, ylbls=ylbls, selq=selq, qtyp=1 if selq in qCOUNTING else 0)
+			logger.debug("selq:%s,len:%d,col:%s,ylbls:%s" % (selq,len(jdat),stroke,ylbls))
+			curve=dict(crv=crv, stroke=stroke, ylbls=ylbls, selq=selq, qtyp=qtyp, legend=selq)
 			data.append(curve)
 	if len(data)==0:
+		logger.warning('missing data:jd:%d yd:%d q:%d' % (len(jdats),len(ydats),len(selqs)))
 		return dict (title=TITLE, curves=[])
 	
 	xlbltup = tmBACKs[ndays]
@@ -171,7 +182,7 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 
 def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	''' data for menu.tpl '''
-	logger.info("bldmenu: srcs:%s qtts:%s selqs:%s" % (sources,quantities,selqs))
+	#logger.info("bldmenu: srcs:%s qtts:%s selqs:%s" % (sources,quantities,selqs))
 	menu =[]
 	menu.append({'rf':'/action/sel','nm':'source',
 	'cls':[{'nm':src,'cls':'sel' if src==selsrc else ''} for src in sources]})
@@ -186,7 +197,7 @@ def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 @app.post('/menu', method="POST")
 def formhandler():
 	''' Handle form submission '''
-	logger.info("form post:%s" % bottle.request.body.read())   #.decode('utf-8'))
+	logger.info("form post:%s" % bottle.request.body.read()) 
 	selqs = bottle.request.forms.getall('quantities')
 	src=bottle.request.forms.get('source')
 	tnm=bottle.request.forms.get('tmback')
@@ -203,23 +214,29 @@ def formhandler():
 def redraw(src, selqs, jdnow, ndays=7):
 	''' create data for main TPL page '''
 	srcs=sorted(dbStore.sources())
-	quantities=sorted(dbStore.quantities())
-	logger.info("redraw src:%s,selqs:%s" % (src,selqs))
-	
+	#quantities=sorted(dbStore.quantities())
+	quantities=typnames(dbStore.quantities(prop=2))
 	jdats=[]
 	ydats=[]
+	qss=[]
 	xlbltup = tmBACKs[ndays]
 
 	avgminutes = xlbltup[1]
-	for qs in selqs:
-		recs = dbStore.fetchavg(qs,tstep=avgminutes,daysback=ndays,source=src)
-		if qs in qCOUNTING:
-			iy=2	# counting quantity
-		else:
-			iy=1
-		ydats.append([rec[iy] for rec in recs])
-		jdats.append([rec[0] for rec in recs])  # julian days
-	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays),  **buildChart(jdats,ydats,selqs,jdnow,ndays))
+	for qs in sorted(selqs):
+		if qs in DEVT:
+			typ=DEVT[qs]
+			qkey = dbStore.quantity(src,typ)
+			if qkey is not None:
+				recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays,source=src)
+				if typ in qCOUNTING:
+					iy=2	# counting quantity
+				else:
+					iy=1
+				logger.info("redraw src:%s,qs:%s,iy:%d,typ:%d,qkey:%d" % (src,qs,iy,typ,qkey))
+				ydats.append([rec[iy] for rec in recs])
+				jdats.append([rec[0] for rec in recs])  # julian days
+				qss.append(qs)
+	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays),  **buildChart(jdats,ydats,qss,jdnow,ndays))
 	return page
 	
 
@@ -232,14 +249,19 @@ def server_static(filepath):
 if __name__ == '__main__':
 	import socket
 	logger = logging.getLogger()
-	logger.addHandler(logging.StreamHandler())	# use console
+	hand=logging.StreamHandler()
+	hand.setLevel(logging.INFO)
+	logger.addHandler(hand)	# use console
 	logger.addHandler(logging.FileHandler(filename='fsbot.log', mode='w')) #details to log file
-	logger.setLevel(logging.DEBUG)
+	logger.setLevel(logging.INFO)
+	logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S")))
+
 	
 	config = devConfig(CONFFILE)
 	dbfile = config.getItem('dbFile',dbfile)
 	dbStore = sqlLogger(dbfile)
 	logger.info("statistics:%s" %  dbStore.statistics(30)) # will get list of quantities and sources
+	logger.info('quantities:%s' % dbStore.items)
 	
 	ip=socket.gethostbyname(socket.gethostname())
 	ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]

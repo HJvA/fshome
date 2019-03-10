@@ -1,12 +1,24 @@
 
 # fshome
 
-Application to embed fs20 type devices to the Apple homekit eco system.
+Application to read domotica sensors store results to a database. Results can also be linked to the Apple homekit system. 
+
+The following sensors are supported:  
+- fs20 S300 temperature / humidity sensor  
+- fs20 mains switch  
+- fs20 doorbell button  
+- fs20 dimmer  
+- Hue motion / brightness / temperature sensor  
+- Hue switches  
+- Hue lights  
+
 Fs20 represents a family of devices with many actuators and sensors which communicate via the 868 MHz radio frequency.  
+Signify-Philips-Hue devices represent the Hue ecosystem which control your lights
+
 The application operates as a homekit bridge e.g. on a Raspberry pi which is connected to your home network. 
 Uses a CUL transceiver to receive and send fs20 messages on the 868 MHz RF network  
 
-The project leans heavily on the HAP-python project by Ivan Kalchev.
+The project uses the HAP-python project by Ivan Kalchev.
 It is cloned as a submodule from <https://github.com/ikalchev/HAP-python>
 
 The results will be stored in a sqlite database. The quantities recorded will have to be assigned to a source / room in a fs20.json file.
@@ -47,6 +59,7 @@ Execute the following commands in a terminal:
 ```bash  
 cd ~/fshome  
 nohup python3 fsmain.py 2>stderr.log &  
+nohup python3 accessoires/hue/hueRun.py 2>stderr.log &  
 python3 fssite.py  
 ```
 

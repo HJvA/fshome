@@ -15,6 +15,15 @@ Sections
 ### Developers
 -->
 
+## [1.1.0] - 2019-03-10
+### Added
+- Signify-Hue API Sensor logging to database
+- chart legends
+
+## [1.0.1] - 2019-02-18
+### Added
+- ('after noon','evening','night','morning') used as x axis labels in 1 day charts
+
 ## [1.0.0] - 2019-02-17
 ### Changed
 - serDevice split off from serComm
