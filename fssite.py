@@ -227,7 +227,7 @@ def redraw(src, selqs, jdnow, ndays=7):
 			typ=DEVT[qs]
 			qkey = dbStore.quantity(src,typ)
 			if qkey is not None:
-				recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays,source=src)
+				recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays)
 				if typ in qCOUNTING:
 					iy=2	# counting quantity
 				else:

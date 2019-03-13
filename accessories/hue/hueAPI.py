@@ -11,6 +11,7 @@ conf={	# defaults when not in config file
 	}
 	
 RESOURCES = ['lights','sensors','whitelist','groups','locations','config', 'scenes','schedules','resourcelinks','rules']
+# mapping hue quantity to DEVT 
 SENSTYPES = {'temperature':0,'lightlevel':5,'buttonevent':12,'presence':11}
 LIGHTTYPES = ['On/off light','Dimmable light','Extended color light','Color temperature light']
 
@@ -74,7 +75,7 @@ class HueBaseDev (object):
 		self.resource = resource
 		self.user=userid
 		self.ipadr=ipadr
-		self.life=0
+		self.dtActive = datetime.now(timezone.utc)
 		self.last=None
 		
 	def hueGET(self,resource):
@@ -91,7 +92,7 @@ class HueBaseDev (object):
 		logger.debug('refreshing %s len=%d' % (self.resource,len(self._cache())))
 		
 	def state(self, prop=None, reskey='state'):
-		''' fetch state info from local cache (cache will be refreshed if to old) '''
+		''' fetch state info from local cache (cache will be refreshed if too old) '''
 		cache= self._cache()
 		if self.hueId in cache:
 			if prop is None:
@@ -110,6 +111,8 @@ class HueBaseDev (object):
 		
 	def setState(self, prop='on', val='true', reskey='state'):
 		''' executes put request for changing some hue bridge property '''
+		if self.last != val:
+			self.dtActive = datetime.now(timezone.utc)
 		logger.info('setting %s of %s to %s' % (prop,self.hueId,val))
 		requests.put('https://%s/api/%s' % (self.ipadr,self.user) + '/%s/%s/%s' % (self.resource,self.hueId,reskey), data='{"%s":%s}' % (prop,val),verify=False)
 		self.last=val
@@ -119,18 +122,24 @@ class HueBaseDev (object):
 		logger.warning('deleting %s from %s' % (reskey,resource))
 		if len(reskey)>0 and len(resource)>0:
 			requests.delete('https://%s/api/%s' % (self.ipadr,self.user) +resource+'/'+reskey, verify=False)
-		
-	def newval(self):
+			
+	def lastupdate(self):
+		''' to be overriden by ancesters to return real time updated '''
+		return self.dtActive
+			
+	def newval(self, minChangeInterval=0):
 		''' checks whether self.prop value has been updated '''
 		val =self.state(prop=self.prop)
 		if val is not None:
-			return (self.life<=1) and (self.last is None or val != self.last)
+			return self.lastupdate()-self.dtActive >= timedelta(seconds=minChangeInterval) and (val != self.last)
+			#return self.lastupdate()<datetime.now(timezone.utc)-timedelta(minutes=1) and 
+			#return (self.last is None or val != self.last)
 		logger.warning('no prop %s in state %s' % (self.prop,val))
 		return None
 		
 	def value(self):
 		''' get last self.prop value from cache '''
-		self.life+=1
+		self.dtActive=self.lastupdate()
 		self.last = self.state(prop=self.prop)
 		return self.last
 		
@@ -149,16 +158,16 @@ class HueSensor (HueBaseDev):
 			logger.error('unknown hue device: %s' % hueId)
 			self.prop=None
 		
-	def _cache(self, setval=None, updateInterval=UPDATEINTERVAL):
+	def _cache(self, setval=None, refreshInterval=UPDATEINTERVAL):
 		''' get or set_local cache. cache will be refreshed from bridge automatically if too old'''
 		if setval:
 			HueSensor._sensors = setval
 		else:
 			tpast = datetime.now() - HueSensor._lastread
-			if tpast > timedelta(seconds=updateInterval):
+			if tpast > timedelta(seconds=refreshInterval):
 				HueSensor._sensors =self.hueGET(self.resource)
 				if HueSensor._sensors:
-					logger.info('received %s last:%s life:%d len:%d, prop:%s' % (self.resource,HueSensor._lastread,self.life,len(HueSensor._sensors),self.prop))
+					logger.debug('received %s last:%s life:%d len:%d, prop:%s' % (self.resource,HueSensor._lastread,self.life,len(HueSensor._sensors),self.prop))
 				self.life=0
 				HueSensor._lastread = datetime.now()
 			else:
@@ -167,11 +176,11 @@ class HueSensor (HueBaseDev):
 		return HueSensor._sensors
 			
 	def lastupdate(self):
-		''' last time the self.prop value was updated '''
+		''' last time the self.prop value was updated on the hue bridge'''
 		ddlast = self.state('lastupdated')
-		dtm = datetime.strptime(ddlast+'+0000', "%Y-%m-%dT%H:%M:%S%z")
+		dtm = datetime.strptime(ddlast+'+0000', "%Y-%m-%dT%H:%M:%S%z") # aware utc
 		#dtm.replace(tzinfo = timezone.utc)
-		logger.info('dt:%s' % dtm.strftime("%Y-%m-%d %H:%M:%S %Z"))
+		logger.debug('dt:%s' % dtm.strftime("%Y-%m-%d %H:%M:%S %Z"))
 		return dtm
 			
 	def value(self):
@@ -205,7 +214,8 @@ class HueSensor (HueBaseDev):
 			HueSensor._sensors =hueGET(ipadr,user,'sensors').json()
 			HueSensor._lastread = datetime.now()
 		lst = {id:set(state['state'].keys()) & set(types) for id,state in HueSensor._sensors.items() if 'CLIP' not in state['type']}
-		return {id:{**(HueSensor._sensors[id]['state']),'typ':list(typ)[0], 'name':HueSensor._sensors[id]['name']} for id,typ in lst.items() if len(typ)>0}
+		logger.info('list of types in bridge=%s, possible=%s' % (lst,set(types)))
+		return {id:{**(HueSensor._sensors[id]['state']), 'typ':list(typ)[0], 'name':HueSensor._sensors[id]['name']} for id,typ in lst.items() if len(typ)>0}
 
 class HueLight(HueBaseDev):
 	_lights = None

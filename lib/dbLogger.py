@@ -14,6 +14,7 @@ __status__ = "Development"
 
 class txtLogger(object):
 	""" handler for log messages in a text file
+		base class for other number loggers
 	"""
 	def __init__(self, filepath):
 		''' open file for logging'''
@@ -155,7 +156,7 @@ class sqlLogger(txtLogger):
 			takes averaged numval of name over tstep minutes intervals'''
 		ids = self.checkitem(name,source,addUnknown=False) # get all quantity ids for source
 		logger.info("nm:%s src:%s ids:%s" % (name,source,ids))
-		return fetchiavg(ids, tstep, daysback, source)
+		return self.fetchiavg(ids, tstep, daysback)
 		
 	def fetchiavg(self, ikey, tstep=30, daysback=100, source=None):
 		''' fetch averaged interval values from the database '''

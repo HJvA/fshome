@@ -18,37 +18,34 @@ class hueLogger(object):
 	def __init__(self, cnf):
 		''' constructor : setup database logger for hue sensors
 		'''
-		#self.dbStore=None
-		#if self.dbStore is None:
-		if not hasattr(self, 'dbStore'):
-			self.acttyp={}
-			dbfile = cnf.getItem('dbFile','~/fs20store.sqlite')
-			self.dbStore = sqlLogger(dbfile)	# must be created in same thread
+		self.acttyp={}
+		dbfile = cnf.getItem('dbFile','~/fs20store.sqlite')
+		self.dbStore = sqlLogger(dbfile)	# must be created in same thread
 
 		iphue = cnf['huebridge']
 		if iphue is None:
 			iphue = ipadrGET()
 			cnf['huebridge'] = iphue
-		devlst = HueSensor.devTypes(iphue,cnf['hueuser'])
-		for id,dev in devlst.items():
-			crec = cnf.getItem("{}".format(int(id)+200), default=dict(typ=98,name=dev['name'],source=None))
-			hueLogger.devdat[id] = HueSensor(id,cnf) # create sensor 
+		devlst = HueSensor.devTypes(iphue,cnf['hueuser']) # list of sensors from hue bridge
+		for ikey,dev in devlst.items():
+			crec = cnf.getItem("{}".format(int(ikey)+200), default=dict(typ=98,name=dev['name'],source=None))
+			hueLogger.devdat[ikey] = HueSensor(ikey,cnf) # create sensor 
 			if len(crec)>1:
-				self.acttyp[id] = crec['typ']
+				self.acttyp[ikey] = crec['typ']
 				#logger.debug('hue dev:%s cnf:%s' % (dev,crec))
 				if crec['source'] is not None:
-					logger.info('db upd hue quant:%s %s %s' % (id, dev['name'], crec['source']))
-					self.dbStore.additem(int(id)+200, dev['name'],crec['source'],crec['typ'])			
+					logger.info('db upd hue quant:%s %s %s' % (ikey, dev['name'], crec['source']))
+					self.dbStore.additem(int(ikey)+200, dev['name'],crec['source'],crec['typ'])			
 			
 	async def receive_message(self):
 		await asyncio.sleep(5)
 		logger.debug('===rec msg===')
-		for id,dev in hueLogger.devdat.items():
-			if dev.newval():
+		for ikey,dev in hueLogger.devdat.items():
+			if dev.newval(60):
 				val = dev.value()
-				logger.info("%s %s=%s" % (id,dev.name(),val))
-				if self.acttyp[id] > 99 and val is not None:
-					self.dbStore.logi(int(id)+200,val,tstamp=dev.lastupdate().timestamp())
+				logger.info("%s %s=%s" % (ikey,dev.name(),val))
+				if self.acttyp[ikey] < 98 and val is not None:
+					self.dbStore.logi(int(ikey)+200,val,tstamp=dev.lastupdate().timestamp())
 			else:
 				await asyncio.sleep(0.5)
 	
