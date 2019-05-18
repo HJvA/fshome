@@ -1,0 +1,32 @@
+{ 
+	"300": {
+     "devadr":"1.7.0",
+     "name": "PowerTotal",
+     "source": "huis" },
+	"302": {
+     "devadr":"32.7.0",
+     "name": "VoltageL1",
+     "source": "huis" },
+	"303": {
+     "devadr":"31.7.0",
+     "typ":98,
+     "name": "CurrentL1",
+     "source": "huis" },
+	"310": {
+     "devadr":"1.8.1",
+     "naid": 30,
+     "name": "EnergyElectrLow",
+     "source": "huis" },
+	"311": {
+     "devadr":"1.8.2",
+     "name": "EnergyElectrNorm",
+     "source": "huis" },
+	"320": {
+     "devadr":"24.2.1",
+     "name": "gasVolume",
+     "source": "huis" },
+    "321": {
+     "devadr":"2.7.0",
+     "typ":98 }, 
+   "dbFile": "/mnt/extssd/storage/fs20store.sqlite"
+   }

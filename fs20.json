@@ -1,0 +1,111 @@
+{
+	"dbFile": "/mnt/extssd/storage/fs20store.sqlite",
+		"hausc":"1212",
+		"100":{
+			"typ":0,
+		   "aid": 2,
+			"devadr":"1",
+			"source":"zolder",
+			"name":"zoltemp"
+			},
+		"101":{
+			"typ":1,
+		   "aid": 2,
+			"devadr":"1",
+			"source":"zolder",
+			"name":"zolhum"
+			},		
+		"102":{
+			"typ":0,
+		   "aid": 3,
+			"devadr":"5",
+			"source":"terras",
+			"name":"tertemp"
+			},		
+		"103":{
+			"typ":1,
+		   "aid": 3,
+			"devadr":"5",
+			"source":"terras",
+			"name":"terhum"
+			},		
+		"104":{
+			"typ":0,
+		   "aid": 8,
+			"devadr":"8",
+			"source":"kgb",
+			"name":"kgbtemp"
+			},		
+		"105":{
+			"typ":1,
+			"aid": 8,
+			"devadr":"8",
+			"source":"kgb",
+			"name":"kgbhum"
+			},		
+		"106":{
+			"typ":0,
+		   "aid": 4,
+			"devadr":"4",
+			"source":"woon",
+			"name":"burtemp"
+			},		
+		"107":{
+			"typ":1,
+			"aid": 4,
+			"devadr":"4",
+			"source":"woon",
+			"name":"burhum"
+			},		
+		"109":{
+			"typ":11,
+			"devadr":"10",
+			"source":"gang",
+			"naid":"6",
+			"aid":14,
+			"name":"movgang"
+			},		
+		"110":{
+			"typ":11,
+			"aid": 9,
+			"devadr":"33",
+			"source":"traplicht",
+			"name":"traplicht"
+			},		
+		"112":{
+			"typ":14,
+		   "naid": 12,
+		   "aid":13,
+			"devadr":"72",
+			"source":"zolder",
+			"name":"zoldim"
+			},		
+		"116":{
+			"typ":10,
+		   "naid":10,
+			"source":"entree",    
+			"devadr": "00",
+    		"hausc": "4CFA",
+			"name":"ringer"
+			},		
+		"108":{
+			"typ":15,
+			"source":"keuken",    
+			"devadr": "32",
+			"naid":"5"	,
+			"aid":5,
+			"name":"magnetron"
+			},		
+		"bur":{
+			"typ":13,
+			"source":"woon",    
+			"devadr": "30"	,
+			"name":"burolicht"
+			},		
+		"bnk":{
+			"typ":13,
+			"source":"woon",    
+			"devadr": "31"	,
+			"name":"banklicht"
+			}
+	}

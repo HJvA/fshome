@@ -16,8 +16,8 @@ except ImportError:
 	import bottle
 	
 from lib.devConfig import devConfig
-from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate
-from lib.devConst import DEVT,qCOUNTING
+from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate,SiNumForm
+from lib.devConst import DEVT,qCOUNTING,strokes
 
 __copyright__="<p>Copyright &copy; 2019, hjva</p>"
 TITLE=r"fshome quantity viewer"
@@ -38,7 +38,8 @@ tmBACKs={ 5:(u'\u251C 5days \u2524',20,1,'%a'),
 	30.44:(u'\u251C 1mnth \u2524',6*60,7,'%V'), 
 	182.6:(u'\u251C 6mnth \u2524',24*60,30.44,'%b'), 
 	365.25:(u'\u251C 1yr \u2524',2*24*60,30.44,'%b') }
-tmBACKs={ 1:(u'1day',15,0.25,'#j4'),  #'%H:%M'), 
+tmBACKs={0.2:(u'5hr',5,0.0417,'%H'),
+   1:(u'1day',15,0.25,'#j4'),  #'%H:%M'), 
 	5:(u'5days',20,1,'%a'),
 	30.44:(u'1mnth',6*60,7,'wk%V'), 
 	182.6:(u'6mnth',24*60,30.44,'%b'), 
@@ -46,6 +47,7 @@ tmBACKs={ 1:(u'1day',15,0.25,'#j4'),  #'%H:%M'),
 app =bottle.Bottle()
 
 def typnames(devTyps):
+	''' convert DEVT id numbers to their name '''
 	return [dnm for dnm,tp in DEVT.items() if tp in devTyps or tp+100 in devTyps]
 
 @app.route("/")
@@ -61,13 +63,13 @@ def index(name=TITLE):
 		cookie.extend([None,None,None])
 		src,selqs,ndays = tuple(cookie[:3])
 	else:
-		selqs=typnames(dbStore.quantities([src],prop=2))[:2]
+		selqs=typnames(dbStore.quantities([src],prop=2))[:2]  # quantity typs that are in src
 		ndays=4
 		bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
 	logger.info("src:%s,selqs:%s len:%d" % (src,selqs,len(selqs)))
 	if len(selqs)==0 or len(selqs)>5:
 		selqs=['temperature']
-	page = dict(menitms=buildMenu(srcs,src,dbStore.quantities(),selqs,ndays))
+	page = dict(menitms=buildMenu(srcs,src,typnames(dbStore.quantities(prop=2)),selqs,ndays))
 	#page = redraw(src,selqs,julianday())
 	page.update( dict(title=name, footer=__copyright__))
 	return bottle.template(TPL, page)
@@ -105,11 +107,11 @@ def buildHistogram(xdat, ydat, xsize, ysize, xstart,ystart):
 		crv += " M%.3g %d V%.3g" % (xdat[i]*xscl+xofs,plYMARG+plHEIGHT, ydat[i]*yscl+yofs)
 	crv += " Z"
 	return crv
-
-
+	
 def buildLbls(vmin,vmax, nr):
 	''' axis labels '''
-	return [vmin+i*(vmax-vmin)/(nr-1) for i in range(nr)]
+	lst = [vmin+i*(vmax-vmin)/(nr-1) for i in range(nr)]
+	return [SiNumForm(x) for x in lst]  #   ["{:5.2g}".format(lbl) for lbl in lst]
 
 def bld_dy_lbls(jdats, form="%a"):
 	''' date interval labels '''
@@ -120,14 +122,18 @@ def bld_dy_lbls(jdats, form="%a"):
 def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	''' build data for svg chart including axes,labels,gridlines,curves,histogram'''
 	data=[]
-	strokes=("#1084e9","#a430e9","#90e090","#c060d0","#c040f0","#f040d0","#f060d0")
-	for jdat,ydat,stroke,selq in zip(jdats,ydats,strokes,selqs):
+	#strokes=("#1084e9","#a430e9","#90e090","#c060d0","#c040f0","#f040d0","#f060d0")
+	for jdat,ydat,selq in zip(jdats,ydats,selqs):
 		if len(ydat)>0:
 			vmax = max(ydat)
 			vmin = min(ydat)
 			if vmax<=vmin:
 				vmin = vmax-1
-		
+		if selq in DEVT and DEVT[selq] in strokes:
+			stroke=strokes[DEVT[selq]]
+		else:
+			logger.debug("selq %s not in strokes:%s" % (selq,strokes))
+			stroke=strokes[0]
 		if len(jdat)>0:
 			if selq in DEVT and DEVT[selq] in qCOUNTING:
 				vmin=0
@@ -137,7 +143,6 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 			else:
 				crv = buildCurve(jdat,ydat, ndays,vmax-vmin, jdnow-ndays,vmin)
 				qtyp=0
-			#logger.debug("crv=%s" % crv)
 			ylbls=buildLbls(vmin,vmax,4)
 			logger.debug("selq:%s,len:%d,col:%s,ylbls:%s" % (selq,len(jdat),stroke,ylbls))
 			curve=dict(crv=crv, stroke=stroke, ylbls=ylbls, selq=selq, qtyp=qtyp, legend=selq)
@@ -151,26 +156,32 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	gridstep=xlbltup[2]
 	barwdt=xlbltup[1]
 	xscl=plWIDTH/ndays
-	utcoff = time.localtime().tm_gmtoff/3600/24   #time.localtime()-time.gmtime()
-		
-	if gridstep==0.25:   # 6hrs
-		fracd= (jdnow+utcoff) % 0.25
-		fracd *= 4.0
-		logger.debug("frac in 6hrs %s utcofs=%s now=%s" % (fracd,utcoff,prettydate(jdnow)))
+	utcoff = time.localtime().tm_gmtoff/3600/24  #[d]  #time.localtime()-time.gmtime()
+	
+	if gridstep==0.0417:   # 1hrs
+		gridofs= (jdnow+utcoff) % 0.0417 #[d]
+		gridofs= jdnow-int(jdnow)
+		gridofs= gridofs % 0.0417
+		gridofs *= 24.0	#[hr]
+		logger.debug("frac in 1hrs %s utcofs=%s now=%s" % (gridofs,utcoff,prettydate(jdnow)))
+	elif gridstep==0.25:   # 6hrs
+		gridofs= (jdnow+utcoff) % 0.25  #[d]
+		gridofs *= 4.0	#[6h]
+		logger.debug("frac in 6hrs %s utcofs=%s now=%s" % (gridofs,utcoff,prettydate(jdnow)))
 	elif gridstep==7:  # a week
-		fracd = (jdnow+1.5+utcoff) % 7
-		logger.debug("day of week:%s" % fracd)
-		fracd /= 7
+		gridofs = (jdnow+1.5+utcoff) % 7  #[d]
+		logger.debug("day of week:%s" % gridofs)
+		gridofs /= 7	#[w]
 	elif int(gridstep)==30:  # a month
-		fracd = datetime.datetime.fromtimestamp(unixsecond(jdnow))
-		logger.debug("date %s hour %s" % (fracd.day,fracd.hour))
-		fracd = fracd.day + fracd.hour/24.0
-		fracd /= 30.44
+		gridofs = datetime.datetime.fromtimestamp(unixsecond(jdnow))
+		logger.debug("date %s hour %s" % (gridofs.day,gridofs.hour))
+		gridofs = gridofs.day + gridofs.hour/24.0  #[d]
+		gridofs /= 30.44	#[m]
 	else:
-		fracd = jdnow-0.5+utcoff  #noon utc to midnight this tz
-		fracd = fracd/gridstep - int(fracd/gridstep)
+		gridofs = jdnow-0.5+utcoff  #noon utc to midnight this tz
+		gridofs = gridofs/gridstep - int(gridofs/gridstep)
 
-	gridlocs = [jdnow-(f+fracd)*gridstep for f in range(int(ndays/gridstep+0.1))]
+	gridlocs = [jdnow-(f+gridofs)*gridstep for f in range(int(ndays/gridstep+0.1))]
 	gridlocs.reverse()
 	logger.debug("jdnow=%s gridlocs=%s" % (jdnow,gridlocs))
 	
@@ -227,7 +238,12 @@ def redraw(src, selqs, jdnow, ndays=7):
 			typ=DEVT[qs]
 			qkey = dbStore.quantity(src,typ)
 			if qkey is not None:
-				recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays)
+				if qs=='energy':
+					recs = dbStore.fetchiiavg(qkey-1,qkey,tstep=avgminutes,daysback=ndays)
+				else:
+					recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays)
+				if recs is None or len(recs)==0:
+					continue
 				if typ in qCOUNTING:
 					iy=2	# counting quantity
 				else:
@@ -253,19 +269,22 @@ if __name__ == '__main__':
 	hand.setLevel(logging.INFO)
 	logger.addHandler(hand)	# use console
 	logger.addHandler(logging.FileHandler(filename='fsbot.log', mode='w')) #details to log file
-	logger.setLevel(logging.INFO)
+	logger.setLevel(logging.DEBUG)
 	logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S")))
 
 	
 	config = devConfig(CONFFILE)
 	dbfile = config.getItem('dbFile',dbfile)
-	dbStore = sqlLogger(dbfile)
-	logger.info("statistics:%s" %  dbStore.statistics(30)) # will get list of quantities and sources
-	logger.info('quantities:%s' % dbStore.items)
+	try:
+		dbStore = sqlLogger(dbfile)
+		logger.info("statistics:%s" %  dbStore.statistics(30)) # will get list of quantities and sources
+		logger.info('quantities:%s' % dbStore.items)
 	
-	ip=socket.gethostbyname(socket.gethostname())
-	ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
-	port = int(os.environ.get('PORT', 8080))
-	app.run(host=ip, port=port, debug=True, reloader=True)
+		ip=socket.gethostbyname(socket.gethostname())
+		ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
+		port = int(os.environ.get('PORT', 8080))
+		app.run(host=ip, port=port, debug=True, reloader=False)
+	finally:
+		dbStore.close()
 else:	# this is running as a module
 	logger = logging.getLogger(__name__)	# get logger from main program

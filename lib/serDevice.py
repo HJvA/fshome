@@ -4,7 +4,7 @@
 """
 # device / accessoiry type enumeration, codes to be used in fs20.json
 
-import logging
+import logging,time
 
 if __name__ == "__main__":
 	import asyncio,time

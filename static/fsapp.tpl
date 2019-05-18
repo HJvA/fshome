@@ -48,7 +48,7 @@
   </defs>
   <rect class="grid" x="100" y="50" width="800" height="400"> </rect>
 
-  %for curve,side,xleg in zip(curves,[94,906,50,950],[300,500,100,700]):
+  %for curve,side,xleg in zip(curves,[94,906,44,956],[300,500,100,700]):
      <g class="surfaces" clip-path="url(#clpPth)">
      	%if curve['qtyp']==1:
      	 <path  fill="none" stroke={{curve['stroke']}} stroke-width="2.8" d="{{curve['crv']}}" />
@@ -61,7 +61,7 @@
      <g class="labels y-labels" stroke={{curve['stroke']}}>
        <text  x="-50%" y="2%" transform="rotate(270)">{{yaxlbl}}</text>       
        %for i in range(len(ygrid)):
-         <text y="{{ygrid[i]}}" x="{{side}}" text-anchor="{{'start' if side>400 else 'end'}}">{{"{:{align}4.3g}".format(curve['ylbls'][-i-1], align='>' if side<400 else '<')}}</text>
+         <text y="{{ygrid[i]}}" x="{{side}}" text-anchor="{{'start' if side>400 else 'end'}}"> {{curve['ylbls'][-i-1]}}  </text>
        %end
      </g>
      <g class="labels legend" stroke={{curve['stroke']}}>

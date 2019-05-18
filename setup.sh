@@ -28,6 +28,9 @@ echo "/*">> ./HAP-python/.git/info/sparse-checkout
 
 git submodule update --force --checkout HAP-python
 
+#symlink to pyhap as HAP-python modules refer to pyhap directly
+ln -s ./HAP-python/pyhap ./pyhap
+
 # maybe still required for zeroconf package:
 #sudo apt-get install libavahi-compat-libdnssd-dev avahi-utils
 #cd HAP-python

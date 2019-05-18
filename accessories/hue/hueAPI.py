@@ -1,14 +1,13 @@
+#!/usr/bin/env python3.5
+""" Philips / Signify HUE Application Programming Interface
+	allows a user app to read sensors and set actors on the Hue bridge
+	"""
 
 import requests
 import math
 import time,os
 from datetime import datetime,timedelta,timezone
 import logging
-
-conf={	# defaults when not in config file
-	"hueuser": "iDBZ985sgFNMJruzFjCQzK-zYZnwcUCpd7wRoCVM",
-	"huebridge": "192.168.1.21"
-	}
 	
 RESOURCES = ['lights','sensors','whitelist','groups','locations','config', 'scenes','schedules','resourcelinks','rules']
 # mapping hue quantity to DEVT 
@@ -17,15 +16,9 @@ LIGHTTYPES = ['On/off light','Dimmable light','Extended color light','Color temp
 
 UPDATEINTERVAL=15
 
-def basurl(user=None,ipadr=None):
-	if user is None:
-		user=list(conf['hueuser'].values())[0]
-	if ipadr is None:
-		ipadr = conf['huebridge']
-	return 'https://'+ipadr+'/api/'+user
-
 def hueGET(ipadr,user='',resource='',timeout=2):
 	''' get state info from hue bridge '''
+	r=None
 	url='https://'+ipadr+'/api/'
 	if len(user)>0:
 		url += user+'/'
@@ -33,9 +26,10 @@ def hueGET(ipadr,user='',resource='',timeout=2):
 		url += resource
 	try:
 		r = requests.get(url, verify=False, timeout=timeout)
-	except requests.exceptions.Timeout:
-		logger.warning('hueGET failed with %s for %s' % (resource,ipadr))
-		r = None
+	except (requests.exceptions.Timeout):  #, requests.exceptions.NewConnectionError):
+		logger.error('hueGET failed with %s for %s' % (resource,ipadr))
+	except Exception as e:
+		logger.exception("unknown exception!!! ")
 	#logger.debug('hueGET resource:%s with %s ret:%d' % (resource,r.url,r.status_code))
 	return r
 
@@ -58,6 +52,7 @@ def ipadrGET(bridgeName=None, portal='https://discovery.meethue.com/'):
 		try:
 			r = hueGET(adr, timeout=0.1)  # requests.get('http://'+adr,verify=False,timeout=0.1)
 		except requests.ConnectionError:
+			logger.error("ConnectionError ")
 			continue
 		if r.status_code == 200:
 			cnf =  hueGET(adr,resource='config') # requests.get('https://%s/api/config' % adr,verify=False)
@@ -70,7 +65,10 @@ def ipadrGET(bridgeName=None, portal='https://discovery.meethue.com/'):
 
 class HueBaseDev (object):
 	''' base class for a hue bridge characteristic '''
-	def __init__(self,hueId,resource,userid,ipadr):
+	def __init__(self,hueId,resource,ipadr,userid):
+		''' hueId : Id of hue characteristic on hue bridge
+			resource : 'sensors' or 'lights'
+		'''
 		self.hueId = hueId
 		self.resource = resource
 		self.user=userid
@@ -90,6 +88,7 @@ class HueBaseDev (object):
 	def refresh(self):
 		self._cache(self.hueGET(self.resource))
 		logger.debug('refreshing %s len=%d' % (self.resource,len(self._cache())))
+		
 		
 	def state(self, prop=None, reskey='state'):
 		''' fetch state info from local cache (cache will be refreshed if too old) '''
@@ -128,18 +127,17 @@ class HueBaseDev (object):
 		return self.dtActive
 			
 	def newval(self, minChangeInterval=0):
-		''' checks whether self.prop value has been updated '''
+		''' checks whether self.prop value has been changed
+			only provokes update when last activity has been some time (minChangeInterval) ago '''
 		val =self.state(prop=self.prop)
 		if val is not None:
 			return self.lastupdate()-self.dtActive >= timedelta(seconds=minChangeInterval) and (val != self.last)
-			#return self.lastupdate()<datetime.now(timezone.utc)-timedelta(minutes=1) and 
-			#return (self.last is None or val != self.last)
 		logger.warning('no prop %s in state %s' % (self.prop,val))
 		return None
 		
 	def value(self):
 		''' get last self.prop value from cache '''
-		self.dtActive=self.lastupdate()
+		self.dtActive=self.lastupdate()	# mark using as activity
 		self.last = self.state(prop=self.prop)
 		return self.last
 		
@@ -147,9 +145,9 @@ class HueSensor (HueBaseDev):
 	''' class representing one sensor value on hue bridge '''
 	_sensors = None  # cache (static)
 	_lastread = None # time of cache refresh
-	def __init__(self,hueId,conf=conf):
+	def __init__(self,hueId,ipadr,userid):
 		''' setup hue sensor. hueId must be one of ids on bridge. '''
-		super().__init__(hueId,'sensors',userid=conf['hueuser'],ipadr=conf['huebridge'])
+		super().__init__(hueId,'sensors',ipadr,userid)
 		state = self.state()
 		if len(state)>0:
 			self.prop = next(typ for typ in SENSTYPES if typ in state)
@@ -180,9 +178,9 @@ class HueSensor (HueBaseDev):
 		ddlast = self.state('lastupdated')
 		dtm = datetime.strptime(ddlast+'+0000', "%Y-%m-%dT%H:%M:%S%z") # aware utc
 		#dtm.replace(tzinfo = timezone.utc)
-		logger.debug('dt:%s' % dtm.strftime("%Y-%m-%d %H:%M:%S %Z"))
+		#logger.debug('dt:%s act:%s' % (dtm.strftime("%Y-%m-%d %H:%M:%S %Z"),self.dtActive.strftime("%H:%M:%S")))
 		return dtm
-			
+			 
 	def value(self):
 		''' get self.prop value converted to proper units '''
 		val = super().value()
@@ -213,14 +211,16 @@ class HueSensor (HueBaseDev):
 		if HueSensor._sensors is None:
 			HueSensor._sensors =hueGET(ipadr,user,'sensors').json()
 			HueSensor._lastread = datetime.now()
-		lst = {id:set(state['state'].keys()) & set(types) for id,state in HueSensor._sensors.items() if 'CLIP' not in state['type']}
-		logger.info('list of types in bridge=%s, possible=%s' % (lst,set(types)))
-		return {id:{**(HueSensor._sensors[id]['state']), 'typ':list(typ)[0], 'name':HueSensor._sensors[id]['name']} for id,typ in lst.items() if len(typ)>0}
+		lst = {hueid:set(dat['state'].keys()) & set(types) for hueid,dat in HueSensor._sensors.items() if 'CLIP' not in dat['type']}
+		logger.info('list of sensors in hue bridge=%s, possible=%s' % (lst,set(types)))
+		#return {id:{**(HueSensor._sensors[id]['state']), 'typ':list(typ)[0], 'name':HueSensor._sensors[id]['name']} for id,typ in lst.items() if len(typ)>0}
+		return {hueid:{**(HueSensor._sensors[hueid]['state']), 'typ':next(tpid for tpnm,tpid in types.items() if tpnm in typ), 'name':HueSensor._sensors[hueid]['name']} for hueid,typ in lst.items() if len(typ)>0}
+
 
 class HueLight(HueBaseDev):
 	_lights = None
-	def __init__(self,hueId='6',conf=conf):
-		super().__init__(hueId,'lights',userid=conf['hueuser'],ipadr=conf['huebridge'])
+	def __init__(self,hueId,ipadr,userid):
+		super().__init__(hueId,'lights',ipadr=ipadr,userid=userid)
 		self.prop = 'bri'
 
 	def _cache(self, setval=None):
@@ -235,13 +235,17 @@ class HueLight(HueBaseDev):
 		lst = {id:{'typ':dev['type'],'name':dev['name'],**dev['state']} for id,dev in HueLight._lights.items() if 'CLIP' not in dev['type']}
 		return lst
 			
-if __name__ == '__main__':
+if __name__ == '__main__':	# just testing the API
 	logger = logging.getLogger()
 	[logger.removeHandler(h) for h in logger.handlers[::-1]] # handlers persist between calls
 	logger.addHandler(logging.StreamHandler())	# use console
 	logger.addHandler(logging.FileHandler(filename=os.path.expanduser('~/hueApi.log'), mode='w', encoding='utf-8')) #details to log file
 	logger.setLevel(logging.DEBUG)
 	logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S%z")))
+	conf={	# defaults when not in config file
+		"hueuser": "iDBZ985sgFNMJruzFjCQzK-zYZnwcUCpd7wRoCVM",
+		"huebridge": "192.168.1.21"
+	}
 	conf['huebridge'] =ipadrGET()
 	
 	from requests.packages.urllib3.exceptions import InsecureRequestWarning

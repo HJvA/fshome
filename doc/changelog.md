@@ -15,9 +15,21 @@ Sections
 ### Developers
 -->
 
+## [1.2.0] - 2019-05-10
+### Added
+- p1smart DSMR dutch utility meters for sampling electric power,energy,voltage
+
+### Breaking Changes
+- json setting file stucture unified over sampler families
+- HAP fuctions separated from sampler functions; project will run without Homekit
+
+### Changed
+- charts will show averaged results over selectable periodes
+- each chart quantities will have own colour (stroke) defined in devConst file
+
 ## [1.1.0] - 2019-03-10
 ### Added
-- Signify-Hue API Sensor logging to database
+- Signify / Philips - Hue API Sensor logging to database
 - chart legends
 
 ## [1.0.1] - 2019-02-18
