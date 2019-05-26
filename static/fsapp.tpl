@@ -14,6 +14,7 @@
    }
   </script>
     
+  %setdefault('subtitle',"")
   %setdefault('xgrid',[100,300,500,700,900])
   %setdefault('ygrid',[50,183,317,450])
   %setdefault('xlbls',[1,2,3,4,5])
@@ -21,16 +22,16 @@
   %setdefault('xaxlbl',"")
   %setdefault('yaxlbl',"")
   %setdefault('footer',"")
-  
   %setdefault('ylbls',[10,14,18,22])
 
  </head>
  
  <body>  <!-- onload="initpage()"--> 
   <div class="headng">{{title}}
+   <p id="subtitle"> {{subtitle}} </p>
   </div>  
     <br/>
-  % menu = include("static/menu.tpl")
+    %menu = include("static/menu.tpl")
     <br/>
     
 <svg class="graph" xmlns="http://www.w3.org/2000/svg" height="300" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    

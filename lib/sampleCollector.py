@@ -2,7 +2,7 @@
 """ generic template for sampler devices generating (averaged and filtered) data to be stored
 """
 
-import logging,time
+import logging,time,json
 from lib.dbLogger import julianday,prettydate,sqlLogger
 from lib.devConst import qCOUNTING,DEVT
 logger = logging.getLogger(__name__)	# get logger from main program
@@ -75,12 +75,12 @@ class sampleCollector(object):
 			self.servmap[quantity] = tuple(mp)
 		return quantity
 	
-	def jsonConfig(self):
+	def jsonDump(self):
 		''' extract modified quantities config enhanced by newly discovered and more info'''
 		cnf={}
 		for qid,tp in self.servmap.items():
 			cnf[qid] = {'devadr':tp[0],'typ':tp[1],'name':tp[2],'source':tp[3]}
-		return cnf
+		return json.dumps(cnf, ensure_ascii=False, indent=2, sort_keys=True)
 			
 	def qname(self, qkey):
 		''' quantity name '''
@@ -152,12 +152,13 @@ class sampleCollector(object):
 		#logger.debug("accepted %s=%s tm=%s n=%d" % (quantity, qval, prettydate(julianday(tstamp)), rec[1]))
 		return qval
 		
-	def set_state(self, quantity, state, dur=None):
+	def set_state(self, quantity, state, prop=None):
 		''' stateSetter to operate actuator '''
 		pass	# implemented by derived classes
 		
 	def get_state(self, quantity):
 		''' get averaged or counted value of quantity since last accept '''
+		qval=None
 		if quantity in self.average:
 			rec =self.average[quantity]
 			if self.qIsCounting(quantity):
@@ -170,7 +171,9 @@ class sampleCollector(object):
 		elif self.qIsCounting(quantity):
 			qval=0	# initial val for HAP
 		else:
-			qval = self.dbStore.fetchlast(quantity)[1]
+			rec = self.dbStore.fetchlast(quantity)
+			if rec:
+				qval = rec[1]
 		return qval
 		
 	def isUpdated(self, quantity):
@@ -235,6 +238,6 @@ class DBsampleCollector(sampleCollector):
 		return qval
 
 	def exit(self):
-		logger.warning("%s proposed json config:\n%s" % (self.name, self.jsonConfig()))
+		logger.warning("%s proposed json config:\n%s" % (self.name, self.jsonDump()))
 		if self.dbStore:
 			self.dbStore.close()

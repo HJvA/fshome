@@ -1,7 +1,8 @@
 #!/usr/bin/env python3.5
 """ 
 application to display measured quantities graphically and interactively
-uses bottle web-framework and sqlite database
+uses bottle web-framework: https://github.com/bottlepy/bottle
+and sqlite database
 get values and picklists from a database which was filled by fsmain.py et al.
 """
 
@@ -17,7 +18,7 @@ except ImportError:
 	
 from lib.devConfig import devConfig
 from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate,SiNumForm
-from lib.devConst import DEVT,qCOUNTING,strokes
+from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb
 
 __copyright__="<p>Copyright &copy; 2019, hjva</p>"
 TITLE=r"fshome quantity viewer"
@@ -122,6 +123,7 @@ def bld_dy_lbls(jdats, form="%a"):
 def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	''' build data for svg chart including axes,labels,gridlines,curves,histogram'''
 	data=[]
+	subtitle=[]
 	#strokes=("#1084e9","#a430e9","#90e090","#c060d0","#c040f0","#f040d0","#f060d0")
 	for jdat,ydat,selq in zip(jdats,ydats,selqs):
 		if len(ydat)>0:
@@ -131,6 +133,9 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 				vmin = vmax-1
 		if selq in DEVT and DEVT[selq] in strokes:
 			stroke=strokes[DEVT[selq]]
+			symbol=SIsymb[DEVT[selq]]
+			vlast=ydat[-1]
+			subtitle.append("%s=%.4g %s " % (symbol[0],vlast,symbol[1]))
 		else:
 			logger.debug("selq %s not in strokes:%s" % (selq,strokes))
 			stroke=strokes[0]
@@ -149,7 +154,7 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 			data.append(curve)
 	if len(data)==0:
 		logger.warning('missing data:jd:%d yd:%d q:%d' % (len(jdats),len(ydats),len(selqs)))
-		return dict (title=TITLE, curves=[])
+		return dict (title=TITLE, subtitle=" , ".join(subtitle), curves=[])
 	
 	xlbltup = tmBACKs[ndays]
 	lblformat=xlbltup[3]
@@ -189,7 +194,7 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	xlbls=bld_dy_lbls([jd+gridstep/2 for jd in gridlocs[:-1]],lblformat)
 
 	logger.info("ndays=%.4g xlbls=%s xgrid=%s" % (ndays,xlbls,xgrid))
-	return dict( title=TITLE+"   dd:%s" % prettydate(jdnow), curves=data, xgrid=xgrid, xlbls=xlbls)
+	return dict( title=TITLE+"   dd:%s" % prettydate(jdnow), subtitle=" , ".join(subtitle), curves=data, xgrid=xgrid, xlbls=xlbls)
 
 def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	''' data for menu.tpl '''

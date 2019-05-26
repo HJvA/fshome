@@ -82,7 +82,7 @@
 			},		
 		"116":{
 			"typ":10,
-		   "naid":10,
+		   "aid":10,
 			"source":"entree",    
 			"devadr": "00",
     		"hausc": "4CFA",

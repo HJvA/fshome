@@ -43,13 +43,20 @@ __status__ = "Development"
 # <keytelegram>:(<nameapp>,<factor>,<DEVT quantity type>)
 p1QDEF={
 	#'1.0.0':('tstamp',1),
-	'1.7.0':('PowerTotal',1000,DEVT['power']),
-	'2.7.0':('receivedPower',1000,DEVT['power']),
-	'32.7.0':('VoltageL1',1,DEVT['voltage']),	#L1
-	'31.7.0':('CurrentL1',1,DEVT['current']),	#L1
-	'24.2.1':('gasVolume',1,DEVT['gasVolume']),
-	'1.8.1':('EnergyElectrLow',1,DEVT['energy']),	#Wh low tarif
-	'1.8.2':('EnergyElectrNorm',1,DEVT['energy'])	#Wh normal tarif
+	'1.7.0' :('PowerTotal'   ,1000,DEVT['power']), 	#W
+	'21.7.0':('PowerL1'      ,1000,DEVT['power']),	#W
+	'41.7.0':('PowerL2'      ,1000,DEVT['power']),
+	'61.7.0':('PowerL3'      ,1000,DEVT['power']),
+	'2.7.0' :('receivedPower',1000,DEVT['power']),
+	'32.7.0':('VoltageL1'    ,1,DEVT['voltage']),	
+	'52.7.0':('VoltageL2'    ,1,DEVT['voltage']),
+	'72.7.0':('VoltageL3'    ,1,DEVT['voltage']),
+	'31.7.0':('CurrentL1'    ,1,DEVT['current']),
+	'51.7.0':('CurrentL2'    ,1,DEVT['current']),
+	'71.7.0':('CurrentL3'    ,1,DEVT['current']),
+	'24.2.1':('gasVolume'    ,1,DEVT['gasVolume']),
+	'1.8.1' :('EnergyElectrLow',1,DEVT['energy']),	#Wh low tarif
+	'1.8.2' :('EnergyElectrNorm',1,DEVT['energy'])	#Wh normal tarif
 	}
 
 class p1DSMR(DBsampleCollector):
@@ -145,7 +152,13 @@ if __name__ == "__main__":
      "typ": 31,
      "name": "gasVolume",
      "source": "huis" },
-   
+   "321": {
+     "name":"receivedPower",
+      "typ":98
+     },
+   "322": {
+     "name":"PowerL1",
+     "typ":98 },
    #"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 	"dbFile": '~/fs20store.sqlite'
    }

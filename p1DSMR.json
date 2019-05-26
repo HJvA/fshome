@@ -28,5 +28,8 @@
     "321": {
      "devadr":"2.7.0",
      "typ":98 }, 
+    "322": {
+     "name":"PowerL1",
+     "typ":98 },
    "dbFile": "/mnt/extssd/storage/fs20store.sqlite"
    }

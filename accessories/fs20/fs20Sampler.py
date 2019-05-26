@@ -76,13 +76,13 @@ class fs20Sampler(DBsampleCollector):
 						return -3
 		return self.serdev.remaining()
 		
-	def set_state(self, quantity, state, dur=None):
+	def set_state(self, quantity, state, prop=None, dur=None):
 		''' setting state to actuator '''
 		typ=self.qtype(quantity)
 		devadr=self.servmap[quantity][0]
 		logger.info("setting state of:%s to adr:%s of typ:%s with:%s" % (quantity,devadr,typ,state))
 		cmd=None
-		if typ==DEVT['outlet'] or typ==DEVT['switch']:
+		if typ==DEVT['outlet'] or typ==DEVT['switch'] or prop=='on':
 			if state:
 				if dur:
 					cmd='on-old-for-timer'
@@ -101,7 +101,7 @@ class fs20Sampler(DBsampleCollector):
 		else:
 			cmd = state
 		if cmd:
-			cmd= fstls.FS20_command(self.hausc, devadr, cmd=cmd, dur=dur)
+			cmd= fstls.FS20_command(self.hausc, devadr, cmd=cmd, dur=prop)
 			self.serdev.send_message(cmd)
 
 

@@ -18,9 +18,9 @@ from lib.fsHapper import HAP_accessory, fsBridge #,sampler_accessory
 from lib.devConfig import devConfig
 
 class fs20_happer(fs20Sampler):
-	def create_accessory(self, HAPdriver, quantities, aid, sampler):
-		aname="-".join([sampler.qname(q) for q in quantities])
-		return HAP_accessory(HAPdriver, aname, quantities=quantities, stateSetter=sampler.set_state, aid=aid, sampler=sampler)
+	def create_accessory(self, HAPdriver, quantities, aid):
+		aname="-".join([self.qname(q) for q in quantities])
+		return HAP_accessory(HAPdriver, aname, quantities=quantities, stateSetter=self.set_state, aid=aid, sampler=self)
 
 class fs20_dimmer(HAP_accessory):
 	''' possible implementation '''

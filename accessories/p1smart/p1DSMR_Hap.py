@@ -17,10 +17,9 @@ from lib.devConfig import devConfig
 from pyhap.accessory_driver import AccessoryDriver
 
 class DSMR_happer(p1DSMR):
-	def create_accessory(self, HAPdriver, quantities, aid, sampler):
-		aname="-".join([sampler.qname(q) for q in quantities])
-		stateSetter = sampler.set_state
-		return HAP_accessory(HAPdriver, aname, quantities=quantities, stateSetter=stateSetter, aid=aid, sampler=sampler)		
+	def create_accessory(self, HAPdriver, quantities, aid):
+		aname="-".join([self.qname(q) for q in quantities])
+		return HAP_accessory(HAPdriver, aname, quantities=quantities, stateSetter=self.set_state, aid=aid, sampler=self)		
 
 def add_p1DSMR_to_bridge(bridge, config='p1DSMR.json'):
 	conf = devConfig(config)

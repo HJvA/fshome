@@ -32,7 +32,6 @@ class fsBridge(Bridge):
 	
 	def add_sampler(self, sampler, quantities):
 		''' add a sampler to the HAP bridge '''
-		#logger.critical("pincode=%s" % self.driver.state.pincode.decode())
 		logger.info("adding %s with %s to fsBridge" % (sampler.name,quantities))
 		qaid={}
 		fsBridge._samplers[sampler.name] = sampler
@@ -48,7 +47,7 @@ class fsBridge(Bridge):
 					else:
 						qaid[rec['aid']] = [int(quantity)]
 		for aid,qs in qaid.items():
-			acce = sampler.create_accessory(self.driver, quantities=qs, aid=aid, sampler=sampler)
+			acce = sampler.create_accessory(self.driver, quantities=qs, aid=aid)
 			self.add_accessory(acce)
 			
 	async def stop(self):
@@ -58,7 +57,6 @@ class fsBridge(Bridge):
 			
 class sampler_accessory(Accessory):
 	""" HAP accessory for fs sampler """
-
 	def __init__(self, *args, sampler, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.receiver = sampler.name
@@ -87,11 +85,11 @@ class sampler_accessory(Accessory):
 				val = sampler.get_last(qtt)
 				typ = sampler.qtype(qtt)
 				if typ==DEVT['motion'] or typ==DEVT['button']:
-					self.send_value(True if val else False,qtt)
+					self.sendValue(True if val else False,qtt)
 				elif typ==DEVT['doorbell']:
-					self.send_value(True if val else False,qtt)
+					self.sendValue(True if val else False,qtt)
 				else:
-					self.send_value(val,qtt)
+					self.sendValue(val,qtt)
 				#logger.warning("sending %s to hap %s" % (qtt,val))			
 		return val	
 		
@@ -107,12 +105,12 @@ class HAP_accessory(sampler_accessory):
 		self._chars={}
 
 		for quantity in quantities:
-			#if 'typ' in quantities[quantity]:
 			self.addService(quantity, self.qtype(quantity)) #quantities[quantity]['typ'])
 			if 'lev' in self._chars[quantity]:
-				val =fsBridge._samplers[self.receiver].get_state(quantity)  #.dbStore.fetchlast(quantity)[1]
-				self._chars[quantity]['lev'].set_value(val)
-				logger.info("set val:%s to %s" % (val,quantity))
+				val =fsBridge._samplers[self.receiver].get_state(quantity)
+				if val is not None:
+					self._chars[quantity]['lev'].set_value(val)
+					logger.info("set val:%s to %s" % (val,quantity))
 	
 		self.set_info_service(firmware_revision=None, manufacturer=fsBridge._samplers[self.receiver].manufacturer, model=None, serial_number=None)
 		#self.stat = None
@@ -131,17 +129,13 @@ class HAP_accessory(sampler_accessory):
 			serv = self.add_preload_service('Outlet')
 			self._chars[quantity] = {'lev': serv.configure_char('On',setter_callback=self.HAPswitching)}
 			self.char_inuse = serv.configure_char('OutletInUse')
-		elif typ==DEVT['lamp']:
-			serv = self.add_preload_service('Lightbulb', chars=['On','Brightness'])
-			self._chars[quantity] = {'lev': serv.configure_char('Brightness',setter_callback=self.HAPsetting)}
-			self._chars[quantity].update({'hue': serv.configure_char('Hue',setter_callback=self.HAPsetting)})
-			self._chars[quantity].update({'sat': serv.configure_char('Saturation',setter_callback=self.HAPsetting)})
-			self._chars[quantity].update({'act': serv.configure_char('On',setter_callback=self.HAPonoff)})
+		elif typ==DEVT['lamp']:	# special class for this use derived class : HUE_accessory
+			self.level=None
 		elif typ==DEVT['dimmer']:
 			self.level=None
 			serv = self.add_preload_service('Lightbulb', chars=['On','Brightness'])
-			self._chars[quantity] = {'lev': serv.configure_char('Brightness',setter_callback=self.HAPsetting)}
-			self._chars[quantity].update({'act': serv.configure_char('On',setter_callback=self.HAPonoff)})
+			self._chars[quantity] = {'bri': serv.configure_char('Brightness',setter_callback=self.HAPsetlev)}
+			self._chars[quantity].update({'on': serv.configure_char('On',setter_callback=self.HAPonoff)})
 		elif typ==DEVT['doorbell']:
 			serv = self.add_preload_service('StatelessProgrammableSwitch')
 			self._chars[quantity] = {'lev': serv.configure_char('ProgrammableSwitchEvent',setter_callback=self.HAPringing)}
@@ -161,27 +155,31 @@ class HAP_accessory(sampler_accessory):
 			self._chars[quantity].update({'stl': serv.configure_char('StatusLowBattery')})
 		logger.info("adding HAP service:%s with typ:%d for quantity:%s to aid:%s" % (serv,typ,quantity,self.aid))
 		
-	def send_value(self, value, quantity=None):
+	def sendValue(self, value, quantity=None):
 		''' send myvalue to HAP '''
 		if quantity in self._chars:
 			self._chars[quantity]['lev'].set_value(value)
 			logger.info("send HAP val %s to %s quantity:%d" % (value,self.display_name,quantity))
 		else:
 			logger.warning("no hap quantity like:%s for:%s in %s" % (quantity,value,self._chars))
-		
+	
+	def setValue(self, value, prop=None):
+		''' send val to device '''
+		for qtt in self._chars:
+			#for prp in self._chars[qtt]:
+			#	if prop is None or prp==prop:
+			#		logger.info("setting %s to %s with %s" % (qtt,value,prp))
+			logger.info("setting %s to %s with %s" % (qtt,value,prop))
+			return self.stateSetter(qtt,value,prop)
+
 	def HAPonoff(self, value):
 		''' HAP issues to set something '''
-		logger.info("setting %s to %d " % (self.display_name,value))
-		for qtt in self._chars:
-			if value:
-				self.stateSetter(qtt,1) #
-			else:
-				self.stateSetter(qtt,0) #
+		self.setValue(1 if value else 0, 'on')
 		
-	def HAPsetting(self, value):
+	def HAPsetlev(self, value):
 		''' HAP issues to set level for dimmer or lamp '''
 		logger.warning("setting %s from %s to %d " % (self.display_name,self.level,value))
-		for qtt in self._chars:  #self._services.items():
+		for qtt in self._chars: 
 			self.stateSetter(qtt, value)
 			self.level=value
 

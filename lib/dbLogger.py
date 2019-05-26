@@ -112,10 +112,11 @@ class sqlLogger(txtLogger):
 			logger.info("opening sqlStore in %s with %s" % (store,self.con.isolation_level))
 			with self.con:
 				cur = self.con.cursor()
-				sql = "SELECT qs.ID,qs.name,qs.source,qs.type,qt.unit FROM quantities AS qs LEFT JOIN quantitytypes AS qt ON qs.type=qt.ID;"
+				sql = "SELECT qs.ID,qs.name,qs.source,qs.type,qt.unit FROM quantities AS qs LEFT JOIN quantitytypes AS qt ON qs.type=qt.ID WHERE qs.active;"
 				try:
 					cur.execute(sql)
 				except OperationalError:
+					cur.execute('ALTER TABLE quantities ADD COLUMN active INT DEFAULT 1;')
 					cur.execute('ALTER TABLE quantities ADD COLUMN type INT;')
 					cur.execute(sql)
 					logger.exception("db error now adding 'type' field")
@@ -140,6 +141,7 @@ class sqlLogger(txtLogger):
 				"name  TEXT NOT NULL,"
 				"source TEXT,"
 				"type  INT,"
+				"active INT DEFAULT 1,"
 				"firstseen REAL);")
 			cur.execute("CREATE TABLE quantitytypes(ID INT PRIMARY KEY NOT NULL, name TEXT NOT NULL, unit TEXT);")			
 			cur.close()
@@ -197,7 +199,7 @@ class sqlLogger(txtLogger):
 		# minperday=1440
 		sql = "SELECT ROUND(ddJulian*1440/%d)/1440*%d AS dd,AVG(numval) AS nval,COUNT(*) AS cnt,source,type " \
 			"FROM logdat,quantities " \
-			"WHERE ID=quantity AND ddJulian>julianday('now')-? %s " \
+			"WHERE active AND ID=quantity AND ddJulian>julianday('now')-? %s " \
 			"GROUP BY quantity,source,dd " \
 			"ORDER BY ddJulian;" % (tstep,tstep,where)
 		logger.info('sql:%s' % sql)
@@ -213,6 +215,20 @@ class sqlLogger(txtLogger):
 						
 	def fetchiiavg(self, ikey1,ikey2, tstep=30, daysback=100, source=None):
 		''' fetch averaged interval values from the database '''
+		rec1 = self.fetchiavg(ikey1,tstep,daysback,source)
+		rec2 = self.fetchiavg(ikey2,tstep,daysback,source)
+		i2=0
+		rslt=[]
+		for rc1 in rec1:
+			while rec2[i2][0]<rc1[0]:
+				i2+=1
+				if i2>=len(rec2):
+					continue
+			rslt.append(list(rc1))
+			rslt[-1][1] =rc1[1] + rec2[i2][1]
+		return rslt
+			
+
 		where =""
 		if not source is None:
 			where=" AND ld1.source='{0}' AND ld2.source='{0}'".format(source)
@@ -221,11 +237,11 @@ class sqlLogger(txtLogger):
 		else: # len(ids)==1:
 			where+=" AND ld1.quantity=%d AND ld2.quantity=%d" % (ikey1,ikey2)
 		# minperday=1440
-		sql = "SELECT ROUND(ld1.ddJulian*1440/%d)/1440*%d AS dd,AVG(ld1.numval+ld2.numval) AS nval,COUNT(*) AS cnt,source,type " \
-			"FROM quantities,logdat as ld1 INNER JOIN logdat as ld2 ON ld1.ddJulian=ld2.ddJulian " \
-			"WHERE ID=ld1.quantity AND ld1.ddJulian>julianday('now')-? %s " \
-			"GROUP BY source,dd " \
-			"ORDER BY ld1.ddJulian;" % (tstep,tstep,where)
+		sql = "SELECT ROUND(ld1.ddJulian*1440/%d)/1440*%d AS dd1,ROUND(ld2.ddJulian*1440/%d)/1440*%d AS dd2,AVG(ld1.numval+ld2.numval) AS nval,COUNT(*) AS cnt,source,type " \
+			"FROM quantities,logdat as ld1 INNER JOIN logdat as ld2 ON ld1.quantity=ld2.quantity " \
+			"WHERE ID=ld1.quantity AND dd1>julianday('now')-? %s " \
+			"GROUP BY source,dd1,dd2 " \
+			"ORDER BY dd1;" % (tstep,tstep,tstep,tstep,where)
 		try:
 			with self.con:
 				cur = self.con.cursor()
@@ -259,10 +275,9 @@ class sqlLogger(txtLogger):
 		#cur = self.con.cursor()
 		try:
 			with self.con as cur:
-				cur.execute('INSERT INTO logdat (ddJulian,quantity,numval) VALUES (%.6f,%d,%g)' % (julianday(tstamp),ikey,numval))
+				cur.execute('INSERT INTO logdat (ddJulian,quantity,numval) VALUES (?,?,?)', (julianday(tstamp),ikey,numval))
 				if not strval is None:
-					cur.execute('UPDATE logdat SET strval="%s" WHERE ddJulian=%.6f AND quantity=%d' % (strval,julianday(tstamp),ikey))
-				#self.con.commit()
+					cur.execute('UPDATE logdat SET strval="%s" WHERE ddJulian=? AND quantity=?' % strval,(julianday(tstamp),ikey))
 		except OperationalError:
 			logger.error("unable to update database with id:%d at jd:%.6f" % (ikey,julianday(tstamp)))
 		except KeyboardInterrupt:

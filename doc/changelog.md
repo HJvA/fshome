@@ -15,6 +15,10 @@ Sections
 ### Developers
 -->
 
+## [1.2.1] - 2019-05-26
+### Added
+- Homekit support for Hue lights
+
 ## [1.2.0] - 2019-05-10
 ### Added
 - p1smart DSMR dutch utility meters for sampling electric power,energy,voltage

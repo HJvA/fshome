@@ -28,6 +28,7 @@
   "245": {
     "source": "tuin",
     "name": "luxMaroc",
+    "devadr": "45",
     "typ": 5
   },
   "206": {
@@ -46,6 +47,7 @@
   "244": {
     "source": "tuin",
     "name": "MotMaroc",
+    "devadr": "44",
     "typ": 11
   },
   "230": {
@@ -57,6 +59,7 @@
   "232": {
     "source": "keuken",
     "name": "keukMotion",
+    "devadr": "32",
     "typ": 11
   },
   "235": {
@@ -68,6 +71,13 @@
   "233": {
     "source": "keuken",
     "name": "KeukLux",
+    "devadr": "33",
     "typ": 5
+  },
+  "260":{    
+    "typ": 13,
+    "name": "eetstrip",
+    "devadr":"11",
+    "aid":20
   }
 }

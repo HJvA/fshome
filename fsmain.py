@@ -50,4 +50,5 @@ logger.info('bye')
 for hnd in logger.handlers:
 	hnd.flush()
 logging.shutdown()
+logging._handlers.clear()
 time.sleep(2)
