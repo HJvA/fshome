@@ -164,8 +164,8 @@ class sqlLogger(txtLogger):
 
 		with self.con:
 			cur = self.con.cursor()
-			sql ="SELECT %s FROM logdat,quantities "
-			"WHERE ID=quantity AND ddJulian>julianday('now')-? %s" 
+			sql ="SELECT %s FROM logdat,quantities " \
+			"WHERE ID=quantity AND ddJulian>julianday('now')-? %s" \
 			"ORDER BY ddJulian;" % (fields,where)
 			cur.execute(sql, (daysback,))
 			return cur.fetchall()  # list of tuples with field-vals
@@ -180,14 +180,14 @@ class sqlLogger(txtLogger):
 			cur.execute(sql, (ikey,ikey))
 			return cur.fetchone()
 			
-	def fetchavg(self, name, tstep=30, daysback=100, source=None):
+	def fetchavg(self, name, tstep=30, daysback=100, jdend=None, source=None):
 		''' fetch logged messages from the log store 
 			takes averaged numval of name over tstep minutes intervals'''
 		ids = self.checkitem(name,source,addUnknown=False) # get all quantity ids for source
 		logger.info("nm:%s src:%s ids:%s" % (name,source,ids))
-		return self.fetchiavg(ids, tstep, daysback)
+		return self.fetchiavg(ids, tstep, daysback, jdend)
 		
-	def fetchiavg(self, ikey, tstep=30, daysback=100, source=None):
+	def fetchiavg(self, ikey, tstep=30, daysback=100, jdend=None, source=None):
 		''' fetch averaged interval values from the database '''
 		where =""
 		if not source is None:
@@ -195,28 +195,32 @@ class sqlLogger(txtLogger):
 		if isinstance(ikey, tuple):
 			where+=" AND quantity IN (%s)" % ','.join(map(str,ikey))
 		else: # len(ids)==1:
-			where+=" AND quantity=%d" % ikey			
-		# minperday=1440
-		sql = "SELECT ROUND(ddJulian*1440/%d)/1440*%d AS dd,AVG(numval) AS nval,COUNT(*) AS cnt,source,type " \
+			where+=" AND quantity=%d" % ikey	
+		if jdend is None:
+			jdend=julianday()
+		sql = "SELECT ROUND(ddJulian*?)/? AS dd,AVG(numval) AS nval,COUNT(*) AS cnt,source,type " \
 			"FROM logdat,quantities " \
-			"WHERE active AND ID=quantity AND ddJulian>julianday('now')-? %s " \
+			"WHERE active AND ID=quantity AND ddJulian>? AND ddJulian<? %s " \
 			"GROUP BY quantity,source,dd " \
-			"ORDER BY ddJulian;" % (tstep,tstep,where)
+			"ORDER BY ddJulian;" % (where,)
 		logger.info('sql:%s' % sql)
 		try:
+			interval=1440/tstep  # minutes per day = 1440
 			with self.con:
 				cur = self.con.cursor()
-				cur.execute(sql, (daysback,))
+				cur.execute(sql, (interval,interval,jdend-daysback,jdend))
 				return cur.fetchall()  # list of tuples with field-vals
 		except KeyboardInterrupt:
 			raise
 		except Exception:
 			logger.exception("unknown!!!") # probably locked
 						
-	def fetchiiavg(self, ikey1,ikey2, tstep=30, daysback=100, source=None):
+	def fetchiiavg(self, ikey1,ikey2, tstep=30, daysback=100, jdend=None, source=None):
 		''' fetch averaged interval values from the database '''
-		rec1 = self.fetchiavg(ikey1,tstep,daysback,source)
-		rec2 = self.fetchiavg(ikey2,tstep,daysback,source)
+		rec1 = self.fetchiavg(ikey1,tstep,daysback,jdend,source)
+		rec2 = self.fetchiavg(ikey2,tstep,daysback,jdend,source)
+		if rec1 is None or rec2 is None:
+			return
 		i2=0
 		rslt=[]
 		for rc1 in rec1:
@@ -227,33 +231,7 @@ class sqlLogger(txtLogger):
 			rslt.append(list(rc1))
 			rslt[-1][1] =rc1[1] + rec2[i2][1]
 		return rslt
-			
-
-		where =""
-		if not source is None:
-			where=" AND ld1.source='{0}' AND ld2.source='{0}'".format(source)
-		if isinstance(ikey1, tuple):
-			where+=" AND ld1.quantity IN ({0})".format(','.join(map(str,ikey1)))
-		else: # len(ids)==1:
-			where+=" AND ld1.quantity=%d AND ld2.quantity=%d" % (ikey1,ikey2)
-		# minperday=1440
-		sql = "SELECT ROUND(ld1.ddJulian*1440/%d)/1440*%d AS dd1,ROUND(ld2.ddJulian*1440/%d)/1440*%d AS dd2,AVG(ld1.numval+ld2.numval) AS nval,COUNT(*) AS cnt,source,type " \
-			"FROM quantities,logdat as ld1 INNER JOIN logdat as ld2 ON ld1.quantity=ld2.quantity " \
-			"WHERE ID=ld1.quantity AND dd1>julianday('now')-? %s " \
-			"GROUP BY source,dd1,dd2 " \
-			"ORDER BY dd1;" % (tstep,tstep,tstep,tstep,where)
-		try:
-			with self.con:
-				cur = self.con.cursor()
-				cur.execute(sql, (daysback,))
-				logger.info('sql:%s' % sql)
-				return cur.fetchall()  # list of tuples with field-vals
-		except KeyboardInterrupt:
-			raise
-		except Exception:
-			logger.exception("unknown!!!")
-		return[]
-		
+					
 	def statistics(self, ndays=10, flds="source,quantity,name,type"):
 		''' queries database for quantity prevalence. keeps list of them internaly '''
 		#cur = self.con.cursor()

@@ -1,0 +1,147 @@
+<!doctype html>
+<!-- template for fssite.py bottle application to show svg chart of measured/recorded values -->
+<html lang="en">
+ <head>
+     <link rel="stylesheet" type="text/css" href="styles.css">
+     <link type="text/css" href="navbar.css" rel="stylesheet">
+     <TITLE>fshome quantity viewer</TITLE>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"> 
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="format-detection" content="telephone=no">
+  <script type="text/javascript" src="dragger.js"></script>
+  <script type="text/javascript">
+   function onLoad() {
+    var touchBox=document.getElementById('plotarea');
+    var movElm=document.getElementById('xcursor');
+	 var posVal=document.getElementById('cursorPos');
+	 var swip = new pageSwiper(touchBox,movElm,posVal, "900", "800");
+    //pages.style.display='none';// hide pages to show passwdialog
+
+    //document.getElementById("swidth").value = screen.width;
+   }
+  </script>
+ </head>
+ 
+ <body onload="onLoad();">
+  <div class="headng">fshome quantity viewer
+   <p> nothing worth saving </p>
+  </div>  
+    <br/>
+
+  <form method="post" action="/menu" id="mmenu" >
+   <fieldset class="fields">
+   
+  <div class="menubar" id="menu">
+  <!--
+   <div class="overlay" onclick="javascript:document.getElementById('mmenu').submit();">
+    <a href="#"></a>
+   </div>
+ -->
+ 	<input type="hidden" id="cursorPos" value="900">
+   <div class="menuselect">
+    <select name=source onchange='if(this.value != 0) { this.form.submit(); }'>
+      <option value=traplicht selected>traplicht</option>
+      <option value=huis >huis</option>
+      <option value=terras >terras</option>
+      <option value=entree >entree</option>
+      <option value=gang >gang</option>
+      <option value=zolder >zolder</option>
+      <option value=keuken >keuken</option>
+      <option value=tuin >tuin</option>
+      <option value=woon >woon</option>
+      <option value=ringer >ringer</option>
+      <option value=kgb >kgb</option>
+      <option value=kamerEet >kamerEet</option>
+      <option value=testbel >testbel</option>
+    </select>
+   </div>
+   <div class="menuselect">
+    <select name=quantities multiple>
+      <option value=energy >energy</option>
+      <option value=temperature >temperature</option>
+      <option value=gasVolume >gasVolume</option>
+      <option value=power >power</option>
+      <option value=button >button</option>
+      <option value=outlet >outlet</option>
+      <option value=motion selected>motion</option>
+      <option value=voltage >voltage</option>
+      <option value=humidity >humidity</option>
+      <option value=dimmer >dimmer</option>
+      <option value=illuminance >illuminance</option>
+      <option value=doorbell >doorbell</option>
+    </select>
+   </div>
+   <div class="menuselect">
+    <select name=tmback onchange='if(this.value != 0) { this.form.submit(); }'>
+      <option value=5hr >5hr</option>
+      <option value=1day >1day</option>
+      <option value=5days >5days</option>
+      <option value=1mnth >1mnth</option>
+      <option value=6mnth >6mnth</option>
+      <option value=1yr >1yr</option>
+    </select>
+   </div>
+   <div class="menuitem">
+     <button type=submit hreff=>ok </button>
+   </div>
+   </div>
+   </fieldset>
+  </form>
+ 
+  <br/>
+
+<svg class="graph" xmlns="http://www.w3.org/2000/svg" height="300" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    
+    <defs>
+      <clipPath id="clpPth">
+         <rect x="100" y="50" width="800" height="400"> </rect>
+      </clipPath>
+  </defs>
+  <rect id="plotarea" class="grid" x="100" y="50" width="800" height="400"> </rect>
+  <line id="xcursor" class="cursor" x1="810" y1="50" x2="810" y2="450"> </line>
+
+     <g class="surfaces" clip-path="url(#clpPth)">
+         <polyline fill="none" stroke=#1084e9 stroke-width="1.8" points=" 87,350 117,417 142,460 167,450 184,383 192,350 201,317 226,217 242,183 251,150 276,150 292,117 301,150 326,117 367,50 401,83.3 409,83.3 417,117" />
+         <polyline fill="none" stroke=#1084e9 stroke-width="1.8" points=" 867,217 884,117 892,83.3 911,50" />
+     </g>
+     <g class="labels y-labels" stroke=#1084e9>
+       <text  x="-50%" y="2%" transform="rotate(270)"></text>       
+         <text y="50" x="94" text-anchor="end">   21   </text>
+         <text y="183" x="94" text-anchor="end"> 20.6   </text>
+         <text y="317" x="94" text-anchor="end"> 20.2   </text>
+         <text y="450" x="94" text-anchor="end"> 19.8   </text>
+     </g>
+     <g class="labels legend" stroke=#1084e9>
+      <text  x="330" y="28" >rubbish</text>       
+		<path stroke-width="2" d="M300 26 h26 Z" />
+     </g>
+     
+     <g class="grid x-grid" transform="ref(svg)" >
+        <line x1="100" x2="100" y1="50" y2="450"></line>
+        <line x1="300" x2="300" y1="50" y2="450"></line>
+        <line x1="500" x2="500" y1="50" y2="450"></line>
+        <line x1="700" x2="700" y1="50" y2="450"></line>
+        <line x1="900" x2="900" y1="50" y2="450"></line>
+     </g>
+     <g class="grid y-grid" id="yGrid" >
+        <line x1="100" x2="900" y1="183" y2="183"></line>    
+        <line x1="100" x2="900" y1="317" y2="317"></line>    
+     </g>
+     <g class="labels x-labels" transform="ref(svg)">
+       <text  x="50%" y="98%"></text>
+         <text  x="200.0" y="475">morning</text>
+         <text  x="400.0" y="475">after noon</text>
+         <text  x="600.0" y="475">evening</text>
+         <text  x="800.0" y="475">night</text>
+     </g>
+</svg>
+
+<hr/>
+<div class="fields atbottom">
+   <select id="status" class="busy">
+         <option ><i><p>Copyright © 2019, hjva</p></i></option>
+         <option >status message</option>
+   </select>
+</div>
+  </body>
+</html>

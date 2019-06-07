@@ -6,8 +6,7 @@ and sqlite database
 get values and picklists from a database which was filled by fsmain.py et al.
 """
 
-import os
-import sys
+import os,sys
 import datetime,time
 import logging
 import json
@@ -119,12 +118,44 @@ def bld_dy_lbls(jdats, form="%a"):
 	if len(jdats)==0:
 		return [""]
 	return [prettydate(jd, form) for jd in jdats]
+
+def tax_grid(jdnow,ndays,gridstep):
+	''' time axis grid locations '''
+	utcoff = time.localtime().tm_gmtoff/3600/24  #[d]  #time.localtime()-time.gmtime()
+
+	if gridstep==0.0417:   # 1hrs
+		gridofs= (jdnow+utcoff) % 0.0417 #[d]
+		gridofs= jdnow-int(jdnow)
+		gridofs= gridofs % 0.0417
+		gridofs *= 24.0	#[hr]
+		logger.debug("frac in 1hrs %s utcofs=%s now=%s" % (gridofs,utcoff,prettydate(jdnow)))
+	elif gridstep==0.25:   # 6hrs
+		gridofs= (jdnow+utcoff) % 0.25  #[d]
+		gridofs *= 4.0	#[6h]
+		logger.debug("frac in 6hrs %s utcofs=%s now=%s" % (gridofs,utcoff,prettydate(jdnow)))
+	elif gridstep==7:  # a week
+		gridofs = (jdnow+1.5+utcoff) % 7  #[d]
+		logger.debug("day of week:%s" % gridofs)
+		gridofs /= 7	#[w]
+	elif int(gridstep)==30:  # a month
+		gridofs = datetime.datetime.fromtimestamp(unixsecond(jdnow))
+		logger.debug("date %s hour %s" % (gridofs.day,gridofs.hour))
+		gridofs = gridofs.day + gridofs.hour/24.0  #[d]
+		gridofs /= 30.44	#[m]
+	else:
+		gridofs = jdnow-0.5+utcoff  #noon utc to midnight this tz
+		gridofs = gridofs/gridstep - int(gridofs/gridstep)
+
+	gridlocs = [jdnow-(f+gridofs)*gridstep for f in range(int(ndays/gridstep+0.1))]
+	gridlocs.reverse()
+	logger.debug("jdnow=%s gridlocs=%s" % (jdnow,gridlocs))
+	return gridlocs
+
 	
 def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	''' build data for svg chart including axes,labels,gridlines,curves,histogram'''
 	data=[]
 	subtitle=[]
-	#strokes=("#1084e9","#a430e9","#90e090","#c060d0","#c040f0","#f040d0","#f060d0")
 	for jdat,ydat,selq in zip(jdats,ydats,selqs):
 		if len(ydat)>0:
 			vmax = max(ydat)
@@ -154,47 +185,20 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 			data.append(curve)
 	if len(data)==0:
 		logger.warning('missing data:jd:%d yd:%d q:%d' % (len(jdats),len(ydats),len(selqs)))
-		return dict (title=TITLE, subtitle=" , ".join(subtitle), curves=[])
+		return dict (title=TITLE, subtitle=" , ".join(subtitle), curves=[], taxEnd=jdnow, taxPos=900)
 	
 	xlbltup = tmBACKs[ndays]
 	lblformat=xlbltup[3]
 	gridstep=xlbltup[2]
 	barwdt=xlbltup[1]
 	xscl=plWIDTH/ndays
-	utcoff = time.localtime().tm_gmtoff/3600/24  #[d]  #time.localtime()-time.gmtime()
-	
-	if gridstep==0.0417:   # 1hrs
-		gridofs= (jdnow+utcoff) % 0.0417 #[d]
-		gridofs= jdnow-int(jdnow)
-		gridofs= gridofs % 0.0417
-		gridofs *= 24.0	#[hr]
-		logger.debug("frac in 1hrs %s utcofs=%s now=%s" % (gridofs,utcoff,prettydate(jdnow)))
-	elif gridstep==0.25:   # 6hrs
-		gridofs= (jdnow+utcoff) % 0.25  #[d]
-		gridofs *= 4.0	#[6h]
-		logger.debug("frac in 6hrs %s utcofs=%s now=%s" % (gridofs,utcoff,prettydate(jdnow)))
-	elif gridstep==7:  # a week
-		gridofs = (jdnow+1.5+utcoff) % 7  #[d]
-		logger.debug("day of week:%s" % gridofs)
-		gridofs /= 7	#[w]
-	elif int(gridstep)==30:  # a month
-		gridofs = datetime.datetime.fromtimestamp(unixsecond(jdnow))
-		logger.debug("date %s hour %s" % (gridofs.day,gridofs.hour))
-		gridofs = gridofs.day + gridofs.hour/24.0  #[d]
-		gridofs /= 30.44	#[m]
-	else:
-		gridofs = jdnow-0.5+utcoff  #noon utc to midnight this tz
-		gridofs = gridofs/gridstep - int(gridofs/gridstep)
 
-	gridlocs = [jdnow-(f+gridofs)*gridstep for f in range(int(ndays/gridstep+0.1))]
-	gridlocs.reverse()
-	logger.debug("jdnow=%s gridlocs=%s" % (jdnow,gridlocs))
-	
+	gridlocs= tax_grid(jdnow,ndays,gridstep)
 	xgrid =[plXMARG+plWIDTH-(jdnow-jd)*xscl for jd in gridlocs]
 	xlbls=bld_dy_lbls([jd+gridstep/2 for jd in gridlocs[:-1]],lblformat)
 
 	logger.info("ndays=%.4g xlbls=%s xgrid=%s" % (ndays,xlbls,xgrid))
-	return dict( title=TITLE+"   dd:%s" % prettydate(jdnow), subtitle=" , ".join(subtitle), curves=data, xgrid=xgrid, xlbls=xlbls)
+	return dict( title=TITLE+"   dd:%s" % prettydate(jdnow), subtitle=" , ".join(subtitle), curves=data, xgrid=xgrid, xlbls=xlbls, taxEnd=jdnow, taxPos=900)
 
 def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	''' data for menu.tpl '''
@@ -210,21 +214,38 @@ def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	#logger.info("menu=%s" % menu)
 	return menu
 
+@app.post('/cursor', method="POST")
+def cursorhandler():
+	''' handle end of cursor movement '''
+	rec = bottle.request.json
+	#tpos = rec['tEnd'] - (900-rec['pos'])/800*ndays
+	logger.info("cursor %s" % rec)
+	logger.info("form post:%s" % bottle.request.body.read()) 
+	return dict( taxPos=rec['pos'])
+
 @app.post('/menu', method="POST")
 def formhandler():
 	''' Handle form submission '''
 	logger.info("form post:%s" % bottle.request.body.read()) 
 	selqs = bottle.request.forms.getall('quantities')
 	src=bottle.request.forms.get('source')
-	tnm=bottle.request.forms.get('tmback')
-	jdnow=julianday()
-	logger.info("form post:qtt=%s src=%s jd=%s ndys=%s" % (selqs, src, prettydate(jdnow), tnm))
+	tbcknm=bottle.request.forms.get('tmback')
+	cursXpos=bottle.request.forms.get('cursorPos')
+	taxEnd=bottle.request.forms.get('taxEnd')
+	if taxEnd:
+		taxEnd=float(taxEnd)
+	else:
+		taxEnd=julianday()
+
 	try:
-		ndays=next(tb for tb,tup in tmBACKs.items() if tnm in tup[0])
+		ndays=next(tb for tb,tup in tmBACKs.items() if tbcknm in tup[0])
 	except StopIteration:
 		ndays=5
+		
+	taxEnd -= (plXMARG+plWIDTH-int(cursXpos))/plWIDTH * ndays  # let cursor pos be end time for graph
+	logger.info("form post:qtt=%s src=%s jd=%s ndys=%s cPos=%s" % (selqs, src, prettydate(taxEnd), tbcknm,cursXpos))
 	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
-	return bottle.template(TPL, redraw(src, selqs, jdnow, ndays))
+	return bottle.template(TPL, redraw(src, selqs, taxEnd, ndays))
 	
 	
 def redraw(src, selqs, jdnow, ndays=7):
@@ -244,9 +265,9 @@ def redraw(src, selqs, jdnow, ndays=7):
 			qkey = dbStore.quantity(src,typ)
 			if qkey is not None:
 				if qs=='energy':
-					recs = dbStore.fetchiiavg(qkey-1,qkey,tstep=avgminutes,daysback=ndays)
+					recs = dbStore.fetchiiavg(qkey-1,qkey,tstep=avgminutes,daysback=ndays,jdend=jdnow)
 				else:
-					recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays)
+					recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays,jdend=jdnow)
 				if recs is None or len(recs)==0:
 					continue
 				if typ in qCOUNTING:
@@ -258,6 +279,7 @@ def redraw(src, selqs, jdnow, ndays=7):
 				jdats.append([rec[0] for rec in recs])  # julian days
 				qss.append(qs)
 	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays),  **buildChart(jdats,ydats,qss,jdnow,ndays))
+	logger.debug("page:\n%s\n" % page)
 	return page
 	
 
@@ -282,7 +304,7 @@ if __name__ == '__main__':
 	dbfile = config.getItem('dbFile',dbfile)
 	try:
 		dbStore = sqlLogger(dbfile)
-		logger.info("statistics:%s" %  dbStore.statistics(30)) # will get list of quantities and sources
+		logger.info("statistics:%s" %  dbStore.statistics(5)) # will get list of quantities and sources
 		logger.info('quantities:%s' % dbStore.items)
 	
 		ip=socket.gethostbyname(socket.gethostname())

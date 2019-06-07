@@ -1,17 +1,28 @@
-body {
-    background-color: #b2e9e4;
+*, *:before, *:after {
+	box-sizing: inherit;
+	/* font:inherit; */
+	font-family: Verdana;
+}
+
+section, header, footer, article, p {
+	display: block;
+	overflow: hidden;
+}
+
+body, html {
+    background-color: #b2e9e4; 
+    /* height: 100vh;*/
 }
 .headng {
   color: red;
-  display: block;
-  font-family: Verdana;
-  font-size: large;
+  /*display: block;*/
+  font-size: x-large;
   border: 4px solid bisque;
   border-radius: 1em;
   text-align: center;
-  padding-top: 1em;
+  padding-top: .6em;
 }
-div > p {
+.headng > p {
   color: brown;
   font-size: small;
   padding: 0;
@@ -34,6 +45,13 @@ svg.graph .grid {
   stroke-width: 1px;
   opacity:0.8;
 }
+svg.graph .cursor {
+  stroke: yellow;
+  stroke-dasharray: 1 2;
+  stroke-width: 4px;
+  opacity:0.8;
+}
+
 /*
 svg.graph .points {
   stroke: white;
@@ -65,3 +83,57 @@ svg.graph .labels.y-labels {
 }
 svg.graph .legend {
 }
+
+.atbottom{
+	position: absolute;
+	bottom:0.6em;
+}
+
+#status {
+	color: brown;
+   font-size: small;
+	overflow: hidden;
+	z-index: 0;
+	min-height: 2em;
+	margin: 1vw;
+	text-indent:1em;
+	border: 4px solid bisque;
+	border-radius: 1em;
+	appearance:none;
+	display: flex;
+	/*
+	margin-left:0vw;
+	margin-right: 10vw;
+	background: green;
+	padding-left:0.0em;
+	display: block;
+	border-left:0px;
+	left:0;
+	*/
+	width:90vw;
+}
+#status.success {
+	background: #0c0;
+}
+#status.error {
+	background: #c00;
+}
+#status.busy {
+	background: rgba(55,0,0,0.4);
+	border: 1px solid #888;
+}
+#status.ok {
+	border: 1px solid #888;
+}
+/*
+#status:after {
+	content: 'state: ' attr(class);
+	text-indent:0;
+	position: absolute;
+	background: #c00;
+	bottom: 0;
+	right: 0;
+	padding: 0.2em;
+	color: #fff;
+}
+*/
