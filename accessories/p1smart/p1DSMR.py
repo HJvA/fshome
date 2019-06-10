@@ -24,7 +24,7 @@ if __name__ == "__main__":
 else:
 	from lib.serComm import serComm
 	logger = logging.getLogger(__name__)	# get logger from main program
-from lib.devConst import DEVT
+from lib.devConst import DEVT,get_logger
 from lib.dbLogger import julianday,prettydate
 from lib.sampleCollector import DBsampleCollector,forever
 
@@ -118,13 +118,7 @@ class p1DSMR(DBsampleCollector):
 	
 if __name__ == "__main__":
 	import asyncio
-	logger = logging.getLogger()
-	hand=logging.StreamHandler()
-	hand.setLevel(logging.INFO)
-	logger.addHandler(hand)	# use console
-	logger.addHandler(logging.FileHandler(filename='smart.log', mode='w', encoding='utf-8')) #details to log file
-	logger.setLevel(logging.DEBUG)
-	logger.warning("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S")))
+	logger = get_logger(__file__)
 	
 	QCONF = {  # example default configuration
 	"300": {

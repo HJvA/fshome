@@ -119,8 +119,8 @@ class HueBaseDev (object):
 			if prop is None:
 				return cache[self.hueId][reskey]
 			return cache[self.hueId][reskey][prop]
-		else:
-			logger.warning('hueid %s not in cache %s' % (self.hueId,prop))
+		elif cache: # when fetching cache failed
+			logger.warnig('hueid %s not in cache %s' % (self.hueId,prop))
 		return None
 	
 	def lastupdate(self):
@@ -134,7 +134,7 @@ class HueBaseDev (object):
 			val =self.state(prop=self.prop)
 			if val is not None:
 				return (val != self.last)
-			logger.warning('no prop %s in state %s' % (self.prop,val))
+			logger.debug('no prop %s in state %s' % (self.prop,val))
 		return None
 
 	def value(self):

@@ -17,7 +17,7 @@ except ImportError:
 	
 from lib.devConfig import devConfig
 from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate,SiNumForm
-from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb
+from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb,get_logger
 
 __copyright__="<p>Copyright &copy; 2019, hjva</p>"
 TITLE=r"fshome quantity viewer"
@@ -54,6 +54,11 @@ def typnames(devTyps):
 @bottle.view(TPL)
 def index(name=TITLE):
 	''' standard opening page (having only menu i.e. no data )'''
+	logger.info("req get:%s" % bottle.request.body.read()) 
+
+	if bottle.request.query.title:
+		bottle.redirect('/menu')
+	
 	srcs=list(dbStore.sources())
 	src=srcs[0]
 	cookie = bottle.request.get_cookie(COOKIE)
@@ -71,7 +76,7 @@ def index(name=TITLE):
 		selqs=['temperature']
 	page = dict(menitms=buildMenu(srcs,src,typnames(dbStore.quantities(prop=2)),selqs,ndays))
 	#page = redraw(src,selqs,julianday())
-	page.update( dict(title=name, footer=__copyright__))
+	page.update( dict(title=name, footer=__copyright__, jdtill=julianday()))
 	return bottle.template(TPL, page)
 
 def buildCurve(xdat, ydat, xsize, ysize, xstart,ystart):
@@ -152,7 +157,7 @@ def tax_grid(jdnow,ndays,gridstep):
 	return gridlocs
 
 	
-def buildChart(jdats, ydats,selqs, jdnow, ndays):
+def buildChart(jdats, ydats,selqs, jdtill, ndays):
 	''' build data for svg chart including axes,labels,gridlines,curves,histogram'''
 	data=[]
 	subtitle=[]
@@ -174,10 +179,10 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 			if selq in DEVT and DEVT[selq] in qCOUNTING:
 				vmin=0
 				vmax = int(vmax/3)*3+3
-				crv = buildHistogram(jdat,ydat, ndays,vmax, jdnow-ndays,vmin)
+				crv = buildHistogram(jdat,ydat, ndays,vmax, jdtill-ndays,vmin)
 				qtyp=1
 			else:
-				crv = buildCurve(jdat,ydat, ndays,vmax-vmin, jdnow-ndays,vmin)
+				crv = buildCurve(jdat,ydat, ndays,vmax-vmin, jdtill-ndays,vmin)
 				qtyp=0
 			ylbls=buildLbls(vmin,vmax,4)
 			logger.debug("selq:%s,len:%d,col:%s,ylbls:%s" % (selq,len(jdat),stroke,ylbls))
@@ -185,7 +190,7 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 			data.append(curve)
 	if len(data)==0:
 		logger.warning('missing data:jd:%d yd:%d q:%d' % (len(jdats),len(ydats),len(selqs)))
-		return dict (title=TITLE, subtitle=" , ".join(subtitle), curves=[], taxEnd=jdnow, taxPos=900)
+		return dict (title=TITLE, subtitle=" , ".join(subtitle), curves=[], jdtill=jdtill, taxPos=900)
 	
 	xlbltup = tmBACKs[ndays]
 	lblformat=xlbltup[3]
@@ -193,12 +198,12 @@ def buildChart(jdats, ydats,selqs, jdnow, ndays):
 	barwdt=xlbltup[1]
 	xscl=plWIDTH/ndays
 
-	gridlocs= tax_grid(jdnow,ndays,gridstep)
-	xgrid =[plXMARG+plWIDTH-(jdnow-jd)*xscl for jd in gridlocs]
-	xlbls=bld_dy_lbls([jd+gridstep/2 for jd in gridlocs[:-1]],lblformat)
+	gridlocs= tax_grid(jdtill,ndays,gridstep)
+	xgrid = [round(plXMARG+plWIDTH-(jdtill-jd)*xscl,1) for jd in gridlocs]
+	xlbls=bld_dy_lbls([round(jd+gridstep/2) for jd in gridlocs[:-1]],lblformat)
 
 	logger.info("ndays=%.4g xlbls=%s xgrid=%s" % (ndays,xlbls,xgrid))
-	return dict( title=TITLE+"   dd:%s" % prettydate(jdnow), subtitle=" , ".join(subtitle), curves=data, xgrid=xgrid, xlbls=xlbls, taxEnd=jdnow, taxPos=900)
+	return dict( title=TITLE+"   till:%s" % prettydate(jdtill), subtitle=" , ".join(subtitle), curves=data, xgrid=xgrid, xlbls=xlbls, jdtill=jdtill, taxPos=900)
 
 def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	''' data for menu.tpl '''
@@ -226,26 +231,30 @@ def cursorhandler():
 @app.post('/menu', method="POST")
 def formhandler():
 	''' Handle form submission '''
-	logger.info("form post:%s" % bottle.request.body.read()) 
+	logger.info("menu post:%s" % bottle.request.body.read()) 
 	selqs = bottle.request.forms.getall('quantities')
 	src=bottle.request.forms.get('source')
 	tbcknm=bottle.request.forms.get('tmback')
 	cursXpos=bottle.request.forms.get('cursorPos')
-	taxEnd=bottle.request.forms.get('taxEnd')
-	if taxEnd:
-		taxEnd=float(taxEnd)
-	else:
-		taxEnd=julianday()
+	jdtill=bottle.request.forms.get('jdtill')
 
 	try:
 		ndays=next(tb for tb,tup in tmBACKs.items() if tbcknm in tup[0])
 	except StopIteration:
 		ndays=5
-		
-	taxEnd -= (plXMARG+plWIDTH-int(cursXpos))/plWIDTH * ndays  # let cursor pos be end time for graph
-	logger.info("form post:qtt=%s src=%s jd=%s ndys=%s cPos=%s" % (selqs, src, prettydate(taxEnd), tbcknm,cursXpos))
+
+	jdofs =(plXMARG+plWIDTH-int(cursXpos))/plWIDTH * ndays  # cursor pos giving time offset
+	if jdtill:
+		jdtill=float(jdtill)  # preserve actual time frame
+	else:
+		jdtill=julianday()
+	jdtill -= jdofs
+	if abs(jdtill-julianday())<ndays/5:
+		jdtill=julianday()  # adjust to now when close
+	
+	logger.info("form post:qtt=%s src=%s jd=%s ndys=%s cPos=%s" % (selqs, src, prettydate(jdtill), tbcknm,cursXpos))
 	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
-	return bottle.template(TPL, redraw(src, selqs, taxEnd, ndays))
+	return bottle.template(TPL, redraw(src, selqs, jdtill, ndays))
 	
 	
 def redraw(src, selqs, jdnow, ndays=7):
@@ -291,14 +300,7 @@ def server_static(filepath):
 
 if __name__ == '__main__':
 	import socket
-	logger = logging.getLogger()
-	hand=logging.StreamHandler()
-	hand.setLevel(logging.INFO)
-	logger.addHandler(hand)	# use console
-	logger.addHandler(logging.FileHandler(filename='fsbot.log', mode='w')) #details to log file
-	logger.setLevel(logging.DEBUG)
-	logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S")))
-
+	logger = get_logger(__file__)
 	
 	config = devConfig(CONFFILE)
 	dbfile = config.getItem('dbFile',dbfile)

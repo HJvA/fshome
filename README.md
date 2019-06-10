@@ -41,6 +41,9 @@ The measured temeratures and humidities and other recorded events can be display
 Starting on a standard Raspberry pi on Raspbian (a debian clone, but almost any linux computer probably will be ok) fist make sure you have Python 3.5 or later installed. Also install git and pip3 (e.g. using ```apt-get install <package>```  ). Then download the fshome project  
 ```bash
 git clone git://github.com/HJvA/fshome
+cd fshome
+git submodule init
+git submodule update --depth=1
 ```  
 When using the fs20 devices, connect the CUL transceiver to a USB port of your Raspberry. Have the CUL transceiver flashed with the latest firmware from <http://culfw.de>. Assure that ```/dev/ttyACM0``` appears on your system (it represents a serial port used for the CUL). Maybe you should enable it using raspi-config.
 

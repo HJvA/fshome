@@ -22,9 +22,21 @@ class txtLogger(object):
 		self.file=open(filepath, 'a+')
 	def close(self):
 		self.file.close()
+	
+	def logi(self, ikey, numval, strval=None, tstamp=None):
+		if tstamp is None:
+			tstamp=time.time()
+		iname = self.qname(ikey)
+		if numval:
+			itemval=numval
+			if strval:
+				itemval += ','+strval
+		else:
+			itemval=strval
+		self.file.write('%d\t%.6f\t%s\t%s\n' % (ikey,tstamp,iname,itemval))
 		
 	def log(self, iname, itemval, tstamp=None):
-		''' append message to the store '''
+		''' append message/sample to the store '''
 		if tstamp is None:
 			tstamp=time.time()
 		id = self.checkitem(iname)
@@ -33,7 +45,7 @@ class txtLogger(object):
 	def additem(self, ikey, iname, isource, itype=None):
 		''' adds item type i.e. quantity descriptor '''
 		self.items.update({ikey:(iname,isource,itype)})
-		logger.debug('adding item %s,%s,%s with ikey=%s' % (iname,isource,itype,ikey))
+		logger.debug('new item %s,%s,%s with ikey=%s' % (iname,isource,itype,ikey))
 	
 	def sources(self, quantities=None):
 		''' set of actual sources that have been saved to the store '''
@@ -123,7 +135,8 @@ class sqlLogger(txtLogger):
 				rows=cur.fetchall()
 				#cur.close()
 			for rec in rows:
-				self.items.update({rec[0]:(rec[1],rec[2],rec[3])})
+				super().additem(rec[0],rec[1],rec[2],rec[3])
+				#self.items.update({rec[0]:(rec[1],rec[2],rec[3])})
 	
 	def create(self, fname):
 		logger.info("creating sqlStore in %s" % fname)

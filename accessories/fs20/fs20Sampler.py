@@ -13,9 +13,7 @@ else:
 	import accessories.fs20.fstls as fstls
 from lib.serComm import serComm
 from lib.sampleCollector import DBsampleCollector,forever
-#from lib.fsHapper import HAP_sampler
-#from fs20_cul import fs20commands
-from lib.devConst import DEVT
+from lib.devConst import DEVT,get_logger
 
 DEVICE='/dev/ttyACM0'
 BAUDRATE=9600
@@ -107,13 +105,7 @@ class fs20Sampler(DBsampleCollector):
 
 if __name__ == "__main__":  # for testing and discovering devices
 	import asyncio
-	logger = logging.getLogger()
-	hand=logging.StreamHandler()
-	hand.setLevel(logging.DEBUG)
-	logger.addHandler(hand)	# use console
-	logger.addHandler(logging.FileHandler(filename='fsSmp.log', mode='w', encoding='utf-8'))
-	logger.setLevel(logging.DEBUG)
-	logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S")))
+	logger = get_logger(__file__)
 	conf={	# to be loaded from json file
 		#"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 		"dbFile": '~/fs20store.sqlite',
@@ -193,4 +185,4 @@ if __name__ == "__main__":  # for testing and discovering devices
 	logger.critical("bye")
 	
 else:	# this is running as a module
-	logger = logging.getLogger(__name__)	# get logger from main program
+	logger = get_logger()	# get logger from main program

@@ -4,8 +4,11 @@
  <head>
   <link rel="stylesheet" type="text/css" href="styles.css">
   <link type="text/css" href="navbar.css" rel="stylesheet">
+  <link rel="apple-touch-icon" sizes="180x180" href="fshome.png">
 
   <TITLE>{{title}}</TITLE>
+  <!--
+  <meta http-equiv="refresh" content="5; url=/" > -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"> 
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,7 +23,7 @@
   %setdefault('yaxlbl',"")
   %setdefault('footer',"")
   %setdefault('ylbls',[10,14,18,22])
-  %setdefault('taxEnd',2458637)
+  %setdefault('jdtill',2458637)
   %setdefault('taxPos',900)
   
   <script type="text/javascript" src="dragger.js"></script>
@@ -29,7 +32,7 @@
     var touchBox=document.getElementById('plotarea');
     var movElm=document.getElementById('xcursor'); 
     var posVal=document.getElementById('cursorPos');
-	 var swip = new pageSwiper(touchBox,movElm,posVal, {{taxEnd}}, {{taxPos}});
+	 var swip = new pageSwiper(touchBox,movElm,posVal, {{jdtill}}, {{taxPos}});
   }
   </script>
     

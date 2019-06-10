@@ -8,74 +8,8 @@ if __name__ == "__main__":
 else:
 	from accessories.hue.hueAPI import HueSensor,HueLight
 from lib.sampleCollector import DBsampleCollector,forever
-from lib.devConst import DEVT
+from lib.devConst import DEVT,get_logger
 
-QCONF = {  # example default configuration
-  "208": {
-    "typ": 5,
-    "source": "entree",
-    "name": "DeurLux"
-  },
-  "235": {
-    "typ": 12,
-    "source": "kamerEet",
-    "name": "eet knop"
-  },
-  "230": {
-    "typ": 12,
-    "source": "woon",
-    "name": "kamer knoppen"
-  },
-  "232": {
-    "typ": 11,
-    "name": "keukMotion",
-    "source": "keuken"
-  },
-  "244": {
-    "typ": 11,
-    "name": "MotMaroc",
-    "source": "tuin"
-  },
-  "243": {
-    "typ": 0,
-    "source": "tuin",
-    "name": "tempMaroc"
-  },
-  "256": {
-    "typ": 12,
-    "source": "zeSlaap",
-    "name": "zSlaap switch"
-  },
-  "231": {
-    "typ": 0,
-    "source": "keuken",
-    "name": "KeukTemp"
-  },
-  "206": {
-    "typ": 0,
-    "source": "entree",
-    "name": "DeurTemp"
-  },
-  "207": {
-    "typ": 11,
-    "source": "entree",
-    "name": "DeurMotion"
-  },
-  "245": {
-    "typ": 5,
-    "name": "luxMaroc",
-    "source": "tuin"
-  },
-  "233": {
-    "typ": 5,
-    "name": "KeukLux",
-    "source": "keuken"
-  },
-  "260":{    
-    "typ": 13,
-    "name": "eetstrip",
-    "devadr":"11"}
- }
 
 class hueSampler(DBsampleCollector):
 	devdat = {}
@@ -120,19 +54,80 @@ class hueSampler(DBsampleCollector):
 
 if __name__ == "__main__":
 	import asyncio
-	logger = logging.getLogger()
-	hand=logging.StreamHandler()
-	hand.setLevel(logging.INFO)
-	logger.addHandler(hand)	# use console
-	logger.addHandler(logging.FileHandler(filename='huelog.log', mode='w', encoding='utf-8'))
-	logger.setLevel(logging.DEBUG)
-	logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S")))
+	logger = get_logger(__file__)  #logging.getLogger()
 	conf={	# to be loaded from json file
 		"hueuser": "iDBZ985sgFNMJruzFjCQzK-zYZnwcUCpd7wRoCVM",
 		"huebridge": "192.168.1.21",	 
 		#"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 		"dbFile": '~/fs20store.sqlite'
 	}
+	QCONF = {  # example default configuration
+		"208": {
+		 "typ": 5,
+		 "source": "entree",
+		 "name": "DeurLux"
+		},
+		"235": {
+		 "typ": 12,
+		 "source": "kamerEet",
+		 "name": "eet knop"
+		},
+		"230": {
+		 "typ": 12,
+		 "source": "woon",
+		 "name": "kamer knoppen"
+		},
+		"232": {
+		 "typ": 11,
+		 "name": "keukMotion",
+		 "source": "keuken"
+		},
+		"244": {
+		 "typ": 11,
+		 "name": "MotMaroc",
+		 "source": "tuin"
+		},
+		"243": {
+		 "typ": 0,
+		 "source": "tuin",
+		 "name": "tempMaroc"
+		},
+		"256": {
+		 "typ": 12,
+		 "source": "zeSlaap",
+		 "name": "zSlaap switch"
+		},
+		"231": {
+		 "typ": 0,
+		 "source": "keuken",
+		 "name": "KeukTemp"
+		},
+		"206": {
+		 "typ": 0,
+		 "source": "entree",
+		 "name": "DeurTemp"
+		},
+		"207": {
+		 "typ": 11,
+		 "source": "entree",
+		 "name": "DeurMotion"
+		},
+		"245": {
+		 "typ": 5,
+		 "name": "luxMaroc",
+		 "source": "tuin"
+		},
+		"233": {
+		 "typ": 5,
+		 "name": "KeukLux",
+		 "source": "keuken"
+		},
+		"260":{    
+		 "typ": 13,
+		 "name": "eetstrip",
+		 "devadr":"11"
+		 }
+		}
 	
 	bri=1
 	async def huepoll():
@@ -172,4 +167,4 @@ if __name__ == "__main__":
 	hueobj.exit()
 	logger.critical("bye")
 else:	# this is running as a module
-	logger = logging.getLogger(__name__)	# get logger from main program
+	logger = get_logger()  # get logger from main program

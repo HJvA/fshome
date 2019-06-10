@@ -15,6 +15,13 @@ Sections
 ### Developers
 -->
 
+## [1.2.3] - 2019-06-10
+### Added
+- icon for ios home screen
+### Changed
+- time shift reset ?
+- get_logger function for all loggers
+
 ## [1.2.2] - 2019-06-06
 ### Added
 - x cursor in chart lets user go back in time

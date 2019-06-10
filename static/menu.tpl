@@ -1,7 +1,7 @@
 
 <form method="post" action="/menu" id="mmenu" >
  <input type="hidden" name="cursorPos" id="cursorPos" value={{taxPos}}>
- <input type="hidden" name="taxEnd" id="taxEnd" value={{taxEnd}}>
+ <input type="hidden" name="jdtill" id="jdtill" value={{jdtill}}>
  <fieldset class="fields">
   <div class="menubar" id="menu">
 %for dct in menitms:

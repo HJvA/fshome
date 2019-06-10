@@ -115,7 +115,7 @@ String.prototype.format.regex = new RegExp("{-?[0-9]+}", "g");
 
 
 
-pageSwiper =function (ulElm, movElm, cPosElm, taxEnd, taxPos, pageChanger){
+pageSwiper =function (ulElm, movElm, cPosElm, jdtill, taxPos, pageChanger){
 	var 
 		detecttouch = !!('ontouchstart' in window) || !!('ontouchstart' in document.documentElement) || !!window.ontouchstart || !!window.Touch || !!window.onmsgesturechange || (window.DocumentTouch && window.document instanceof window.DocumentTouch),
 		boxleft, // left position of moving box
@@ -126,12 +126,12 @@ pageSwiper =function (ulElm, movElm, cPosElm, taxEnd, taxPos, pageChanger){
 		threshold=boxWidth*0.5,
 		swiping=false,
 		ismousedown = false,
-		tEnd=taxEnd,
+		tEnd=jdtill,
 		PosValElm = cPosElm,
 		moveElm=movElm;	
 		moveElm.x1.baseVal.value = taxPos;
 		moveElm.x2.baseVal.value = taxPos;
-		console.log("setup dragger mov:",movElm.id," pos:", cPosElm.id," tend:",taxEnd," tpos:", taxPos)
+		console.log("setup dragger mov:",movElm.id," pos:", cPosElm.id," tend:",jdtill," tpos:", taxPos)
 		
 	
 	var handletouch = pageChanger || function(srcElm,trgElm){
