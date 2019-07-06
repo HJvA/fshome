@@ -15,6 +15,16 @@ Sections
 ### Developers
 -->
 
+## [1.2.5] - 2019-07-06
+### Fixed
+- cursor to point back in time
+- select multiple working on desktop sites
+
+## [1.2.4] - 2019-06-10
+### Fixed
+- night - morning - afternoon - evening :labels for 1day x axis
+### Changed
+
 ## [1.2.3] - 2019-06-10
 ### Added
 - icon for ios home screen

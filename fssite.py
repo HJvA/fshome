@@ -50,6 +50,29 @@ def typnames(devTyps):
 	''' convert DEVT id numbers to their name '''
 	return [dnm for dnm,tp in DEVT.items() if tp in devTyps or tp+100 in devTyps]
 
+def srcQids():
+	Qids=[]
+	cookie = bottle.request.get_cookie(COOKIE)
+	if cookie:
+		logger.info('using cookie :"%s"' % cookie)
+		cookie = list(json.loads(cookie))
+		cookie.extend([None,None,None])
+		src,selqs,ndays = tuple(cookie[:3])
+	else:
+		src=None
+		selqs=typnames(dbStore.quantities([src],prop=2))[:2]  # quantity typs that are in src
+		ndays=4
+		bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
+
+	for qs in sorted(selqs):
+		if qs in DEVT:
+			typ=DEVT[qs]
+			qkey = dbStore.quantity(src,typ)
+			Qids += qkey
+	return Qids,src
+
+		
+
 @app.route("/")
 @bottle.view(TPL)
 def index(name=TITLE):
@@ -61,6 +84,7 @@ def index(name=TITLE):
 	
 	srcs=list(dbStore.sources())
 	src=srcs[0]
+	quantIds=[]
 	cookie = bottle.request.get_cookie(COOKIE)
 	if cookie:
 		logger.info('using cookie :"%s"' % cookie)
@@ -76,8 +100,53 @@ def index(name=TITLE):
 		selqs=['temperature']
 	page = dict(menitms=buildMenu(srcs,src,typnames(dbStore.quantities(prop=2)),selqs,ndays))
 	#page = redraw(src,selqs,julianday())
-	page.update( dict(title=name, footer=__copyright__, jdtill=julianday()))
+	page.update( dict(title=name, footer=__copyright__, jdtill=julianday(),ndays=ndays,grQuantIds=quantIds))
 	return bottle.template(TPL, page)
+
+@app.post('/cursor', method="POST")
+def cursorhandler():
+	''' handle end of cursor movement
+	receive data send by dragger.js->finalise->senddata '''
+	rec = bottle.request.json
+	jd = float(rec['jdtill']) - (900 -rec['cursorPos'])/800*float(rec['ndays']);
+	qids = rec['grQuantIds']
+	logger.info("cursor %s at %s for %s " % (rec,prettydate(jd), qids))
+	#logger.info("curs post:%s" % bottle.request.body.read()) 
+	return dict(dd=prettydate(jd),jdtill=jd)
+
+@app.post('/menu', method="POST")
+def formhandler():
+	''' Handle form submission '''
+	logger.info("menu post:%s" % bottle.request.body.read()) 
+	selqs = bottle.request.forms.getall('quantities')
+	src=bottle.request.forms.get('source')
+	tbcknm=bottle.request.forms.get('tmback')
+	cursXpos=bottle.request.forms.get('cursorPos')
+	jdtill=bottle.request.forms.get('jdtill')
+	
+	try:
+		ndays=next(tb for tb,tup in tmBACKs.items() if tbcknm in tup[0])
+	except StopIteration:
+		ndays=5
+
+	jdofs =(plXMARG+plWIDTH-int(cursXpos))/plWIDTH * ndays  # cursor pos giving time offset
+	if jdtill:
+		jdtill=float(jdtill)  # preserve actual time frame
+	else:
+		jdtill=julianday()
+	jdtill -= jdofs
+	if abs(jdtill-julianday())<ndays/5.0:
+		jdtill=julianday()  # adjust to now when close
+	else:
+		logger.info("adjusting jd %g with ofs:%f" % (jdtill,jdofs))
+		
+	statbar=bottle.request.forms.get('statbar')
+	logger.info("statbar=%s" % statbar)
+	
+	logger.info("response:qtt=%s src=%s jd=%s ndys=%s cPos=%s" % (selqs, src, prettydate(jdtill), tbcknm,cursXpos))
+	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
+	return bottle.template(TPL, redraw(src, selqs, jdtill, ndays))
+	
 
 def buildCurve(xdat, ydat, xsize, ysize, xstart,ystart):
 	''' build svg polyline '''
@@ -161,6 +230,8 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 	''' build data for svg chart including axes,labels,gridlines,curves,histogram'''
 	data=[]
 	subtitle=[]
+	ret = dict(title=TITLE,ndays=ndays,jdtill=jdtill,cursorPos=plXMARG+plWIDTH,curves=[])
+	
 	for jdat,ydat,selq in zip(jdats,ydats,selqs):
 		if len(ydat)>0:
 			vmax = max(ydat)
@@ -188,9 +259,10 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 			logger.debug("selq:%s,len:%d,col:%s,ylbls:%s" % (selq,len(jdat),stroke,ylbls))
 			curve=dict(crv=crv, stroke=stroke, ylbls=ylbls, selq=selq, qtyp=qtyp, legend=selq)
 			data.append(curve)
+	ret['subtitle']=" , ".join(subtitle)
 	if len(data)==0:
 		logger.warning('missing data:jd:%d yd:%d q:%d' % (len(jdats),len(ydats),len(selqs)))
-		return dict (title=TITLE, subtitle=" , ".join(subtitle), curves=[], jdtill=jdtill, taxPos=900)
+		return ret
 	
 	xlbltup = tmBACKs[ndays]
 	lblformat=xlbltup[3]
@@ -200,10 +272,11 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 
 	gridlocs= tax_grid(jdtill,ndays,gridstep)
 	xgrid = [round(plXMARG+plWIDTH-(jdtill-jd)*xscl,1) for jd in gridlocs]
-	xlbls=bld_dy_lbls([round(jd+gridstep/2) for jd in gridlocs[:-1]],lblformat)
+	xlbls=bld_dy_lbls([jd+gridstep/2 for jd in gridlocs[:-1]],lblformat)
 
 	logger.info("ndays=%.4g xlbls=%s xgrid=%s" % (ndays,xlbls,xgrid))
-	return dict( title=TITLE+"   till:%s" % prettydate(jdtill), subtitle=" , ".join(subtitle), curves=data, xgrid=xgrid, xlbls=xlbls, jdtill=jdtill, taxPos=900)
+	ret.update(dict(title=TITLE+"   till:%s" % prettydate(jdtill), curves=data, xgrid=xgrid, xlbls=xlbls))
+	return ret
 
 def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	''' data for menu.tpl '''
@@ -219,45 +292,8 @@ def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	#logger.info("menu=%s" % menu)
 	return menu
 
-@app.post('/cursor', method="POST")
-def cursorhandler():
-	''' handle end of cursor movement '''
-	rec = bottle.request.json
-	#tpos = rec['tEnd'] - (900-rec['pos'])/800*ndays
-	logger.info("cursor %s" % rec)
-	logger.info("form post:%s" % bottle.request.body.read()) 
-	return dict( taxPos=rec['pos'])
-
-@app.post('/menu', method="POST")
-def formhandler():
-	''' Handle form submission '''
-	logger.info("menu post:%s" % bottle.request.body.read()) 
-	selqs = bottle.request.forms.getall('quantities')
-	src=bottle.request.forms.get('source')
-	tbcknm=bottle.request.forms.get('tmback')
-	cursXpos=bottle.request.forms.get('cursorPos')
-	jdtill=bottle.request.forms.get('jdtill')
-
-	try:
-		ndays=next(tb for tb,tup in tmBACKs.items() if tbcknm in tup[0])
-	except StopIteration:
-		ndays=5
-
-	jdofs =(plXMARG+plWIDTH-int(cursXpos))/plWIDTH * ndays  # cursor pos giving time offset
-	if jdtill:
-		jdtill=float(jdtill)  # preserve actual time frame
-	else:
-		jdtill=julianday()
-	jdtill -= jdofs
-	if abs(jdtill-julianday())<ndays/5:
-		jdtill=julianday()  # adjust to now when close
 	
-	logger.info("form post:qtt=%s src=%s jd=%s ndys=%s cPos=%s" % (selqs, src, prettydate(jdtill), tbcknm,cursXpos))
-	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
-	return bottle.template(TPL, redraw(src, selqs, jdtill, ndays))
-	
-	
-def redraw(src, selqs, jdnow, ndays=7):
+def redraw(src, selqs, jdtill, ndays=7):
 	''' create data for main TPL page '''
 	srcs=sorted(dbStore.sources())
 	#quantities=sorted(dbStore.quantities())
@@ -265,6 +301,7 @@ def redraw(src, selqs, jdnow, ndays=7):
 	jdats=[]
 	ydats=[]
 	qss=[]
+	grQuantIds=set()
 	xlbltup = tmBACKs[ndays]
 
 	avgminutes = xlbltup[1]
@@ -273,10 +310,11 @@ def redraw(src, selqs, jdnow, ndays=7):
 			typ=DEVT[qs]
 			qkey = dbStore.quantity(src,typ)
 			if qkey is not None:
+				grQuantIds.add(qkey)
 				if qs=='energy':
-					recs = dbStore.fetchiiavg(qkey-1,qkey,tstep=avgminutes,daysback=ndays,jdend=jdnow)
+					recs = dbStore.fetchiiavg(qkey-1,qkey,tstep=avgminutes,daysback=ndays,jdend=jdtill)
 				else:
-					recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays,jdend=jdnow)
+					recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays,jdend=jdtill)
 				if recs is None or len(recs)==0:
 					continue
 				if typ in qCOUNTING:
@@ -287,7 +325,7 @@ def redraw(src, selqs, jdnow, ndays=7):
 				ydats.append([rec[iy] for rec in recs])
 				jdats.append([rec[0] for rec in recs])  # julian days
 				qss.append(qs)
-	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays),  **buildChart(jdats,ydats,qss,jdnow,ndays))
+	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays), grQuantIds=list(grQuantIds), **buildChart(jdats,ydats,qss,jdtill,ndays))
 	logger.debug("page:\n%s\n" % page)
 	return page
 	

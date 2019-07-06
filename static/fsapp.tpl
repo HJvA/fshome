@@ -24,16 +24,30 @@
   %setdefault('footer',"")
   %setdefault('ylbls',[10,14,18,22])
   %setdefault('jdtill',2458637)
-  %setdefault('taxPos',900)
+  %setdefault('ndays',1)
+  %setdefault('cursorPos',900)
+  %setdefault('statbar',[])
   
   <script type="text/javascript" src="dragger.js"></script>
   <script type="text/javascript">
    function onLoad() {
     var touchBox=document.getElementById('plotarea');
     var movElm=document.getElementById('xcursor'); 
-    var posVal=document.getElementById('cursorPos');
-	 var swip = new pageSwiper(touchBox,movElm,posVal, {{jdtill}}, {{taxPos}});
+    //var grQuants={{[curve['legend'] for curve in curves]}};
+    var params=document.getElementById('params');
+	 var swip = new pageSwiper(touchBox,movElm,params);
   }
+  function onFocus(elm){
+   if (!isMobile.any()) {
+    console.log("focus" + elm.style.height);
+    elm.parentNode.style.height = '200px'; 
+    elm.style.display = 'table-cell';
+    }
+  }
+  function onBlur(elm){
+   elm.parentNode.style.height = '3em';
+  }
+  
   </script>
     
  </head>
@@ -42,25 +56,19 @@
   <div class="headng">{{title}}
     <p> {{subtitle}} </p>
   </div>  
-    <br/>
+  <br/>
     %menu = include("static/menu.tpl")
-    <br/>
+  <br/>
 
  <svg class="graph" xmlns="http://www.w3.org/2000/svg" height="300" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    
-  <!--
-  	style="border: 8px solid #cccccc; border-radius: 20px "
-       16 => 50    scl=800/(5-1)=200   -400/(22-10)=-33
-       10 => 450   450 = -10*scl + ofs => ofs = 780
-       style="clip-path: url(#clpPth); "
-       width:<input type="text" id="swidth" />
-     -->
+  
   <defs>
       <clipPath id="clpPth">
          <rect x="100" y="50" width="800" height="400"> </rect>
       </clipPath>
   </defs>
   <rect id="plotarea" class="grid" x="100" y="50" width="800" height="400"> </rect>
-  <line id="xcursor" class="cursor" x1="110" y1="50" x2="110" y2="450"> </line>
+  <line id="xcursor" class="cursor" x1="900" y1="42" x2="900" y2="458"> </line>
 
   %for curve,side,xleg in zip(curves,[94,906,44,956],[300,500,100,700]):
      <g class="surfaces" clip-path="url(#clpPth)">
@@ -84,7 +92,7 @@
      </g>
   %end
     
-     <g class="grid x-grid" transform="ref(svg)" >
+     <g class="grid x-grid"  >
        %for x in xgrid:
         <line x1="{{x}}" x2="{{x}}" y1="50" y2="450"></line>
        %end
@@ -94,7 +102,7 @@
         <line x1="100" x2="900" y1="{{y}}" y2="{{y}}"></line>    
        %end
      </g>
-     <g class="labels x-labels" transform="ref(svg)">
+     <g class="labels x-labels" >
        <text  x="50%" y="98%">{{xaxlbl}}</text>
        %for d in range(len(xgrid)-1):
          <text  x="{{(xgrid[d]+xgrid[d+1])/2}}" y="475">{{xlbls[d]}}</text>
@@ -102,11 +110,6 @@
      </g>
  </svg>
 
-<hr/>
- <div class="fields atbottom">
-   <select id="status" class="busy">
-      <option><i>{{!footer}}</i></option>
-   </select>
- </div>
+
 </body>
 </html>

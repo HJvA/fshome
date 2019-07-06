@@ -1,53 +1,69 @@
 
 
 
-function onPageChangeExample(srcElm,trgElm) {
-	console.log("page change from %s to %s",srcElm.id,trgElm.id);
-	if (srcElm.id=="cryp" || trgElm.id=="cryp"){
-		var i;
-		var trg="";
-		var src=srcElm.textContent; 
-		//if (srcElm.id=="cryp")
-		//	src=decodeURIComponent(src);
-		for (i=0; i<src.length; i++)
-			trg += String.fromCharCode(src.charCodeAt(i) ^ 0x001c);
-		//if (trgElm.id=="cryp")
-		//	trg=encodeURIComponent(trg);
-		trgElm.textContent=trg;
-	}
-	else if (srcElm.id=="html" && trgElm.id=="rich")
-		trgElm.innerHTML=srcElm.textContent;
-	else if (srcElm.id=="rich" && trgElm.id=="html") {
-		trgElm.textContent=srcElm.innerHTML;
-	}
-}
-
 // send some values to the server
 function sendData(data) {
-  console.log("send data:",data);
+  //console.log("send data:",data);
   var xhr = new XMLHttpRequest();
   xhr.open("POST", "/cursor", true);
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
-      console.log("response:" + this.responseText)
+      console.log("response:" + this.responseText);
       var myArr = JSON.parse(this.responseText);
-      msg("response "+ JSON.stringify(myArr));
+      msg(" dd "+ myArr["dd"]);
     }
   };
+  for (kelm in data) {
+  	  data[kelm] = data[kelm].value;
+  }
+  console.log("sending ",JSON.stringify(data));
   xhr.send(JSON.stringify(data));
+}
+// if( isMobile.any() ) alert('Mobile');
+//https://github.com/smali-kazmi/detect-mobile-browser
+var isMobile = {
+    Android: function() {
+        return navigator.userAgent.match(/Android/i);
+    },
+    BlackBerry: function() {
+        return navigator.userAgent.match(/BlackBerry/i);
+    },
+    iOS: function() {
+        return navigator.userAgent.match(/iPhone|iPad|iPod/i);
+    },
+    Opera: function() {
+        return navigator.userAgent.match(/Opera Mini/i);
+    },
+    Windows: function() {
+        return navigator.userAgent.match(/IEMobile/i) || navigator.userAgent.match(/WPDesktop/i);
+    },
+    any: function() {
+        return (isMobile.Android() || isMobile.BlackBerry() || isMobile.iOS() || isMobile.Opera() || isMobile.Windows());
+    }
+}
+function readCookie(name) {
+	var nameEQ = name + "=";
+	var ca = document.cookie.split(';');
+	for(var i=0;i < ca.length;i++) {
+		var c = ca[i];
+		while (c.charAt(0)==' ') c = c.substring(1,c.length);
+		if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+	}
+	return null;
 }
 
 // show status message in either html section or input
 function msg(txt, append, destinId) {
 	if (destinId==null)
-		destinId='status';
+		destinId='statbar';
 	var statmsg = document.getElementById(destinId);
 	if (statmsg==null) {
 		console.log(txt);
 		return;
 	}
-	
+	statmsg.classList.add("stabilise");
+	statmsg.classList.add("busy");
 	var i = txt.indexOf('\f'); // form feed , clear screenX
 	if (i>=0)
 		txt = txt.substr(i);
@@ -66,9 +82,11 @@ function msg(txt, append, destinId) {
 			elm.parentNode.removeChild(elm);
 			//console.log("remove elm " + elm);
 		}
-		statmsg.style.background="yellow";
+		//statmsg.style.background="yellow";
 		setTimeout(function(){
-			statmsg.style.background="white";
+			//statmsg.style.background="white";
+			//statmsg.classList.remove("stabilise");
+			statmsg.className = "";
 		},5000);
 	}
 	else if (append && i<0) {
@@ -84,10 +102,25 @@ function msg(txt, append, destinId) {
 }
 function msgState(state, destinId) {
 	if (destinId==null)
-		destinId='status';
+		destinId='statbar';
 	var statmsg = document.getElementById(destinId);
 	statmsg.className = state;
 	//statmsg.classList.toggle(state);
+}
+function julday(cursPos,jdtill,ndays) {
+  var jd = jdtill - (900 -cursPos)/800*ndays;
+  var tm = (jd - 2440587.5) * 86400.0;
+  var date = new Date(tm*1000);
+  return date.getDate()+"-"+date.toLocaleTimeString();
+}
+function divDict(divElm) {
+  lst={};
+  var elms = divElm.getElementsByTagName("*");
+  for (var i = 0; i < elms.length; i++) {
+     lst[elms[i].id] = elms[i];
+     console.log(elms[i].id,":",elms[i].value);
+  }
+  return lst;
 }
 
 // string formatting
@@ -113,62 +146,57 @@ String.prototype.format = function (args) {
 };
 String.prototype.format.regex = new RegExp("{-?[0-9]+}", "g");
 
-
-
-pageSwiper =function (ulElm, movElm, cPosElm, jdtill, taxPos, pageChanger){
+pageSwiper =function (ulElm, movElm, cParams){
 	var 
 		detecttouch = !!('ontouchstart' in window) || !!('ontouchstart' in document.documentElement) || !!window.ontouchstart || !!window.Touch || !!window.onmsgesturechange || (window.DocumentTouch && window.document instanceof window.DocumentTouch),
-		boxleft, // left position of moving box
-		movorgx,
-		startx, // starting x coordinate of touch point
-		dist = 0, // distance traveled by touch point
+		startx = 0, // starting x coordinate of touch point
+		starty=0,
+		orgx=movElm.x1.baseVal.value,
+		orgy=0,
 		boxWidth=ulElm.offsetWidth*1.01,
 		threshold=boxWidth*0.5,
 		swiping=false,
+		pinching=false,
 		ismousedown = false,
-		tEnd=jdtill,
-		PosValElm = cPosElm,
+		params = cParams,
 		moveElm=movElm;	
-		moveElm.x1.baseVal.value = taxPos;
-		moveElm.x2.baseVal.value = taxPos;
-		console.log("setup dragger mov:",movElm.id," pos:", cPosElm.id," tend:",jdtill," tpos:", taxPos)
+		//moveElm.x1.baseVal.value = taxPos;
+		//moveElm.x2.baseVal.value = taxPos;
+		console.log("setup dragger mov:",movElm.id," tpos:", orgx," quants:",params['grQuantIds'])
 		
 	
-	var handletouch = pageChanger || function(srcElm,trgElm){
+	var handletouch = function(srcElm,trgElm){
 			console.log("page change from %s to %s",srcElm.id,trgElm.id);
 		};
-
-	var lis = ulElm.getElementsByTagName("li");
-	if (lis.length==0){
-	  lis = [ulElm]; 
-	}
-	//finaliseLi(actli);
 		
-	function setPos(movElm, pxPos) {
-		//var scale =(upVal-lowVal)/boxWidth;
-		//if (boxElm.style.left==null)
+		
+	function setPos(movElm, distx) {
 		if (!movElm.moving)	
 			movElm.classList.remove("stabilise"); 
 		movElm.moving=true;
-		//movElm.style.left = pxPos + 'px';
 		var yOffset=0;
-		var transformAttr = ' translate(' + pxPos + ',' + yOffset + ')';
+		var transformAttr = ' translate(' + distx + ',' + yOffset + ')';
+		var prm=divDict(params);
       movElm.setAttribute('transform', transformAttr); 
-		msg("setPos " + pxPos);
+      msg("dd: "+julday(distx+orgx, prm["jdtill"].value, prm["ndays"].value));
 	}
-	function finaliseLi(li){
-		moveElm.x1.baseVal.value = dist+movorgx;
-		moveElm.x2.baseVal.value = dist+movorgx;
-		moveElm.setAttribute("transform","null");
-		//var cPosElm = document.getElementById('cursorPos');
-		var ps = dist+movorgx;
-		PosValElm.value = ps.toString();
-		
-		sendData({"pos":dist+movorgx,"tEnd":tEnd})
-		moveElm.classList.add("stabilise");
-		//console.log("li:%d ncls:%d",i,lis[i].classList.length);
-		moveElm.moving=false;
+	function finaliseLi(dist){
+		if (swiping){
+		  moveElm.x1.baseVal.value = dist+orgx;
+		  moveElm.x2.baseVal.value = dist+orgx;
+		  moveElm.setAttribute("transform","null");
+		  var ps = dist+orgx;
+		  prm=divDict(params);
+        prm["cursorPos"].value=dist+orgx;
+        var ndays = prm["ndays"].value;
+        msg("dd: "+julday(dist+orgx, prm["jdtill"].value, ndays));
+		  sendData(prm);
+		  moveElm.classList.add("stabilise");
+		  //msg("cookie "+readCookie("FSSITE"));
+		  moveElm.moving=false;
+		}
 		swiping=false;
+		pinching=false;
 	}
 	//check whether threshold has been passed	
 	function checkDistance(dist){
@@ -178,32 +206,32 @@ pageSwiper =function (ulElm, movElm, cPosElm, jdtill, taxPos, pageChanger){
 		return true;
 	}
 	ulElm.addEventListener('touchstart', function(e){
-		var touchobj = e.changedTouches[0]; // reference first touch point
-		boxleft=moveElm.offsetLeft;
-		if (boxleft === undefined){
-		  boxleft=0; //moveElm.x1.baseVal.value;
+		orgx=moveElm.x1.baseVal.value;
+		orgy=moveElm.y1.baseVal.value;
+		startx=parseInt(e.touches[0].clientX);
+		starty=parseInt(e.touches[0].clientY);
+		if (e.touches.length > 1){
+			pinching=true;
+			startx = (startx-parseInt(e.touches[1].clientX));
+			starty = (starty-parseInt(e.touches[1].clientY));
 		}
-		startx = parseInt(touchobj.clientX); // get x coord of touch point
-		movorgx = moveElm.x1.baseVal.value;
-		dist=0;
-		swiping=true;
+		else {
+			swiping=true;
+		}
+				
 		//e.preventDefault(); // prevent default click behavior
-		msg("touch start " + startx + " box "+boxleft+" lis "+movElm.style.left)
-		console.log("touchstart:%d, %d, %s",boxleft,startx,movElm.style.left);
+		msg("touch start " + startx + " box "+starty+" lis "+movElm.style.left)
+		console.log("touchstart:%d, %d, %s",startx,starty,movElm.style.left);
 	}, false);
 	
 	ulElm.addEventListener('touchmove', function(e){
 		var touchobj = e.changedTouches[0]; // reference first touch point for this event
 		if (swiping){
-			dist = parseInt(touchobj.clientX) - startx // calculate dist traveled by touch point
-			swiping = checkDistance(dist);
-		
-			if (swiping){
-				var pos = movorgx + dist;
-				//setPos(lis[actli], pos);
+			var dist = parseInt(touchobj.clientX) - startx // calculate dist traveled by touch point
+			if ( checkDistance(dist)){
 				setPos(moveElm, dist);		
 			} else {
-				finaliseLi(0);
+				finaliseLi(dist);
 			}
 		}
 		e.preventDefault();  //prevent default click behavior
@@ -211,12 +239,12 @@ pageSwiper =function (ulElm, movElm, cPosElm, jdtill, taxPos, pageChanger){
 	}, false);
 	
 	ulElm.addEventListener('touchend', function(e){
-		if (!swiping)
-			return;
-		var touchobj = e.changedTouches[0]; // reference first touch point for this event
-		dist = parseInt(touchobj.clientX) - startx; // calculate dist traveled by touch point
-		checkDistance(dist);
-		finaliseLi(0);
+		if (swiping || pinching){
+		  var touchobj = e.changedTouches[0]; // reference first touch point for this event
+		  var dist = parseInt(touchobj.clientX) - startx; // calculate dist traveled by touch point
+		  checkDistance(dist);
+		  finaliseLi(dist);
+		}
 	},false);
 	
 	if (!detecttouch){
