@@ -95,3 +95,5 @@ The knowledge about the fs20 devices with the CUL interface is comming from Rudo
 Fs20 devices are/were distributed by <https://www.elv.de/fs20-funkschaltsystem.html>. (can also be ordered from amazon.de)  
 Information on the hue devices can be found here <https://www2.meethue.com/en-us>  
 Information on the DSMR meter can be found here <https://www.netbeheernederland.nl/dossiers/slimme-meter-15/documenten>  
+The bluetooth low energy library <https://github.com/IanHarvey/bluepy>
+
