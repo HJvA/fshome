@@ -17,7 +17,8 @@ except ImportError:
 	
 from lib.devConfig import devConfig
 from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate,SiNumForm
-from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb,get_logger
+from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb
+from lib.tls import get_logger
 
 __copyright__="<p>Copyright &copy; 2019, hjva</p>"
 TITLE=r"fshome quantity viewer"

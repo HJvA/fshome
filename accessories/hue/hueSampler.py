@@ -8,11 +8,12 @@ if __name__ == "__main__":
 else:
 	from accessories.hue.hueAPI import HueSensor,HueLight
 from lib.sampleCollector import DBsampleCollector,forever
-from lib.devConst import DEVT,get_logger
+from lib.devConst import DEVT
+from lib.tls import get_logger
 
 
 class hueSampler(DBsampleCollector):
-	devdat = {}
+	devdat = {}	# dict of hue devices (either lights or sensors)
 	manufacturer="Signify"
 	minqid=200
 	def __init__(self,iphue,hueuser, *args, **kwargs):
@@ -29,7 +30,7 @@ class hueSampler(DBsampleCollector):
 		for hueid,dev in devlst.items():
 			#typ = DEVT['lamp']
 			#lightTyp = HueLight.lightTyp(devlst,hueid)
-			gamut=HueLight.gamut(devlst, hueid)
+			gamut=HueLight.gamut(hueid)
 			qid = self.qCheck(None,hueid,DEVT['lamp'],dev['name'])
 			if qid:
 				logger.debug("having light:(%s) with %s" % (self.servmap[qid],gamut))
@@ -56,78 +57,91 @@ if __name__ == "__main__":
 	import asyncio
 	logger = get_logger(__file__)  #logging.getLogger()
 	conf={	# to be loaded from json file
-		"hueuser": "iDBZ985sgFNMJruzFjCQzK-zYZnwcUCpd7wRoCVM",
+		"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqcRwsel",
 		"huebridge": "192.168.1.21",	 
 		#"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 		"dbFile": '~/fs20store.sqlite'
 	}
 	QCONF = {  # example default configuration
-		"208": {
-		 "typ": 5,
-		 "source": "entree",
-		 "name": "DeurLux"
-		},
-		"235": {
-		 "typ": 12,
-		 "source": "kamerEet",
-		 "name": "eet knop"
-		},
-		"230": {
-		 "typ": 12,
-		 "source": "woon",
-		 "name": "kamer knoppen"
-		},
-		"232": {
-		 "typ": 11,
-		 "name": "keukMotion",
-		 "source": "keuken"
-		},
-		"244": {
-		 "typ": 11,
-		 "name": "MotMaroc",
-		 "source": "tuin"
-		},
-		"243": {
-		 "typ": 0,
-		 "source": "tuin",
-		 "name": "tempMaroc"
-		},
-		"256": {
-		 "typ": 12,
-		 "source": "zeSlaap",
-		 "name": "zSlaap switch"
-		},
-		"231": {
-		 "typ": 0,
-		 "source": "keuken",
-		 "name": "KeukTemp"
-		},
-		"206": {
-		 "typ": 0,
-		 "source": "entree",
-		 "name": "DeurTemp"
-		},
-		"207": {
-		 "typ": 11,
-		 "source": "entree",
-		 "name": "DeurMotion"
-		},
-		"245": {
-		 "typ": 5,
-		 "name": "luxMaroc",
-		 "source": "tuin"
-		},
-		"233": {
-		 "typ": 5,
-		 "name": "KeukLux",
-		 "source": "keuken"
-		},
-		"260":{    
-		 "typ": 13,
-		 "name": "eetstrip",
-		 "devadr":"11"
-		 }
-		}
+  "207": {
+    "source": "entree",
+    "name": "DeurMotion",
+    "devadr": "7",
+    "typ": 11
+  },
+  "243": {
+    "source": "tuin",
+    "name": "tempMaroc",
+    "devadr": "12",
+    "typ": 0
+  },
+  "208": {
+    "source": "entree",
+    "name": "DeurLux",
+    "devadr": "8",
+    "typ": 5
+  },
+  "256": {
+    "source": "zeSlaap",
+    "name": "zSwitch",
+    "devadr": "3",
+    "typ": 12
+  },
+  "245": {
+    "source": "tuin",
+    "name": "luxMaroc",
+    "devadr": "11",
+    "typ": 5
+  },
+  "206": {
+    "source": "entree",
+    "name": "DeurTemp",
+    "devadr": "9",
+    "typ": 0
+  },
+  "231": {
+    "source": "keuken",
+    "name": "keukTemp",
+    "devadr": "19",
+    "typ": 0
+  },
+  "244": {
+    "source": "tuin",
+    "name": "motMaroc",
+    "devadr": "10",
+    "typ": 11
+  },
+  "230": {
+    "source": "woon",
+    "name": "tapKnops",
+    "devadr": "2",
+    "typ": 12
+  },
+  "232": {
+    "source": "keuken",
+    "name": "keukMot",
+    "devadr": "17",
+    "typ": 11
+  },
+  "235": {
+    "source": "kamerEet",
+    "name": "eetKnops",
+    "devadr": "5",
+    "typ": 12
+  },
+  "233": {
+    "source": "keuken",
+    "name": "keukLux",
+    "devadr": "18",
+    "typ": 5
+  },
+  "260":{    
+    "typ": 13,
+    "name": "eetStrip",
+    "devadr":"4",
+    "aid":20
+  }
+}
 	
 	bri=1
 	async def huepoll():

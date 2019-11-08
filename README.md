@@ -39,6 +39,7 @@ The measured temeratures and humidities and other recorded events can be display
 ## Installation <a name="Installation"></a>
 
 Starting on a standard Raspberry pi on Raspbian (a debian clone, but almost any linux computer probably will be ok) fist make sure you have Python 3.5 or later installed. Also install git and pip3 (e.g. using ```apt-get install <package>```  ). Then download the fshome project  
+ 
 ```bash
 git clone git://github.com/HJvA/fshome
 cd fshome
@@ -49,7 +50,9 @@ When using the fs20 devices, connect the CUL transceiver to a USB port of your R
 
 ## Configuring devices <a name="Configure"></a>
 
-The fs20.json file should contain the json representation of the fs20 devices that are present in your haus. Delete the fs20.json file to have a fresh install. First run fs20Sampler.py for a while to automatically fill the file with the devices the are currently emitting (do Press your fs20 handsenders and buttons to emit something). You can edit the fs20.json file afterwards, and change the dict key to fill in a (unique) display_name. You can also change the 'typ' field to represent the correct type of the device (typ has to correspond to one of the DEVT members listed below)   
+The fs20.json file should contain the json representation of the fs20 devices that are present in your haus. Delete the fs20.json file to have a fresh install. First run fs20Sampler.py for a while to automatically fill the file with the devices the are currently emitting (do Press your fs20 handsenders and buttons to emit something). You can edit the fs20.json file afterwards, and change the dict key to fill in a (unique) display_name. You can also change the 'typ' field to represent the correct type of the device (typ has to correspond to one of the DEVT members listed below)  
+
+The hue.json file should contain the json representation of hue devices that are connected to your hue bridge. Clear the hue.json file, except for the ip adress of the bridge on your LAN. Run hueAPI.py once to register fshome on the bridge, and to get an idea which devices are known. Enter the obtained userid in the hue.json file. Run fsmain.py for a while, and exit pressing ctrl-C See the error.log file for a proposed list of devices to be copied in hue.json
 
 Similar setups can be carried out with hueSampler.py and p1DSMR.py
 

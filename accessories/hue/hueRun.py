@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.5
-""" logs hue sensor values to a database """
+""" 
+logs hue sensor values to a database """
 
 import logging
 import os,sys,time
@@ -80,7 +81,8 @@ if __name__ == "__main__":
 	
 	cnf = devConfig('hue.json')
 	if cnf['hueuser'] is None:
-		cnf['hueuser'] = "iDBZ985sgFNMJruzFjCQzK-zYZnwcUCpd7wRoCVM"
+		cnf['hueuser'] = "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqcRwsel"
+		#"iDBZ985sgFNMJruzFjCQzK-zYZnwcUCpd7wRoCVM"
 
 	try:
 		hueLog = hueLogger(cnf)

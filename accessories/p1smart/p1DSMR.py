@@ -24,7 +24,8 @@ if __name__ == "__main__":
 else:
 	from lib.serComm import serComm
 	logger = logging.getLogger(__name__)	# get logger from main program
-from lib.devConst import DEVT,get_logger
+from lib.devConst import DEVT
+from lib.tls import get_logger
 from lib.dbLogger import julianday,prettydate
 from lib.sampleCollector import DBsampleCollector,forever
 
@@ -48,16 +49,50 @@ p1QDEF={
 	'41.7.0':('PowerL2'      ,1000,DEVT['power']),
 	'61.7.0':('PowerL3'      ,1000,DEVT['power']),
 	'2.7.0' :('receivedPower',1000,DEVT['power']),
-	'32.7.0':('VoltageL1'    ,1,DEVT['voltage']),	
-	'52.7.0':('VoltageL2'    ,1,DEVT['voltage']),
-	'72.7.0':('VoltageL3'    ,1,DEVT['voltage']),
-	'31.7.0':('CurrentL1'    ,1,DEVT['current']),
-	'51.7.0':('CurrentL2'    ,1,DEVT['current']),
-	'71.7.0':('CurrentL3'    ,1,DEVT['current']),
-	'24.2.1':('gasVolume'    ,1,DEVT['gasVolume']),
-	'1.8.1' :('EnergyElectrLow',1,DEVT['energy']),	#Wh low tarif
+	'32.7.0':('VoltageL1'    ,1   ,DEVT['voltage']),	
+	'52.7.0':('VoltageL2'    ,1   ,DEVT['voltage']),
+	'72.7.0':('VoltageL3'    ,1   ,DEVT['voltage']),
+	'31.7.0':('CurrentL1'    ,1   ,DEVT['current']),
+	'51.7.0':('CurrentL2'    ,1   ,DEVT['current']),
+	'71.7.0':('CurrentL3'    ,1   ,DEVT['current']),
+	'24.2.1':('gasVolume'    ,1   ,DEVT['gasVolume']),
+	'1.8.1' :('EnergyElectrLow' ,1,DEVT['energy']),	#Wh low tarif
 	'1.8.2' :('EnergyElectrNorm',1,DEVT['energy'])	#Wh normal tarif
 	}
+
+tstamp=None
+
+def parseDSMR(line):
+	global tstamp
+	if line and len(line)>0:
+		m = re.search(reOBIS, line)
+		val = re.search(r"\((.*)\)", line)
+		if m and val and len(val.groups())==1:
+			val = val.group(1)
+			#logger.debug('grps:%s val:%s' % (m.groups(),val))
+			try:
+				qkey = m.group(3)
+				if qkey in p1QDEF and tstamp is not None:
+					fval=float(val.split('*')[0])
+					return (qkey,fval)
+				elif qkey=='1.0.0':   #  tstamp
+					dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None
+					tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
+					tz = timezone(timedelta(seconds=-time.timezone))
+					return (qkey,tstamp,val)
+			except ValueError as e:
+				logger.error("bad num format in:%s for %s having:%s" % (val,qkey,e))
+		elif line[0]=='/':
+			identific = line
+			return ('idf',line)
+			#self.actual={}
+		elif line[0]=='!':
+			crc = line[1:]
+			return ('crc',crc)
+		else:
+			logger.info('bad line:%s val:%s' % (line,val))
+	return None
+	
 
 class p1DSMR(DBsampleCollector):
 	""" add DSMR specific methods to sampler class """
@@ -83,7 +118,25 @@ class p1DSMR(DBsampleCollector):
 		
 	async def receive_message(self):
 		line = await self.serdev.asyRead(timeout=0.1, termin=b'\r\n')	# msg is send every 1s
-		remi = self.serdev.remaining()
+		rec = parseDSMR(line)
+		if rec:
+			if rec[0] in p1QDEF:
+				qkey=rec[0]
+				fval=rec[1]
+				qid = self.qCheck(None,qkey,name=p1QDEF[qkey][0])	# create when not there
+				self.qCheck(qid,qkey,typ=p1QDEF[qkey][2])	# define also typ
+				self.check_quantity(self.tstamp, quantity=qid, val=fval*p1QDEF[qkey][1])
+			elif rec[0]=='1.0.0':
+				self.tstamp=rec[1]
+				val=rec[2]
+				dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None
+				self.tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
+				tz = timezone(timedelta(seconds=-time.timezone))
+			elif rec[0]=='idf':
+				self.actual={}
+		return self.serdev.remaining()
+
+		
 		if line and len(line)>0:
 			m = re.search(reOBIS, line)
 			val = re.search(r"\((.*)\)", line)

@@ -25,8 +25,19 @@ echo !docs/* >> ./HAP-python/.git/info/sparse-checkout
 echo !accessories/* >> ./HAP-python/.git/info/sparse-checkout
 #echo "pyhap/">> ./HAP-python/.git/info/sparse-checkout
 echo "/*">> ./HAP-python/.git/info/sparse-checkout
-
 git submodule update --force --checkout HAP-python
+
+# get bluepy as submodule
+git clone --depth=1 --no-checkout https://github.com/IanHarvey/bluepy ./bluepy
+git submodule add https://github.com/IanHarvey/bluepy
+git -C ./bluepy config core.sparsecheckout true
+echo !docs/* >> ./bluepy/.git/info/sparse-checkout
+echo !bluez-5.47/* >> ./bluepy/.git/info/sparse-checkout
+echo "/*">> ./bluepy/.git/info/sparse-checkout
+git submodule update --force --checkout bluepy
+cd bluepy
+sudo apt install libglib2.0-dev
+pip3 install .
 
 #symlink to pyhap as HAP-python modules refer to pyhap directly
 ln -s ./HAP-python/pyhap ./pyhap

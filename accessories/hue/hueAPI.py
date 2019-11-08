@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.5
 """ Philips / Signify HUE Application Programming Interface
-	allows a user app to read sensors and set actors on the Hue bridge
+	allows a user app to read sensors and set actors on the Hue bridge.
+	Will create user id first time (press button on hue bridge) to be copied to conf file
 	"""
 
 import requests
@@ -33,37 +34,16 @@ def hueGET(ipadr,user='',resource='',timeout=2):
 	#logger.debug('hueGET resource:%s with %s ret:%d' % (resource,r.url,r.status_code))
 	return r
 
-
-
-"""
-import asyncio,aiohttp
-async def fetchurl(session, url):
-    async with session.get(url) as response:
-        return await response.text()
-
-async def asyHueGet(ipadr,user='',resource='',timeout=2):
-	r=None
-	url='https://'+ipadr+'/api/'
-	if len(user)>0:
-		url += user+'/'
-	if len(resource)>0:
-		url += resource
-	tasks = []
-	async with aiohttp.ClientSession() as session:
-		tasks.append(fetchurl(session, url))
-		htmls = await asyncio.gather(*tasks)
-	return htmls[0]
-"""
-		
-def createUser(devname,appname,devtype,ipadr=None):
+def createUser(devname,appname,ipadr=None):
 	''' create user on hue bridge '''
 	if ipadr is None:
 		ipadr = ipadrGET()
 	logger.critical('please press button on hue bridge within 30s')
 	time.sleep(30)
-	pst = requests.post('https://'+ipadr+'/api/', data='{"%s":"%s#%s"}' % (devtype,appname,devname),verify=false)
+	pst = requests.post('https://'+ipadr+'/api/', data='{"%s":"%s#%s"}' % ('devicetype',appname,devname),verify=False)
 	logger.warning('newuser:%s' % (pst.json()))
 	return pst.json()
+	
 
 def ipadrGET(bridgeName=None, portal='https://discovery.meethue.com/'):
 	''' finds ip adres of hue bridge on LAN '''
@@ -76,7 +56,7 @@ def ipadrGET(bridgeName=None, portal='https://discovery.meethue.com/'):
 		except requests.ConnectionError:
 			logger.error("ConnectionError ")
 			continue
-		if r.status_code == 200:
+		if r and r.status_code == 200:
 			cnf =  hueGET(adr,resource='config') # requests.get('https://%s/api/config' % adr,verify=False)
 			if cnf:
 				logger.info('config:%s' % cnf.json())
@@ -150,12 +130,12 @@ class HueBaseDev (object):
 			return cache[self.hueId]['name']
 		return None
 		
-	def setState(self, prop='on', val='true', reskey='state'):
+	def setState(self, prop='on', val='true', reskey='/state'):
 		''' executes put request for changing some hue bridge property '''
 		if self.last != val:
 			self.dtActive = datetime.now(timezone.utc)
 		logger.info('putState %s of %s to %s' % (prop,self.hueId,val))
-		requests.put('https://%s/api/%s' % (self.ipadr,self.user) + '/%s/%s/%s' % (self.resource,self.hueId,reskey), data='{"%s":%s}' % (prop,val),verify=False)
+		requests.put('https://%s/api/%s' % (self.ipadr,self.user) + '/%s/%s%s' % (self.resource,self.hueId,reskey), data='{"%s":%s}' % (prop,val),verify=False)
 		self.last=val
 	
 	def deleteProperty(self, reskey, resource='config/whitelist'):
@@ -174,7 +154,7 @@ class HueSensor (HueBaseDev):
 		super().__init__(hueId,'sensors',ipadr,userid)
 		self.refreshInterval=UPDATEINTERVAL
 		state = self.state()
-		if len(state)>0:
+		if state and not 'status' in state:
 			self.prop = next(typ for typ in SENSTYPES if typ in state)
 			logger.info('%s state=%s typ=%s nm=%s' % (self.hueId,state,self.prop,self.name()))
 		else:
@@ -182,7 +162,7 @@ class HueSensor (HueBaseDev):
 			self.prop=None
 		
 	def _cache(self, setval=None):
-		''' get or set_local cache. cache will be refreshed from bridge automatically if too old'''
+		''' get or set_local cache. cache will be refreshed from bridge automatically if too old i.e. > self.refreshInterval '''
 		if setval:
 			HueSensor._sensors = setval
 		else:
@@ -239,15 +219,18 @@ class HueSensor (HueBaseDev):
 		if HueSensor._sensors is None:
 			HueSensor._sensors =hueGET(ipadr,user,'sensors').json()
 			HueSensor._lastread = datetime.now(timezone.utc)
-		lst = {hueid:set(dat['state'].keys()) & set(types) for hueid,dat in HueSensor._sensors.items() if 'CLIP' not in dat['type']}
-		logger.info('list of sensor types in hue bridge=%s, possible=%s' % (lst,set(types)))
-		#return {id:{**(HueSensor._sensors[id]['state']), 'typ':list(typ)[0], 'name':HueSensor._sensors[id]['name']} for id,typ in lst.items() if len(typ)>0}
-		return {hueid:{**(HueSensor._sensors[hueid]['state']), 'typ':next(tpid for tpnm,tpid in types.items() if tpnm in typ), 'name':HueSensor._sensors[hueid]['name']} for hueid,typ in lst.items() if len(typ)>0}
+		if len(HueSensor._sensors)>0:
+			lst = {hueid:set(dat['state'].keys()) & set(types) for hueid,dat in HueSensor._sensors.items() if 'CLIP' not in dat['type']}
+			logger.info('list of sensor types in hue bridge=%s, possible=%s' % (lst,set(types)))
+			#return {id:{**(HueSensor._sensors[id]['state']), 'typ':list(typ)[0], 'name':HueSensor._sensors[id]['name']} for id,typ in lst.items() if len(typ)>0}
+			return {hueid:{**(HueSensor._sensors[hueid]['state']), 'typ':next(tpid for tpnm,tpid in types.items() if tpnm in typ), 'name':HueSensor._sensors[hueid]['name']} for hueid,typ in lst.items() if len(typ)>0}
+		return {}
 
 
 class HueLight(HueBaseDev):
-	_lights = None
-	_lastread=None
+	''' class representing 1 light on a hue bridge '''
+	_lights = None # all lights discovered on the bridge
+	_lastread = None
 	def __init__(self,hueId,gamut,ipadr,userid):
 		super().__init__(hueId,'lights',ipadr=ipadr,userid=userid)
 		self.refreshInterval=UPDATEINTERVAL*10
@@ -319,10 +302,11 @@ class HueLight(HueBaseDev):
 		if hueid in cache:
 			dev = cache[hueid]
 			return types.index(dev['type'])
-			
-	def gamut(cache, hueid):
-		if hueid in cache:
-			dev = cache[hueid]['capabilities']['control']
+	
+	@staticmethod
+	def gamut(hueid):
+		if HueLight._lights and hueid in HueLight._lights:
+			dev = HueLight._lights[hueid]['capabilities']['control']
 			if 'colorgamut' in dev:
 				return dev['colorgamut']	# [[0.6915, 0.3083], [0.17, 0.7], [0.1532, 0.0475]]
 			elif 'ct' in dev:
@@ -330,32 +314,30 @@ class HueLight(HueBaseDev):
 			elif 'mindimlevel' in dev:
 				return dev['mindimlevel']
 			return None
-				
 
 	@staticmethod
 	def devTypes(ipadr,user,types=LIGHTTYPES):
 		cache = hueGET(ipadr,user,'lights').json()
-		return cache
 		if HueLight._lights is None:
-			HueLight._lights =hueGET(ipadr,user,'lights').json()
 			HueLight._lastread = datetime.now(timezone.utc)
-
+			HueLight._lights =hueGET(ipadr,user,'lights').json()
+		return cache
 		lst = {hueid:{'typ':types.index(dev['type']),'name':dev['name'],**dev['state']} for hueid,dev in HueLight._lights.items() if 'CLIP' not in dev['type']}
 		logger.info("list of hue lights:%s" % lst)
 		return lst
 			
-if __name__ == '__main__':	# just testing the API
+if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	logger = logging.getLogger()
 	[logger.removeHandler(h) for h in logger.handlers[::-1]] # handlers persist between calls
 	logger.addHandler(logging.StreamHandler())	# use console
-	logger.addHandler(logging.FileHandler(filename=os.path.expanduser('~/hueApi.log'), mode='w', encoding='utf-8')) #details to log file
+	logger.addHandler(logging.FileHandler(filename=os.path.expanduser('hueApi.log'), mode='w', encoding='utf-8')) #details to log file
 	logger.setLevel(logging.DEBUG)
 	logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S%z")))
 	conf={	# defaults when not in config file
-		"hueuser": "iDBZ985sgFNMJruzFjCQzK-zYZnwcUCpd7wRoCVM",
+		"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqcRwsel",
 		"huebridge": "192.168.1.21"
 	}
-	conf['huebridge'] =ipadrGET()
+	#conf['huebridge'] =ipadrGET()
 	
 	ipadr=conf['huebridge']
 	user=conf['hueuser']
@@ -363,34 +345,65 @@ if __name__ == '__main__':	# just testing the API
 	from requests.packages.urllib3.exceptions import InsecureRequestWarning
 	requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 	
-	#r = requests.get(basurl('config'),verify=False)
-	#print('config:\n%s' % r.text)
-	print('sensors devs:\n%s' % HueSensor.devTypes(ipadr=conf['huebridge'],user=conf['hueuser']))
-	print('lights devs:\n%s' % HueLight.devTypes(ipadr=conf['huebridge'],user=conf['hueuser']))
+	lights = HueLight.devTypes(ipadr,user)
+	
+	updnms = { "DeurMot":{0:"DeurTemp", 5:"DeurLux", 11:"DeurMot"},
+			  "motMaroc":{0:"tempMaroc", 5:"luxMaroc", 11:"motMaroc"},
+			  "keukMot":{0:"keukTemp", 5:"keukLux", 11:"keukMot"} }
 
-	#logger.info('all:%s' % hueGET(''))
+	sns = hueGET(ipadr,user=user, resource='sensors')
+	if not sns or sns.status_code != 200:
+		logger.info('could not get sensors from %s (%s) with user %s' % (ipadr,sns,user))
+		user = createUser('homekit','fshome',ipadr=ipadr)
+		print('put hueuser in the config file:\n%s' % user)
+	else:
+		for adr,rec in sns.json().items():
+			logger.info("rsns %s:%s" % (adr,rec))
+		#r = requests.get(basurl('config'),verify=False)
+		#print('config:\n%s' % r.text)
+		
+		for adr in sorted(lights, key=lambda x: int(x)):
+			rec=lights[adr]
+			logger.info("ligt %s: rec=%s" % (adr,lights[adr]))
+			
+		sensors = HueSensor.devTypes(ipadr,user)
+		dev=None
+		for adr in sorted(sensors, key=lambda x: int(x)):
+			rec=sensors[adr]
+			sens = HueSensor(adr,ipadr,user)
+			logger.info("sns %s:nm=%s rec=%s" % (adr,sens.name(),sensors[adr]))
+			if rec['name'] in updnms:
+				dev = rec['name']
+			if dev and rec['typ'] in updnms[dev]:
+				nm = rec['name']
+				due = updnms[dev][rec['typ']]
+				updnms[dev].pop(rec['typ'])
+				if nm!=due:
+					logger.warning("setting hue %s to %s on %s" % (nm,due,dev))
+					sens.setState('name', '"%s"' % due, reskey='') #'"%s"' % due)
+		
+		#logger.info('all:%s' % hueGET(''))
 
-	sens = HueSensor('6',ipadr,user)
-	#sens.setState('name','"KeukLux"','')
-	print('sens%s:%s' % (sens.hueId,sens.state()))
-	print('temp %s upd:%s' % (sens.value(),sens.lastupdate()))
+		#sens = HueSensor('6',ipadr,user)
+		#sens.setState('name','"KeukLux"','')
+		#print('sens%s:%s' % (sens.hueId,sens.state()))
+		#print('temp %s upd:%s' % (sens.value(),sens.lastupdate()))
 	
-	illum = HueSensor('8',ipadr,user)
-	#illum.setState('name','"DeurLux"','')
-	print('sens8:%s' % illum.state())
-	print('illum %s upd:%s' % (illum.value(),illum.lastupdate()))
+		illum = HueSensor('8',ipadr,user)
+		#illum.setState('name','"DeurLux"','')
+		logger.info('sens8:%s' % illum.state())
+		logger.info('illum %s upd:%s' % (illum.value(),illum.lastupdate()))
+		
+		gamut = HueLight.gamut('3')
+		lmp = HueLight('3',gamut,ipadr,user)
+		logger.info('lmp3:%s' % lmp.state())
+		lmp.setState('sat',20)
+		#lmp.setState('effect','"colorloop"')
 	
-	lmp = HueLight('3',ipadr,user)
-	print('lmp3:%s' % lmp.state())
-	lmp.setState('sat',20)
-	#lmp.setState('effect','"colorloop"')
-	
-	#sensors =hueGET('sensors')
-	#print('Sensors\n:%s' % sensors)
-	whitelist = sens.hueGET('config')['whitelist']
-	logger.info("wl:%s" % whitelist)
-	sens.deleteProperty('M4Ga2aj9VIYP7OFIMlgxfuXzkrjRkoBkdoR5SO7-')
-	logger.info('lights lst:\n%s' % HueLight.devTypes(ipadr,user))
+		whitelist = sens.hueGET('config')['whitelist']
+		logger.info("wl:%s" % whitelist)
+		#sens.deleteProperty('M4Ga2aj9VIYP7OFIMlgxfuXzkrjRkoBkdoR5SO7-')
+		#logger.info('lights lst:\n%s' % lights)
 
 	#requests.put(basurl()+ '/lights/3/state', data='{"on":false}',verify=False)
 	

@@ -52,7 +52,7 @@ SIsymb = {
 	30:("flow","m3/s"),
 	31:("Vol","m3")
 	}
-	
+"""	
 def get_logger(pyfile=None, levelConsole=logging.INFO, levelLogfile=logging.DEBUG):
 	''' creates a logger logging to both console and to a log file but with different levels '''
 	if pyfile is None:
@@ -66,6 +66,13 @@ def get_logger(pyfile=None, levelConsole=logging.INFO, levelLogfile=logging.DEBU
 	reBASE=r"([^/]+)(\.\w+)$"
 	base = re.search(reBASE,pyfile).group(1)
 	logger.addHandler(logging.FileHandler(filename=base+'.log', mode='w', encoding='utf-8'))
+	
+	# always save errors to a file
+	hand = logging.FileHandler(filename='error.log', mode='a')
+	hand.setLevel(logging.ERROR)	# error and critical
+	logger.addHandler(hand)
+
 	logger.setLevel(levelLogfile)
 	logger.critical("### running %s dd %s ###" % (pyfile,time.strftime("%y%m%d %H:%M:%S")))
 	return logger
+"""

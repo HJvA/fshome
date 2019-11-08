@@ -13,7 +13,7 @@ from lib.fsHapper import fsBridge
 from accessories.hue.hueHap import add_HUE_to_bridge
 from accessories.p1smart.p1DSMR_Hap import add_p1DSMR_to_bridge
 from accessories.fs20.fs20_hap import add_fs20_to_bridge
-from lib.devConst import get_logger
+from lib.tls import get_logger
 
 __maintainer__ = "Henk Jan van Aalderen"
 __email__ = "hjva@notmail.nl"

@@ -8,7 +8,7 @@
   "243": {
     "source": "tuin",
     "name": "tempMaroc",
-    "devadr": "43",
+    "devadr": "12",
     "typ": 0
   },
   "208": {
@@ -19,65 +19,65 @@
   },
   "256": {
     "source": "zeSlaap",
-    "name": "zSlaap switch",
-    "devadr": "56",
+    "name": "zSwitch",
+    "devadr": "3",
     "typ": 12
   },
   "huebridge": "192.168.1.21",
-  "hueuser": "iDBZ985sgFNMJruzFjCQzK-zYZnwcUCpd7wRoCVM",
+  "hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqcRwsel",
   "245": {
     "source": "tuin",
     "name": "luxMaroc",
-    "devadr": "45",
+    "devadr": "11",
     "typ": 5
   },
   "206": {
     "source": "entree",
     "name": "DeurTemp",
-    "devadr": "6",
+    "devadr": "9",
     "typ": 0
   },
   "231": {
     "source": "keuken",
-    "name": "KeukTemp",
-    "devadr": "31",
+    "name": "keukTemp",
+    "devadr": "19",
     "typ": 0
   },
   "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
   "244": {
     "source": "tuin",
-    "name": "MotMaroc",
-    "devadr": "44",
+    "name": "motMaroc",
+    "devadr": "10",
     "typ": 11
   },
   "230": {
     "source": "woon",
-    "name": "kamer knoppen",
-    "devadr": "30",
+    "name": "tapKnops",
+    "devadr": "2",
     "typ": 12
   },
   "232": {
     "source": "keuken",
-    "name": "keukMotion",
-    "devadr": "32",
+    "name": "keukMot",
+    "devadr": "17",
     "typ": 11
   },
   "235": {
     "source": "kamerEet",
-    "name": "eet knop",
-    "devadr": "35",
+    "name": "eetKnops",
+    "devadr": "5",
     "typ": 12
   },
   "233": {
     "source": "keuken",
-    "name": "KeukLux",
-    "devadr": "33",
+    "name": "keukLux",
+    "devadr": "18",
     "typ": 5
   },
   "260":{    
     "typ": 13,
-    "name": "eetstrip",
-    "devadr":"11",
+    "name": "eetStrip",
+    "devadr":"4",
     "aid":20
   }
 }

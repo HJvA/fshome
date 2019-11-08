@@ -13,7 +13,8 @@ else:
 	import accessories.fs20.fstls as fstls
 from lib.serComm import serComm
 from lib.sampleCollector import DBsampleCollector,forever
-from lib.devConst import DEVT,get_logger
+from lib.devConst import DEVT
+from lib.tls import get_logger
 
 DEVICE='/dev/ttyACM0'
 BAUDRATE=9600

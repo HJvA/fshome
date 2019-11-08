@@ -7,7 +7,8 @@
 import sys,logging
 from dbLogger import sqlLogger,prettyprint,graphyprint
 from devConfig import devConfig
-from devConst import DEVT,get_logger
+from devConst import DEVT
+from tls import get_logger
 
 logger = get_logger(__file__, logging.INFO)
 

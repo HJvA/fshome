@@ -58,6 +58,8 @@ class sampleCollector(object):
 		#	quantity=self.qid(devadr)
 		if typ and (typ>=DEVT['unknown'] or typ==DEVT['fs20']):
 			typ=None
+		if not source:
+			source = self.qsrc(quantity)
 		mp = [devadr,typ,name,source]
 		if quantity in self.servmap:
 			if self.qtype(quantity)==DEVT['secluded']:
@@ -89,7 +91,9 @@ class sampleCollector(object):
 		return None
 	def qsrc(self, qkey):
 		''' quantity source or location '''
-		return self.servmap[qkey][3]
+		if qkey in self.servmap:
+			return self.servmap[qkey][3]
+		return None
 	def qtype(self, qkey):
 		''' quantity type as defined in DEVT '''
 		return self.servmap[qkey][1]
@@ -213,7 +217,7 @@ class DBsampleCollector(sampleCollector):
 				if qid>0 and self.qtype(qid)<DEVT['secluded']:
 					name = self.qname(qid)
 					src = self.qsrc(qid)
-					if self.dbStore and name is not None and len(src)>0:
+					if self.dbStore and name is not None and src:
 						self.dbStore.additem(qid, name,src,self.qtype(qid))
 					self.inkeys.append(qid)
 
@@ -225,6 +229,12 @@ class DBsampleCollector(sampleCollector):
 		else:
 			nm = super().qname(quantity)
 		return nm
+		
+	def qsrc(self, qkey):
+		src = super().qsrc(qkey)
+		if src:
+			return src
+		return self.dbStore.qsource(qkey)
 		
 	def accept_result(self,tstamp,quantity):
 		qval=super().accept_result(tstamp,quantity)
@@ -238,6 +248,6 @@ class DBsampleCollector(sampleCollector):
 		return qval
 
 	def exit(self):
-		logger.warning("%s proposed json config:\n%s" % (self.name, self.jsonDump()))
+		logger.error("%s proposed json config:\n%s" % (self.name, self.jsonDump()))
 		if self.dbStore:
 			self.dbStore.close()

@@ -68,7 +68,9 @@ class txtLogger(object):
 		return "nk:%s" % ikey
 		
 	def qsource(self, ikey):
-		return self.items[ikey][1]
+		if ikey in self.items:
+			return self.items[ikey][1]
+		return None
 		
 	def checkitem(self, iname, isource=None,itype=None, addUnknown=True):
 		''' check whether item has been seen before, adds it if not 
