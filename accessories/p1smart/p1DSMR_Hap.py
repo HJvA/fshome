@@ -26,7 +26,7 @@ def add_p1DSMR_to_bridge(bridge, config='p1DSMR.json'):
 	p1ser = serComm(DEVICE,BAUDRATE)
 	dbFile=conf['dbFile']
 		
-	sampler = DSMR_happer(p1ser, dbFile=dbFile, quantities=conf.itstore, maxNr=120,minNr=1,minDevPerc=8.0)
+	sampler = DSMR_happer(p1ser, dbFile=dbFile, quantities=conf.itstore, maxNr=180,minNr=30,minDevPerc=8.0)
 	bridge.add_sampler(sampler, conf.itstore)
 
 		

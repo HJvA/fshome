@@ -60,7 +60,7 @@
     %menu = include("static/menu.tpl")
   <br/>
 
- <svg class="graph" xmlns="http://www.w3.org/2000/svg" height="300" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    
+ <svg class="graph" xmlns="http://www.w3.org/2000/svg" height="calc( 90vh - 18em )" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    
   
   <defs>
       <clipPath id="clpPth">

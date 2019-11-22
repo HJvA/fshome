@@ -215,7 +215,7 @@ if __name__ == "__main__":
 		p1ser = serComm(DEVICE,BAUDRATE)
 		p1obj = p1DSMR(p1ser, QCONF['dbFile'],maxNr=20, quantities=QCONF)
 
-		loop.run_until_complete(forever(p1obj.receive_message))									
+		loop.run_until_complete(forever(p1obj.receive_message))
 	except KeyboardInterrupt:
 		logger.exception("terminated by ctrl c")
 	p1obj.exit()

@@ -13,6 +13,7 @@ from lib.fsHapper import fsBridge
 from accessories.hue.hueHap import add_HUE_to_bridge
 from accessories.p1smart.p1DSMR_Hap import add_p1DSMR_to_bridge
 from accessories.fs20.fs20_hap import add_fs20_to_bridge
+from accessories.BLEAIOS.aiosHap import add_AIOS_to_bridge
 from lib.tls import get_logger
 
 __maintainer__ = "Henk Jan van Aalderen"
@@ -28,6 +29,7 @@ bridge= fsBridge(driver, 'fsBridge')
 add_fs20_to_bridge(bridge, config="fs20.json")
 add_p1DSMR_to_bridge(bridge, config="p1DSMR.json")
 add_HUE_to_bridge(bridge, config="hue.json")
+add_AIOS_to_bridge(bridge, config="aios.json")
 
 driver.add_accessory(accessory=bridge)
 

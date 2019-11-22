@@ -5,6 +5,9 @@
 	"""
 
 import requests
+import requests.packages.urllib3 as urllib
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
 import math
 import time,os
 from datetime import datetime,timedelta,timezone
@@ -77,6 +80,8 @@ class HueBaseDev (object):
 		self.ipadr=ipadr
 		self.dtActive = datetime.now(timezone.utc)
 		self.last=None
+		urllib.disable_warnings(InsecureRequestWarning)
+
 		
 	def hueGET(self,resource):
 		''' get state info from hue bridge '''
@@ -327,27 +332,29 @@ class HueLight(HueBaseDev):
 		return lst
 			
 if __name__ == '__main__':	# just testing the API and gets userId if neccesary
+	#from lib import tls
 	logger = logging.getLogger()
 	[logger.removeHandler(h) for h in logger.handlers[::-1]] # handlers persist between calls
 	logger.addHandler(logging.StreamHandler())	# use console
 	logger.addHandler(logging.FileHandler(filename=os.path.expanduser('hueApi.log'), mode='w', encoding='utf-8')) #details to log file
 	logger.setLevel(logging.DEBUG)
 	logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S%z")))
-	conf={	# defaults when not in config file
+	CONF={	# defaults when not in config file
 		"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqcRwsel",
 		"huebridge": "192.168.1.21"
 	}
-	#conf['huebridge'] =ipadrGET()
+	#CONF['huebridge'] =ipadrGET()
 	
-	ipadr=conf['huebridge']
-	user=conf['hueuser']
+	ipadr=CONF['huebridge']
+	user=CONF['hueuser']
 	
-	from requests.packages.urllib3.exceptions import InsecureRequestWarning
-	requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+	#from urllib3.exceptions import InsecureRequestWarning
+	#urllib3.disable_warnings(InsecureRequestWarning)
+
 	
 	lights = HueLight.devTypes(ipadr,user)
 	
-	updnms = { "DeurMot":{0:"DeurTemp", 5:"DeurLux", 11:"DeurMot"},
+	UPDNMS = { "DeurMot":{0:"DeurTemp", 5:"DeurLux", 11:"DeurMot"},
 			  "motMaroc":{0:"tempMaroc", 5:"luxMaroc", 11:"motMaroc"},
 			  "keukMot":{0:"keukTemp", 5:"keukLux", 11:"keukMot"} }
 
@@ -372,12 +379,12 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 			rec=sensors[adr]
 			sens = HueSensor(adr,ipadr,user)
 			logger.info("sns %s:nm=%s rec=%s" % (adr,sens.name(),sensors[adr]))
-			if rec['name'] in updnms:
+			if rec['name'] in UPDNMS:
 				dev = rec['name']
-			if dev and rec['typ'] in updnms[dev]:
+			if dev and rec['typ'] in UPDNMS[dev]:
 				nm = rec['name']
-				due = updnms[dev][rec['typ']]
-				updnms[dev].pop(rec['typ'])
+				due = UPDNMS[dev][rec['typ']]
+				UPDNMS[dev].pop(rec['typ'])
 				if nm!=due:
 					logger.warning("setting hue %s to %s on %s" % (nm,due,dev))
 					sens.setState('name', '"%s"' % due, reskey='') #'"%s"' % due)

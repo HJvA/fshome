@@ -109,7 +109,7 @@ def cursorhandler():
 	''' handle end of cursor movement
 	receive data send by dragger.js->finalise->senddata '''
 	rec = bottle.request.json
-	jd = float(rec['jdtill']) - (900 -rec['cursorPos'])/800*float(rec['ndays']);
+	jd = float(rec['jdtill']) - (900 -float(rec['cursorPos']))/800*float(rec['ndays']);
 	qids = rec['grQuantIds']
 	logger.info("cursor %s at %s for %s " % (rec,prettydate(jd), qids))
 	#logger.info("curs post:%s" % bottle.request.body.read()) 
@@ -313,10 +313,11 @@ def redraw(src, selqs, jdtill, ndays=7):
 			if qkey is not None:
 				grQuantIds.add(qkey)
 				if qs=='energy':
-					recs = dbStore.fetchiiavg(qkey-1,qkey,tstep=avgminutes,daysback=ndays,jdend=jdtill)
+					recs = dbStore.fetchiiavg(310,311,tstep=avgminutes,daysback=ndays,jdend=jdtill)
 				else:
 					recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays,jdend=jdtill)
 				if recs is None or len(recs)==0:
+					logger.info('no samples for %s at %s with %s' % (qkey,qs,src))
 					continue
 				if typ in qCOUNTING:
 					iy=2	# counting quantity

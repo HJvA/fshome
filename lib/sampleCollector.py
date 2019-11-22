@@ -129,7 +129,7 @@ class sampleCollector(object):
 			n = self.average[quantity][1]
 			avg = self.average[quantity][0] / n
 			if (n>=self.minNr and abs(val-avg)>avg*self.minDevPerc/100) or n>=self.maxNr:
-				logger.debug('accepting avg n=%d avg=%g val=%s quantity=%s(%s) devPrc=%g tm=%s' % (n,avg,val,self.qname(quantity),quantity, abs(val-avg)/avg*100 if avg>0 else 0.0, prettydate(julianday(tstamp))))
+				logger.info('(%s) accepting avg n=%d avg=%g val=%s quantity=%s devPrc=%g tm=%s' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, prettydate(julianday(tstamp))))
 				self.accept_result((tstamp+self.average[quantity][2])/2, quantity)
 				self.average[quantity] = [val,1,tstamp]
 			else:
