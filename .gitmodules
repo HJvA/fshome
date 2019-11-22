@@ -2,5 +2,8 @@
 	path = bottle
 	url = https://github.com/bottlepy/bottle
 [submodule "HAP-python"]
-	path = HAP-python
+	path = submod/HAP-python
 	url = https://github.com/ikalchev/HAP-python
+[submodule "bluepy"]
+	path = submod/bluepy
+	url = https://github.com/IanHarvey/bluepy
