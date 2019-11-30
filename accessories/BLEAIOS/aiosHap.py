@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.5
 """ some HAP-python  Accessories
-	defines homekit accessory classes for hue type products like 
+	defines homekit accessory classes for the aios client
 	"""
 import time,sys,os
 import logging
@@ -26,18 +26,11 @@ class AIOS_accessory(HAP_accessory):
 		''' add  characteristics to  accessory '''
 		if typ==DEVT['DIGI']:
 			sampler = fsBridge._samplers[self.receiver]
-
 		else:
 			super().addService(quantity, typ)
 	
 	def HAPsetlev(self, value):
 		self.setValue(value, 'bri')
-	
-	def HAPsethue(self, value):
-		self.setValue(value, 'hue')
-	
-	def HAPsetsat(self, value):
-		self.setValue(value, 'sat')
 
 
 class aios_happer(aiosSampler):
@@ -65,7 +58,7 @@ if __name__ == "__main__":
 		bridge= fsBridge(driver, 'aiosBridge')
 		add_AIOS_to_bridge(bridge, config="aios.json")
 		driver.add_accessory(accessory=bridge)
-	
+
 		signal.signal(signal.SIGTERM, driver.signal_handler)
 
 		driver.start()

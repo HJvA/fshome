@@ -1,150 +1,193 @@
-<!doctype html>
-<!-- template for fssite.py bottle application to show svg chart of measured/recorded values -->
-<html lang="en">
- <head>
-     <link rel="stylesheet" type="text/css" href="styles.css">
-     <link type="text/css" href="navbar.css" rel="stylesheet">
-     <TITLE>fshome quantity viewer</TITLE>
+<html lang="en"><head>
+  <link rel="stylesheet" type="text/css" href="styles.css">
+  <link type="text/css" href="navbar.css" rel="stylesheet">
+  <link rel="apple-touch-icon" sizes="180x180" href="fshome.png">
+
+  <title>fshome quantity viewer</title>
+  <!--
+  <meta http-equiv="refresh" content="5; url=/" > 
+  -->
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"> 
+  <meta name="apple-mobile-web-app-title" content="fsHome hjva">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"> 
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="format-detection" content="telephone=no">
+  
+  
   <script type="text/javascript" src="dragger.js"></script>
   <script type="text/javascript">
    function onLoad() {
     var touchBox=document.getElementById('plotarea');
-    var movElm=document.getElementById('xcursor');
-	 var posVal=document.getElementById('cursorPos');
-	 var swip = new pageSwiper(touchBox,movElm,posVal, "900", "800");
-    //pages.style.display='none';// hide pages to show passwdialog
-
-    //document.getElementById("swidth").value = screen.width;
-   }
+    var movElm=document.getElementById('xcursor'); 
+    //var grQuants=[&#039;illuminance&#039;, &#039;motion&#039;, &#039;temperature&#039;];
+    var params=document.getElementById('params');
+	 var swip = new pageSwiper(touchBox,movElm,params);
+  }
+  function onFocus(elm){
+   if (!isMobile.any()) {
+    console.log("focus" + elm.style.height);
+    elm.parentNode.style.height = '200px'; 
+    elm.style.display = 'table-cell';
+    }
+  }
+  function onBlur(elm){
+   elm.parentNode.style.height = '3em';
+  }
+  
   </script>
+    
  </head>
  
  <body onload="onLoad();">
   <div class="headng">fshome quantity viewer
-   <p> nothing worth saving </p>
+    <p>  </p>
   </div>  
-    <br/>
+  <br>
 
-  <form method="post" action="/menu" id="mmenu" >
-   <fieldset class="fields">
-   
+<form method="post" action="/menu" id="mmenu">
+ <div class="hidden" id="params">
+   <input name="jdtill" id="jdtill" value="2458818.280841293">
+   <input name="ndays" id="ndays" value="0.2">
+   <input name="cursorPos" id="cursorPos" value="900">
+   <input name="grQuantIds" id="grQuantIds" value="[232," 233,="" 231]="">
+ </div>
+ <fieldset class="fields">
   <div class="menubar" id="menu">
-  <!--
-   <div class="overlay" onclick="javascript:document.getElementById('mmenu').submit();">
-    <a href="#"></a>
-   </div>
- -->
- 	<input type="hidden" id="cursorPos" value="900">
    <div class="menuselect">
-    <select name=source onchange='if(this.value != 0) { this.form.submit(); }'>
-      <option value=traplicht selected>traplicht</option>
-      <option value=huis >huis</option>
-      <option value=terras >terras</option>
-      <option value=entree >entree</option>
-      <option value=gang >gang</option>
-      <option value=zolder >zolder</option>
-      <option value=keuken >keuken</option>
-      <option value=tuin >tuin</option>
-      <option value=woon >woon</option>
-      <option value=ringer >ringer</option>
-      <option value=kgb >kgb</option>
-      <option value=kamerEet >kamerEet</option>
-      <option value=testbel >testbel</option>
+    <select name="source" onchange="if(this.value != 0) { this.form.submit(); }">
+      <option value="aios">aios</option>
+      <option value="entree">entree</option>
+      <option value="gang">gang</option>
+      <option value="huis">huis</option>
+      <option value="kamerEet">kamerEet</option>
+      <option value="keuken" selected="">keuken</option>
+      <option value="kgb">kgb</option>
+      <option value="ringer">ringer</option>
+      <option value="terras">terras</option>
+      <option value="testbel">testbel</option>
+      <option value="traplicht">traplicht</option>
+      <option value="tuin">tuin</option>
+      <option value="woon">woon</option>
+      <option value="zolder">zolder</option>
+    </select>
+   </div>
+   <div class="menuselect multiselect">
+    <select name="quantities" multiple="" onfocus="onFocus(this);" onblur="onBlur(this);">
+      <option value="temperature" selected="">temperature</option>
+      <option value="humidity" selected="">humidity</option>
+      <option value="illuminance" selected="">illuminance</option>
+      <option value="doorbell" selected="">doorbell</option>
+      <option value="motion" selected="">motion</option>
+      <option value="button" selected="">button</option>
+      <option value="dimmer">dimmer</option>
+      <option value="outlet">outlet</option>
+      <option value="power">power</option>
+      <option value="energy">energy</option>
+      <option value="voltage">voltage</option>
+      <option value="gasVolume">gasVolume</option>
+      <option value="ECO2">ECO2</option>
+      <option value="TVOC">TVOC</option>
     </select>
    </div>
    <div class="menuselect">
-    <select name=quantities multiple>
-      <option value=energy >energy</option>
-      <option value=temperature >temperature</option>
-      <option value=gasVolume >gasVolume</option>
-      <option value=power >power</option>
-      <option value=button >button</option>
-      <option value=outlet >outlet</option>
-      <option value=motion selected>motion</option>
-      <option value=voltage >voltage</option>
-      <option value=humidity >humidity</option>
-      <option value=dimmer >dimmer</option>
-      <option value=illuminance >illuminance</option>
-      <option value=doorbell >doorbell</option>
-    </select>
-   </div>
-   <div class="menuselect">
-    <select name=tmback onchange='if(this.value != 0) { this.form.submit(); }'>
-      <option value=5hr >5hr</option>
-      <option value=1day >1day</option>
-      <option value=5days >5days</option>
-      <option value=1mnth >1mnth</option>
-      <option value=6mnth >6mnth</option>
-      <option value=1yr >1yr</option>
+    <select name="tmback" onchange="if(this.value != 0) { this.form.submit(); }">
+      <option value="5hr" selected="">5hr</option>
+      <option value="1day">1day</option>
+      <option value="5days">5days</option>
+      <option value="1mnth">1mnth</option>
+      <option value="6mnth">6mnth</option>
+      <option value="1yr">1yr</option>
     </select>
    </div>
    <div class="menuitem">
-     <button type=submit hreff=>ok </button>
+     <button type="submit">ok </button>
    </div>
-   </div>
-   </fieldset>
-   
-   <div class="fields atbottom">
-   <select id="statbar" class="busy">
-         <option ><i><p>Copyright © 2019, hjva</p></i></option>
-         <option >status message</option>
-   </select>
-   </div>
-
-  </form>
+  </div>
+ </fieldset>
  
-  <br/>
+ <div class="fields atbottom">
+   <select id="statbar" class="busy">
+     <option> dd:30 19:44:24 , E=2.925 lux  , motion=1   , T=22.24 °C </option>
+     <option></option>
+   </select>
+ </div>
+ 
+</form>
+   <br>
 
-<svg class="graph" xmlns="http://www.w3.org/2000/svg" height="300" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    
-    <defs>
+ <svg class="graph" xmlns="http://www.w3.org/2000/svg" height="calc( 90vh - 18em )" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none">    
+  
+  <defs>
       <clipPath id="clpPth">
          <rect x="100" y="50" width="800" height="400"> </rect>
       </clipPath>
   </defs>
   <rect id="plotarea" class="grid" x="100" y="50" width="800" height="400"> </rect>
-  <line id="xcursor" class="cursor" x1="810" y1="50" x2="810" y2="450"> </line>
+  <line id="xcursor" class="cursor" x1="900" y1="42" x2="900" y2="458"> </line>
 
      <g class="surfaces" clip-path="url(#clpPth)">
-         <polyline fill="none" stroke=#1084e9 stroke-width="1.8" 
-        points=" 101,167 103,167 105,169 107,172 110,164 112,169 114,157 116,141 118,138 121,132 123,121 125,125 127,128 130,131 132,128 134,131 136,128 138,136 141,142 143,156 145,172 147,169 150,175 152,185 154,201 156,208 158,219 161,237 163,249 165,272 167,292 170,320 172,343 174,339 181,346 187,367 190,372 192,375 194,372 196,369 198,370 201,377 203,375 205,373 207,380 210,380 212,377 214,380 216,372 218,372 221,360 223,346 225,328 227,332 230,319 232,310 234,298 236,294 238,286 241,268 243,254 245,237 247,240 250,225 252,220 254,208 256,214 258,213 261,188 263,168 265,138 267,155 270,149 272,131 274,140 276,133 278,131 281,133 283,131 285,140 287,162 290,167 292,167 294,167 296,185 298,190 301,206 303,211 305,216 307,224 310,232 312,241 314,250 316,253 318,253 321,258 323,264 325,274 327,287 330,292 332,302 334,314 336,327 338,336 341,340 343,333 345,351 347,367 350,374 352,375 354,377 356,382 358,382 361,380 363,386 365,380 367,377 370,367 372,346 374,324 376,301 378,297 381,294 383,291 385,260 387,255 390,245 392,224 394,211 396,201 398,188 401,175 403,173 405,149 407,130 410,131 412,118 414,90 416,81.2 418,55.3 421,50 423,50 425,55.3 427,71 430,86.4 432,96.8 434,123 436,155 438,189 441,208 443,227 445,253 447,279 450,292 452,297 454,299 456,294 458,284 461,271 463,274 465,289 467,286 470,294 476,292 478,292 481,286 483,291 485,294 487,289 490,294 492,297 494,297 496,301 498,292 503,294 507,299 510,312 512,320 514,320 516,318 518,331 521,332 523,333 525,334 527,333 530,341 532,338 534,349 536,362 538,359 541,357 543,349 545,343 547,341 550,331 552,332 554,312 556,294 558,279 561,286 563,298 565,294 567,292 570,267 572,258 574,255 576,230 578,234 581,211 583,221 585,222 587,211 612,253 614,250 616,247 634,304 636,320 638,331 641,336 643,343 645,341 647,354 650,367 652,367 654,375 656,372 658,380 661,385 663,390 665,395 667,408 670,414 672,419 674,421 676,432 678,447 681,450 683,437 685,429 687,421 690,415 692,415 694,390 696,363 698,341 701,324 703,294 705,270 707,255 710,258 712,253 714,254 716,239 718,227 721,216 723,211 725,198 727,180 730,169 732,162 734,163 736,141 738,136 741,128 743,118 745,128 747,123 750,131 752,128 754,136 756,146 758,162 761,168 763,164 765,164 767,169 770,171 772,175 774,175 776,185 778,194 781,198 783,198 785,201 787,211 790,203 792,211 794,211 796,219 798,224 801,224 803,235 805,245 807,242 810,245 812,247 814,253 816,250 818,255 821,260 823,268 825,266 827,263 830,282 832,284 834,292 836,286 838,297 841,292 843,297 845,304 847,302 850,299 854,294 856,291 858,266 861,250 863,235 865,211 867,201 870,193 872,180 874,180 876,169">
-        </polyline>
-         <polyline fill="none" stroke=#1084e9 stroke-width="1.8" points=" 867,217 884,117 892,83.3 911,50" />
+         <polyline fill="none" stroke="#90e090" stroke-width="1.8" points=""></polyline>
+         <polyline fill="none" stroke="#90e090" stroke-width="1.8" points=" 443,105 457,268 471,300 485,168 499,95.5 513,100 527,255 541,50 554,77.3 568,95.5 582,132 596,202 610,187 624,195 638,252 652,123 707,450 777,250 791,132 818,450 832,150 846,173 860,291"></polyline>
      </g>
-     <g class="labels y-labels" stroke=#1084e9>
-       <text  x="-50%" y="2%" transform="rotate(270)"></text>       
-         <text y="50" x="94" text-anchor="end">   21   </text>
-         <text y="183" x="94" text-anchor="end"> 20.6   </text>
-         <text y="317" x="94" text-anchor="end"> 20.2   </text>
-         <text y="450" x="94" text-anchor="end"> 19.8   </text>
+     <g class="labels y-labels" fill="#90e090">
+       <text x="-50%" y="2%" transform="rotate(270)"></text>       
+         <text y="50" x="98" text-anchor="end"> 5.84   </text>
+         <text y="183" x="98" text-anchor="end"> 4.23   </text>
+         <text y="317" x="98" text-anchor="end"> 2.61   </text>
+         <text y="450" x="98" text-anchor="end">    1   </text>
      </g>
-     <g class="labels legend" stroke=#1084e9>
-      <text  x="330" y="28" >rubbish</text>       
-		<path stroke-width="2" d="M300 26 h26 Z" />
+     <g class="labels legend" fill="#90e090">
+      <text x="330" y="28">illuminance</text>       
+		<path stroke-width="3" stroke="#90e090" d="M300 26 h26 Z"></path>
      </g>
-     
-     <g class="grid x-grid" transform="ref(svg)" >
-        <line x1="158.3" x2="158.3" y1="50" y2="450"></line>
-        <line x1="318.3" x2="318.3" y1="50" y2="450"></line>
-        <line x1="478.3" x2="478.3" y1="50" y2="450"></line>
-        <line x1="638.3" x2="638.3" y1="50" y2="450"></line>
-        <line x1="798.3" x2="798.3" y1="50" y2="450"></line>
+     <g class="surfaces" clip-path="url(#clpPth)">
+     	 <path fill="none" stroke="#f080d0" stroke-width="2.8" d=" M443 450 V406 M457 450 V272 M471 450 V228 M485 450 V317 M499 450 V317 M513 450 V183 M527 450 V317 M541 450 V361 M554 450 V228 M568 450 V228 M582 450 V317 M596 450 V317 M610 450 V272 M624 450 V406 M638 450 V406 M777 450 V317 M832 450 V361 M860 450 V406 Z"></path>
      </g>
-     <g class="grid y-grid" id="yGrid" >
+     <g class="labels y-labels" fill="#f080d0">
+       <text x="-50%" y="2%" transform="rotate(270)"></text>       
+         <text y="50" x="906" text-anchor="start">    9   </text>
+         <text y="183" x="906" text-anchor="start">    6   </text>
+         <text y="317" x="906" text-anchor="start">    3   </text>
+         <text y="450" x="906" text-anchor="start">    0f  </text>
+     </g>
+     <g class="labels legend" fill="#f080d0">
+      <text x="530" y="28">motion</text>       
+		<path stroke-width="3" stroke="#f080d0" d="M500 26 h26 Z"></path>
+     </g>
+     <g class="surfaces" clip-path="url(#clpPth)">
+         <polyline fill="none" stroke="#1084e9" stroke-width="1.8" points=" 124,437 152,444 166,450 179,444 193,431 221,437 235,434 249,450 263,444 277,431 291,424 318,431 332,424 346,437 360,444 388,431 402,418 416,412 429,418 443,424 471,431 499,418 513,412 527,418 554,424 568,431 582,424 610,418 624,366 638,289 652,211 666,134 679,82 693,56.4 707,50 721,69.2 735,95.3 749,121 763,140 777,147 791,153 804,166 818,179 832,192 846,211 860,237"></polyline>
+     </g>
+     <g class="labels y-labels" fill="#1084e9">
+       <text x="-50%" y="2%" transform="rotate(270)"></text>       
+         <text y="50" x="44" text-anchor="end"> 26.3   </text>
+         <text y="183" x="44" text-anchor="end"> 23.4   </text>
+         <text y="317" x="44" text-anchor="end"> 20.5   </text>
+         <text y="450" x="44" text-anchor="end"> 17.6   </text>
+     </g>
+     <g class="labels legend" fill="#1084e9">
+      <text x="130" y="28">temperature</text>       
+		<path stroke-width="3" stroke="#1084e9" d="M100 26 h26 Z"></path>
+     </g>
+    
+     <g class="grid x-grid">
+        <line x1="276.9" x2="276.9" y1="50" y2="450"></line>
+        <line x1="443.7" x2="443.7" y1="50" y2="450"></line>
+        <line x1="610.5" x2="610.5" y1="50" y2="450"></line>
+        <line x1="777.3" x2="777.3" y1="50" y2="450"></line>
+     </g>
+     <g class="grid y-grid" id="yGrid">
         <line x1="100" x2="900" y1="183" y2="183"></line>    
         <line x1="100" x2="900" y1="317" y2="317"></line>    
      </g>
-     <g class="labels x-labels" transform="ref(svg)">
-       <text  x="50%" y="98%"></text>
-         <text x="238.3" y="475">Thu</text>
-         <text x="398.3" y="475">Fri</text>
-         <text x="558.3" y="475">Sat</text>
-         <text x="718.3" y="475">Sun</text>
+     <g class="labels x-labels">
+       <text x="50%" y="98%"></text>
+         <text x="360.29999999999995" y="475">16</text>
+         <text x="527.1" y="475">17</text>
+         <text x="693.9" y="475">18</text>
      </g>
-</svg>
+ </svg>
 
-  </body>
-</html>
+
+
+</body></html>

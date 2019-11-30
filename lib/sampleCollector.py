@@ -12,6 +12,10 @@ async def forever(func, *args, **kwargs):
 	while (True):
 		await func(*args, **kwargs)
 
+# index to self.average[]
+qVAL=0
+qCNT=1
+
 class sampleCollector(object):
 	""" base class for collection of sampling quantities """
 	def __init__(self, *args, maxNr=120,minNr=2,minDevPerc=5.0,name=None, **kwargs):
@@ -47,15 +51,18 @@ class sampleCollector(object):
 				typ=rec['typ'] if 'typ' in rec else DEVT['unknown']
 				nm =rec['name'] if 'name' in rec else "no:%s" % adr
 				src =rec['source'] if 'source' in rec else ''
-				smap[int(qid)]=(adr,typ,nm,src)
+				mask =rec['mask'] if 'mask' in rec else None
+				if mask:
+					logger.info('diginp bit:%d for ch:%s' % (mask,qid))
+					smap[int(qid)]=(adr,typ,nm,src,mask)
+				else:
+					smap[int(qid)]=(adr,typ,nm,src)
 		return smap
 		
 	def qCheck(self,quantity,devadr,typ=None,name=None,source=None):
 		''' get/update/create (unknown) quantity to self.servmap '''
 		if not quantity:
 			quantity=self.qid(devadr,typ)
-		#if not quantity:
-		#	quantity=self.qid(devadr)
 		if typ and (typ>=DEVT['unknown'] or typ==DEVT['fs20']):
 			typ=None
 		if not source:
@@ -97,59 +104,64 @@ class sampleCollector(object):
 	def qtype(self, qkey):
 		''' quantity type as defined in DEVT '''
 		return self.servmap[qkey][1]
+	def qdevadr(self, qkey):
+		''' quantity devadr '''
+		return self.servmap[qkey][0]
+
 	def qIsCounting(self, qkey):
 		''' is not analog but just counter '''
 		return self.qtype(qkey) in qCOUNTING
 	def qid(self,devadr,typ=None):
+		''' search for qkey of quantity having devadr and or typ '''
 		for quid,tp in self.servmap.items():
-			if devadr==tp[0] and (typ is None or typ==tp[1]):
+			if (devadr==tp[0] or tp[0] == '%s' % devadr) and (typ is None or typ==tp[1]):
 				return quid
 		return None
-			
+	
 	def check_quantity(self,tstamp,quantity,val):
 		''' to be called by receive_message to assert actual quantity value;
 		 filters quantity updates and 
 		 calls accept_result to store and send it'''
 		if quantity not in self.servmap:
-			logger.debug("unknown quantity:%s val=%s in %s" % (quantity,val,self.name))
+			logger.info("unknown quantity:%s val=%s in %s" % (quantity,val,self.name))
 			#self.servmap[quantity] = {'typ':DEVT['unknown']}
 			return
 		if self.qtype(quantity)>=DEVT['secluded']:	# ignore
 			return
 		self.actual[quantity] = val
 		if self.qIsCounting(quantity): 
-			if quantity in self.average and val>0:
-				self.average[quantity][0] += val
-				self.average[quantity][1] +=1
+			if quantity in self.average and val>0: # only first and pos edge
+				self.average[quantity][qVAL] += val
+				self.average[quantity][qCNT] +=1
 			else:
 				self.average[quantity] = [val,1,tstamp]
 			self.accept_result(tstamp, quantity)
-			logger.info('accepting cnt val=%s quantity=%s(%s) tm=%s' % (val,self.qname(quantity),quantity, prettydate(julianday(tstamp))))
+			logger.info('(%s) accepting cnt val=%s quantity=%s tm=%s' % (quantity,val,self.qname(quantity), prettydate(julianday(tstamp))))
 		elif quantity in self.average:
-			n = self.average[quantity][1]
-			avg = self.average[quantity][0] / n
+			n = self.average[quantity][qCNT]
+			avg = self.average[quantity][qVAL] / n
 			if (n>=self.minNr and abs(val-avg)>avg*self.minDevPerc/100) or n>=self.maxNr:
 				logger.info('(%s) accepting avg n=%d avg=%g val=%s quantity=%s devPrc=%g tm=%s' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, prettydate(julianday(tstamp))))
 				self.accept_result((tstamp+self.average[quantity][2])/2, quantity)
 				self.average[quantity] = [val,1,tstamp]
 			else:
-				self.average[quantity][0] += val
-				self.average[quantity][1] += 1
-		else:
+				self.average[quantity][qVAL] += val
+				self.average[quantity][qCNT] += 1
+		else:  # first avg val
 			self.average[quantity] = [val,1,tstamp]
 			if self.maxNr<=1:
 				self.accept_result(tstamp, quantity)
 				logger.info('accepting one val=%s quantity=%s(%s) tm=%s' % (val,self.qname(quantity),quantity, prettydate(julianday(tstamp))))
-				
+	
 	def accept_result(self,tstamp,quantity):
 		''' process the (averaged) result and init new avg period '''
 		qval=None
 		if self.qIsCounting(quantity):
-			qval = self.average[quantity][0]
-			self.average[quantity][0]=0
-		elif self.average[quantity][1]>0:
+			qval = self.average[quantity][qVAL]
+			self.average[quantity][qVAL]=0
+		elif self.average[quantity][qCNT]>0:
 			rec=self.average.pop(quantity)
-			qval = rec[0]/rec[1]
+			qval = rec[qVAL]/rec[qCNT]
 		if qval:
 			self.lastval[quantity] = qval
 			self.updated.add(quantity)
@@ -166,9 +178,9 @@ class sampleCollector(object):
 		if quantity in self.average:
 			rec =self.average[quantity]
 			if self.qIsCounting(quantity):
-				qval = rec[0]
+				qval = rec[qVAL]
 			else:
-				qval = rec[0]/rec[1]
+				qval = rec[qVAL]/rec[qCNT]
 			#self.updated.discard(quantity)
 		elif quantity in self.actual:
 			qval = self.actual[quantity]
@@ -177,12 +189,12 @@ class sampleCollector(object):
 		else:
 			rec = self.dbStore.fetchlast(quantity)
 			if rec:
-				qval = rec[1]
+				qval = rec[qCNT]
 		return qval
 		
 	def isUpdated(self, quantity):
 		''' quantity value has changed since get_last call '''
-		if self.qIsCounting(quantity) and quantity in self.average and self.average[quantity][1]>0:
+		if self.qIsCounting(quantity) and quantity in self.average and self.average[quantity][qCNT]>0:
 			trun = time.time() - self.average[quantity][2]
 			#logger.debug("qcnt:%s trun=%s" % (quantity,trun))
 			if trun > 60:
@@ -237,7 +249,7 @@ class DBsampleCollector(sampleCollector):
 		return self.dbStore.qsource(qkey)
 		
 	def accept_result(self,tstamp,quantity):
-		qval=super().accept_result(tstamp,quantity)
+		qval = super().accept_result(tstamp,quantity)
 		if qval is not None:
 			if quantity in self.inkeys:
 				if qval>0 or not self.qIsCounting(quantity): 

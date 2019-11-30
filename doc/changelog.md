@@ -15,6 +15,16 @@ Sections
 ### Developers
 -->
 
+## [1.3.1] - 2019-11-30
+### Added
+- PIR motion sensor with GATT notification 
+
+## [1.3.0] - 2019-11-22
+### Added
+- accessories/BLEAIOS : Bluetooth low energy GATT Automation-IO client
+### Changed
+- layout bottle html screen : tested with multiple browsers on iphone and ipad
+
 ## [1.2.5] - 2019-07-06
 ### Fixed
 - cursor to point back in time

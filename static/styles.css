@@ -70,16 +70,21 @@ svg.graph {
   font-size: 18px;
   kerning: 1;
 }
+svg.graph .labels {
+  stroke: black; 
+  stroke-opacity: 0.8;
+  stroke-width: 0.5;
+}
 svg.graph .x-labels {
   /*font-family: Arial; 
   font-size: 24px;  */
   kerning: 1;
 }
-svg.graph .labels.x-labels {
+svg.graph .x-labels {
   text-anchor: middle;
 }
 
-svg.graph .labels.y-labels {
+svg.graph .y-labels {
 }
 svg.graph .legend {
 }
