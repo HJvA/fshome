@@ -49,6 +49,7 @@ class bluepyDelegate(btle.DefaultDelegate):
 		for chT in service.getCharacteristics(): 
 			self.startNotification(chT)
 	
+			
 	def _CharId(self, charist):
 		return charist.getHandle()
 		if uuid in CHARS.values():
