@@ -78,7 +78,7 @@ def srcQids():
 @bottle.view(TPL)
 def index(name=TITLE):
 	''' standard opening page (having only menu i.e. no data )'''
-	logger.info("req get:%s" % bottle.request.body.read()) 
+	logger.info("index request:%s" % bottle.request.body.read()) 
 
 	if bottle.request.query.title:
 		bottle.redirect('/menu')
@@ -118,7 +118,7 @@ def cursorhandler():
 @app.post('/menu', method="POST")
 def formhandler():
 	''' Handle form submission '''
-	logger.info("menu post:%s" % bottle.request.body.read()) 
+	logger.info("menu req posted:%s" % bottle.request.body.read()) 
 	selqs = bottle.request.forms.getall('quantities')
 	src=bottle.request.forms.get('source')
 	tbcknm=bottle.request.forms.get('tmback')
@@ -144,7 +144,7 @@ def formhandler():
 	statbar=bottle.request.forms.get('statbar')
 	logger.info("statbar=%s" % statbar)
 	
-	logger.info("response:qtt=%s src=%s jd=%s ndys=%s cPos=%s" % (selqs, src, prettydate(jdtill), tbcknm,cursXpos))
+	logger.info("menu response:qtt=%s src=%s jd=%s ndys=%s cPos=%s" % (selqs, src, prettydate(jdtill), tbcknm,cursXpos))
 	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
 	return bottle.template(TPL, redraw(src, selqs, jdtill, ndays))
 	
@@ -260,9 +260,10 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 			logger.debug("selq:%s,len:%d,col:%s,ylbls:%s" % (selq,len(jdat),stroke,ylbls))
 			curve=dict(crv=crv, stroke=stroke, ylbls=ylbls, selq=selq, qtyp=qtyp, legend=selq)
 			data.append(curve)
-	ret['subtitle']=" , ".join(subtitle)
+	ret['subtitle']='' #" , ".join(subtitle)
+	ret['statbar'] =[ " dd:%s , %s" % (prettydate(jdtill), " , ".join(subtitle)) ]
 	if len(data)==0:
-		logger.warning('missing data:jd:%d yd:%d q:%d' % (len(jdats),len(ydats),len(selqs)))
+		logger.warning('missing chart data:jd:%d yd:%d q:%d' % (len(jdats),len(ydats),len(selqs)))
 		return ret
 	
 	xlbltup = tmBACKs[ndays]
@@ -275,8 +276,8 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 	xgrid = [round(plXMARG+plWIDTH-(jdtill-jd)*xscl,1) for jd in gridlocs]
 	xlbls=bld_dy_lbls([jd+gridstep/2 for jd in gridlocs[:-1]],lblformat)
 
-	logger.info("ndays=%.4g xlbls=%s xgrid=%s" % (ndays,xlbls,xgrid))
-	ret.update(dict(title=TITLE+"   till:%s" % prettydate(jdtill), curves=data, xgrid=xgrid, xlbls=xlbls))
+	logger.info("chart upd: ndays=%.4g xlbls=%s xgrid=%s" % (ndays,xlbls,xgrid))
+	ret.update(dict(title=TITLE, curves=data, xgrid=xgrid, xlbls=xlbls))
 	return ret
 
 def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):

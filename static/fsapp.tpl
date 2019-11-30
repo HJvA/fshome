@@ -8,10 +8,13 @@
 
   <TITLE>{{title}}</TITLE>
   <!--
-  <meta http-equiv="refresh" content="5; url=/" > -->
+  <meta http-equiv="refresh" content="5; url=/" > 
+  -->
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"> 
+  <meta name="apple-mobile-web-app-title" content="fsHome hjva" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"> 
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="format-detection" content="telephone=no">
   
   %setdefault('subtitle',"nothing worth saving")
@@ -70,7 +73,7 @@
   <rect id="plotarea" class="grid" x="100" y="50" width="800" height="400"> </rect>
   <line id="xcursor" class="cursor" x1="900" y1="42" x2="900" y2="458"> </line>
 
-  %for curve,side,xleg in zip(curves,[94,906,44,956],[300,500,100,700]):
+  %for curve,side,xleg in zip(curves,[98,906,44,956],[300,500,100,700]):
      <g class="surfaces" clip-path="url(#clpPth)">
      	%if curve['qtyp']==1:
      	 <path  fill="none" stroke={{curve['stroke']}} stroke-width="2.8" d="{{curve['crv']}}" />
@@ -80,15 +83,15 @@
         %end
       %end
      </g>
-     <g class="labels y-labels" stroke={{curve['stroke']}}>
+     <g class="labels y-labels" fill={{curve['stroke']}} >
        <text  x="-50%" y="2%" transform="rotate(270)">{{yaxlbl}}</text>       
        %for i in range(len(ygrid)):
          <text y="{{ygrid[i]}}" x="{{side}}" text-anchor="{{'start' if side>400 else 'end'}}"> {{curve['ylbls'][-i-1]}}  </text>
        %end
      </g>
-     <g class="labels legend" stroke={{curve['stroke']}}>
+     <g class="labels legend" fill={{curve['stroke']}} >
       <text  x="{{xleg+30}}" y="28" >{{curve['legend']}}</text>       
-		<path stroke-width="2" d="M{{xleg}} 26 h26 Z" />
+		<path stroke-width="3" stroke={{curve['stroke']}} d="M{{xleg}} 26 h26 Z" />
      </g>
   %end
     

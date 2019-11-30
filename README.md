@@ -3,6 +3,16 @@
 
 Application to read domotica sensors and operate actuators and store results to a database.  Results can be displayed graphically in a webbrowser and can be linked to the Apple homekit system. 
 
+The application operates as a homekit bridge e.g. on a Raspberry pi which is connected to your home network. 
+
+The project uses the HAP-python project by Ivan Kalchev.
+It is cloned as a submodule from <https://github.com/ikalchev/HAP-python>
+
+The results will be stored in a sqlite database. The quantities recorded will have to be assigned to a source / room in a fs20.json / hue.json / p1DSMR.json file.
+
+The measured temeratures and humidities and other recorded events can be displayed in a svg chart in a browser, with selectable quantities and sources. For this a web server is available using the bottle web-framework cloned from <https://github.com/bottlepy/bottle> by Marcel Hellkamp.
+
+
 The following sensors/actuators are supported:  
 - fs20 S300 temperature / humidity sensor  
 - fs20 mains switch  
@@ -12,21 +22,25 @@ The following sensors/actuators are supported:
 - Hue switches  
 - Hue lights 
 - DSMR dutch electricity and gas utility meter
+- AIOS GATT Bluetooth Low Energy Automation-IO client
+
+## fs20
 
 Fs20 represents a family of devices with many actuators and sensors which communicate via the 868 MHz radio frequency. The signals can be send and received by a CUL tranceiver.  
 
+## Hue
+
 Signify-Philips-Hue devices represent the Hue ecosystem which control your lights.  
+
+## DSMR
 
 DSMR is a domestic smart metering system for home electricity and natural gas.
 
-The application operates as a homekit bridge e.g. on a Raspberry pi which is connected to your home network. 
+## AIOS
 
-The project uses the HAP-python project by Ivan Kalchev.
-It is cloned as a submodule from <https://github.com/ikalchev/HAP-python>
+AIOS is an adafruit bluetooth device gathering a variety of quantities: e.g temperature,humidity,TVOC,eCO2 and other quantities connected to the ADC and digIO channels
+PIR motion detector connected to digin pin 16
 
-The results will be stored in a sqlite database. The quantities recorded will have to be assigned to a source / room in a fs20.json / hue.json / p1DSMR.json file.
-
-The measured temeratures and humidities and other recorded events can be displayed in a svg chart in a browser, with selectable quantities and sources. For this a web server is available using the bottle web-framework cloned from <https://github.com/bottlepy/bottle> by Marcel Hellkamp.
 
 ## Table of Contents
 1. [Installation](#Installation)
@@ -54,7 +68,7 @@ The fs20.json file should contain the json representation of the fs20 devices th
 
 The hue.json file should contain the json representation of hue devices that are connected to your hue bridge. Clear the hue.json file, except for the ip adress of the bridge on your LAN. Run hueAPI.py once to register fshome on the bridge, and to get an idea which devices are known. Enter the obtained userid in the hue.json file. Run fsmain.py for a while, and exit pressing ctrl-C See the error.log file for a proposed list of devices to be copied in hue.json
 
-Similar setups can be carried out with hueSampler.py and p1DSMR.py
+Similar setups can be carried out with hueSampler.py and p1DSMR.py and aiosSampler.py
 
 ## Configuring homekit <a name="Homekit"></a>
 
@@ -96,4 +110,5 @@ Fs20 devices are/were distributed by <https://www.elv.de/fs20-funkschaltsystem.h
 Information on the hue devices can be found here <https://www2.meethue.com/en-us>  
 Information on the DSMR meter can be found here <https://www.netbeheernederland.nl/dossiers/slimme-meter-15/documenten>  
 The bluetooth low energy library <https://github.com/IanHarvey/bluepy>
+The BLE AIOS server project : <https://github.com/HJvA/BLE-automation>
 

@@ -26,9 +26,10 @@
   },
   "410": {
     "devadr": "10",
-    "name": "digitalIO",
+    "name": "movement",
     "source": "aios",
-    "typ": 98
+    "typ": 11,
+    "mask": 16
   },
   "411": {
     "devadr": "11",
