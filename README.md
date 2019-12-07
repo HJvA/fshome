@@ -8,10 +8,19 @@ The application operates as a homekit bridge e.g. on a Raspberry pi which is con
 The project uses the HAP-python project by Ivan Kalchev.
 It is cloned as a submodule from <https://github.com/ikalchev/HAP-python>
 
-The results will be stored in a sqlite database. The quantities recorded will have to be assigned to a source / room in a fs20.json / hue.json / p1DSMR.json file.
+The results will be stored in a sqlite database. The quantities recorded will have to be assigned to a source / room in a fs20.json / hue.json / p1DSMR.json / aios.json file.
 
 The measured temeratures and humidities and other recorded events can be displayed in a svg chart in a browser, with selectable quantities and sources. For this a web server is available using the bottle web-framework cloned from <https://github.com/bottlepy/bottle> by Marcel Hellkamp.
 
+## Table of Contents
+1. [Installation](#Installation)
+2. [Configuration of devices](#Configure)
+3. [Configuration of Homekit](#Homekit)
+4. [Running the application](#Usage)
+4. [Use of Homekit rules](#Rules)
+5. [Notice](#Notice)
+
+## Features
 
 The following sensors/actuators are supported:  
 - fs20 S300 temperature / humidity sensor  
@@ -21,34 +30,27 @@ The following sensors/actuators are supported:
 - Hue motion / brightness / temperature sensor  
 - Hue switches  
 - Hue lights 
-- DSMR dutch electricity and gas utility meter
+- DSMR dutch electricity and gas utility meter  
 - AIOS GATT Bluetooth Low Energy Automation-IO client
 
-## fs20
+### fs20
 
 Fs20 represents a family of devices with many actuators and sensors which communicate via the 868 MHz radio frequency. The signals can be send and received by a CUL tranceiver.  
 
-## Hue
+### Hue
 
 Signify-Philips-Hue devices represent the Hue ecosystem which control your lights.  
 
-## DSMR
+### DSMR
 
 DSMR is a domestic smart metering system for home electricity and natural gas.
 
-## AIOS
+### AIOS
 
-AIOS is an adafruit bluetooth device gathering a variety of quantities: e.g temperature,humidity,TVOC,eCO2 and other quantities connected to the ADC and digIO channels
+AIOS (Automation IO service) is an Adafruit bluetooth device gathering a variety of quantities: e.g temperature,humidity,TVOC,eCO2 and other quantities connected to the ADC and digIO channels
 PIR motion detector connected to digin pin 16
 
 
-## Table of Contents
-1. [Installation](#Installation)
-2. [Configuration of devices](#Configure)
-3. [Configuration of Homekit](#Homekit)
-4. [Running the application](#Usage)
-4. [Use of Homekit rules](#Rules)
-5. [Notice](#Notice)
 
 ## Installation <a name="Installation"></a>
 

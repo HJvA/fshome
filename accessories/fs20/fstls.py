@@ -1,18 +1,27 @@
-from lib.devConst import DEVT
+if __name__ == "__main__":
+	import sys,os
+	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
+
 import logging
-logger = logging.getLogger(__name__)	# get logger from main program
+from lib.devConst import DEVT
+
+
+DEVICE='/dev/ttyACM0'
+BAUDRATE=9600
 
 """  https://github.com/hobbyquaker/cul  """
 fs20commands = [
-  "off",   
+  "off",		# 0 
   "dim06%", "dim12%", "dim18%", "dim25%", "dim31%", "dim37%", "dim43%", "dim50%", "dim56%",
   "dim62%",  "dim68%","dim75%", "dim81%", "dim87%", "dim93%", "dim100%",   
-  "on",		# Set to previous dim value (before switching it off)
+  "on",		# 17  Set to previous dim value (before switching it off)
   "toggle",	# between off and previous dim val
   "dimup",   "dimdown",   "dimupdown",
   "timer",
   "sendstate",
-  "off-for-timer",   "on-for-timer",   "on-old-for-timer",
+  "off-for-timer",		# 24
+  "on-for-timer",   
+  "on-old-for-timer",	# 26
   "reset",
   "ramp-on-time",      #time to reach the desired dim value on dimmers
   "ramp-off-time",     #time to reach the off state on dimmers
@@ -65,9 +74,13 @@ def parseFS20(msg):
 		return {}
 	
 def FS20_command(hausc, devadr, cmd="toggle", dur=None):
-	''' send message in fs20 format
+	''' build message in fs20 format
 	'''
-	cde = fs20commands.index(cmd)
+	if type(cmd) is str:
+		cde = fs20commands.index(cmd)
+	else:
+		cde = cmd
+		cmd = fs20commands[cde]
 	ee=""
 	if not dur is None:
 		cde |= 0x20
@@ -82,6 +95,8 @@ def FS20_command(hausc, devadr, cmd="toggle", dur=None):
 	cmd = "%0.2X" % cde
 	return 'F'+hausc+devadr+cmd+ee
 	
+# hex  to pseudoquaternäre 
+# 1212 => 12131213
 def hex2four(hexnr):
 	''' translate received nr to elv code where only first 2 bits mean '''
 	if type(hexnr) is str:
@@ -89,7 +104,75 @@ def hex2four(hexnr):
 	m=1
 	cif=0
 	while hexnr>0:
-		cif += m*((hexnr & 3) -1)
+		cif += m*((hexnr & 3) +1)
 		hexnr = hexnr >> 2
-		m *= 16
+		m *= 10
+	return cif+m
+
+	
+def four2hex(fournr, formt="%02x"):
+	if type(fournr) is str:
+		fournr = int(fournr,10)
+	m=1
+	cif=0
+	while fournr>0:
+		cif += m*((fournr % 10) -1)
+		fournr //= 10
+		m *= 4
+	if formt:
+		return formt % cif
 	return cif
+
+if __name__ == "__main__":
+	import sys,os,time
+	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
+	from lib.serComm import serComm
+	import lib.tls as tls
+	
+	logger = tls.get_logger(__file__, logging.DEBUG)
+	
+	HAUSC = four2hex('12131213',"%04x")	# 0x1212
+	
+	codes = {
+		"1414": {"name":'trapkast',	"cmd":26,"dur":60, "act":0},	# sound & light
+		"1311": {"name":'garage'  ,	"cmd":26,"dur":60, "act":0},	# sound & show
+		"1111": {"name":'deurbel' ,	"cmd":'on',"dur":None, "hausc":'21414433', "act":0}, # sound
+		#"1111": {"name":'deurbel' ,	"cmd":'toggle',"dur":None, "hausc":'21414433', "act":1}, # sound
+		#"1111": {"name":'deurbel' ,	"cmd":'off',"dur":None, "hausc":'21414433', "act":1}, # sound
+		#"1111": {"name":'deurbel' ,	"cmd":24,"dur":None, "hausc":'21414433', "act":1}, # none
+		"1211": {"name":'gang'    ,	"cmd":26,"dur":None, "act":0},  # sound & show
+		"4424": {"name":'lampen'  ,	"cmd":'off',"dur":None}
+		}
+	
+	serdev = serComm(DEVICE, BAUDRATE)
+	serdev.send_message("X21")  # prepare to receive known msg with RSSI
+	time.sleep(1)
+	
+	for adr,dct in codes.items():
+		logger.info('%s with %s' % (adr,dct))
+		if 'act' in dct and not dct['act']:
+			continue
+		devadr = four2hex(adr)  
+		if 'hausc' in dct:
+			hc = four2hex(dct['hausc'])
+		else:
+			hc = HAUSC
+		cmd = FS20_command(hc, devadr, cmd=dct['cmd'], dur=dct['dur'])
+		serdev.send_message(cmd)
+		time.sleep(10)
+	
+	
+	while True:
+		msg = serdev.read(minlen=8,timeout=10,termin=bytes('\r\n','ascii'))
+		if not msg:
+			break
+		rec = parseS300(msg)
+		if rec and 'devadr' in rec:
+			logger.info('tmp,hum =%s' % rec)
+		else:
+			logger.info('msg %s' % parseFS20(msg))
+	
+	serdev.exit()
+else:
+	logger = logging.getLogger(__name__)	# get logger from main program
+

@@ -97,12 +97,15 @@ def index(name=TITLE):
 		ndays=4
 		bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
 	logger.info("src:%s,selqs:%s len:%d" % (src,selqs,len(selqs)))
-	if len(selqs)==0 or len(selqs)>5:
+	if len(selqs)==0 or len(selqs)>15:
 		selqs=['temperature']
-	page = dict(menitms=buildMenu(srcs,src,typnames(dbStore.quantities(prop=2)),selqs,ndays))
+	#page = dict(menitms=buildMenu(srcs,src,typnames(dbStore.quantities(prop=2)),selqs,ndays))
 	#page = redraw(src,selqs,julianday())
-	page.update( dict(title=name, footer=__copyright__, jdtill=julianday(),ndays=ndays,grQuantIds=quantIds))
+	jdtill = julianday()
+	page = redraw(src, selqs, jdtill, ndays)
+	page.update( dict(title=name, footer=__copyright__)) #jdtill=julianday(),ndays=ndays,grQuantIds=quantIds))
 	return bottle.template(TPL, page)
+
 
 @app.post('/cursor', method="POST")
 def cursorhandler():

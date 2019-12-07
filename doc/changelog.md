@@ -15,6 +15,12 @@ Sections
 ### Developers
 -->
 
+## [1.3.2] - 2019-12-07
+### Changed 
+- PIR motion sensor on AIOS tested 
+- bottle site enhanced with cookies that remember state
+- individual AIOS bits can be specified using mask item in config
+
 ## [1.3.1] - 2019-11-30
 ### Added
 - PIR motion sensor with GATT notification 

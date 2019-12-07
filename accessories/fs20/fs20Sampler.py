@@ -16,15 +16,12 @@ from lib.sampleCollector import DBsampleCollector,forever
 from lib.devConst import DEVT
 from lib.tls import get_logger
 
-DEVICE='/dev/ttyACM0'
-BAUDRATE=9600
-
 class fs20Sampler(DBsampleCollector):
 	''' collects fs20 messages and filters and stores results'''
 	manufacturer="elv.de"
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self.serdev = serComm(DEVICE, BAUDRATE)
+		self.serdev = serComm(fstls.DEVICE, fstls.BAUDRATE)
 		quantities=kwargs['quantities']
 		self.hausc = quantities['hausc']  # not realy a quantity !!
 		self.serdev.send_message("X21")  # prepare to receive known msg with RSSI

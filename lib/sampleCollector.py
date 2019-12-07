@@ -2,7 +2,7 @@
 """ generic template for sampler devices generating (averaged and filtered) data to be stored
 """
 
-import logging,time,json
+import logging,time,json,enum
 from lib.dbLogger import julianday,prettydate,sqlLogger
 from lib.devConst import qCOUNTING,DEVT
 logger = logging.getLogger(__name__)	# get logger from main program
@@ -15,6 +15,14 @@ async def forever(func, *args, **kwargs):
 # index to self.average[]
 qVAL=0
 qCNT=1
+
+class sm(enum.IntFlag):
+	ADR=0
+	TYP=1
+	NM=2
+	SRC=3
+	MSK=4
+	
 
 class sampleCollector(object):
 	""" base class for collection of sampling quantities """
@@ -52,11 +60,13 @@ class sampleCollector(object):
 				nm =rec['name'] if 'name' in rec else "no:%s" % adr
 				src =rec['source'] if 'source' in rec else ''
 				mask =rec['mask'] if 'mask' in rec else None
+				smap[int(qid)]={sm.ADR:adr,sm.TYP:typ,sm.NM:nm,sm.SRC:src}
 				if mask:
 					logger.info('diginp bit:%d for ch:%s' % (mask,qid))
-					smap[int(qid)]=(adr,typ,nm,src,mask)
-				else:
-					smap[int(qid)]=(adr,typ,nm,src)
+					smap[int(qid)][sm.MSK] = mask
+					#smap[int(qid)]=(adr,typ,nm,src,mask)
+				#else:
+					#smap[int(qid)]=(adr,typ,nm,src)
 		return smap
 		
 	def qCheck(self,quantity,devadr,typ=None,name=None,source=None):
@@ -67,46 +77,48 @@ class sampleCollector(object):
 			typ=None
 		if not source:
 			source = self.qsrc(quantity)
-		mp = [devadr,typ,name,source]
+		#mp = [devadr,typ,name,source]
+		mp = {sm.ADR:devadr, sm.TYP:typ, sm.NM:name, sm.SRC:source}
 		if quantity in self.servmap:
 			if self.qtype(quantity)==DEVT['secluded']:
-				mp[1]=DEVT['secluded']
-			mp = [itold if itnew is None else itnew for itnew,itold in zip(mp,self.servmap[quantity])]
+				mp[sm.TYP]=DEVT['secluded']
+			#mp = [itold if itnew is None else itnew for itnew,itold in zip(mp,self.servmap[quantity])]
+			mp = {smi:mp[smi] if smi in mp and mp[smi] is not None else it for smi,it in self.servmap[quantity].items() }
 		elif devadr:
 			if not quantity and self.minqid:
 				quantity = max(self.servmap)+1
 				if quantity<self.minqid:
 					quantity=self.minqid
 				logger.info("creating quantity:%s = %s" % (quantity,mp))
-		if mp[1] is None:
-			mp[1]=DEVT['unknown']
+		if mp[sm.TYP] is None:
+			mp[sm.TYP]=DEVT['unknown']
 		if quantity:
-			self.servmap[quantity] = tuple(mp)
+			self.servmap[quantity] = mp
 		return quantity
 	
 	def jsonDump(self):
 		''' extract modified quantities config enhanced by newly discovered and more info'''
 		cnf={}
 		for qid,tp in self.servmap.items():
-			cnf[qid] = {'devadr':tp[0],'typ':tp[1],'name':tp[2],'source':tp[3]}
+			cnf[qid] = {'devadr':tp[sm.ADR],'typ':tp[sm.TYP],'name':tp[sm.NM],'source':tp[sm.SRC]}
 		return json.dumps(cnf, ensure_ascii=False, indent=2, sort_keys=True)
 			
 	def qname(self, qkey):
 		''' quantity name '''
 		if qkey in self.servmap:
-			return self.servmap[qkey][2]
+			return self.servmap[qkey][sm.NM]
 		return None
 	def qsrc(self, qkey):
 		''' quantity source or location '''
 		if qkey in self.servmap:
-			return self.servmap[qkey][3]
+			return self.servmap[qkey][sm.SRC]
 		return None
 	def qtype(self, qkey):
 		''' quantity type as defined in DEVT '''
-		return self.servmap[qkey][1]
+		return self.servmap[qkey][sm.TYP]
 	def qdevadr(self, qkey):
 		''' quantity devadr '''
-		return self.servmap[qkey][0]
+		return self.servmap[qkey][sm.ADR]
 
 	def qIsCounting(self, qkey):
 		''' is not analog but just counter '''
@@ -114,7 +126,7 @@ class sampleCollector(object):
 	def qid(self,devadr,typ=None):
 		''' search for qkey of quantity having devadr and or typ '''
 		for quid,tp in self.servmap.items():
-			if (devadr==tp[0] or tp[0] == '%s' % devadr) and (typ is None or typ==tp[1]):
+			if (devadr==tp[sm.ADR] or tp[sm.ADR] == '%s' % devadr) and (typ is None or typ==tp[sm.TYP]):
 				return quid
 		return None
 	

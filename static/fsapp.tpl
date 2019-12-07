@@ -63,7 +63,7 @@
     %menu = include("static/menu.tpl")
   <br/>
 
- <svg class="graph" xmlns="http://www.w3.org/2000/svg" height="calc( 90vh - 18em )" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    
+ <svg class="graph" xmlns="http://www.w3.org/2000/svg" height="calc( 94vh - 16em )" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    
   
   <defs>
       <clipPath id="clpPth">
@@ -75,10 +75,10 @@
 
   %for curve,side,xleg in zip(curves,[98,906,44,956],[300,500,100,700]):
      <g class="surfaces" clip-path="url(#clpPth)">
-     	%if curve['qtyp']==1:
-     	 <path  fill="none" stroke={{curve['stroke']}} stroke-width="2.8" d="{{curve['crv']}}" />
-     	%else:
-     	  %for crv in curve['crv']:
+      %if curve['qtyp']==1:
+       <path  fill="none" stroke={{curve['stroke']}} stroke-opacity="0.7" stroke-width="2.8" d="{{curve['crv']}}" />
+      %else:
+        %for crv in curve['crv']:
          <polyline fill="none" stroke={{curve['stroke']}} stroke-width="1.8" points="{{crv}}" />
         %end
       %end
@@ -91,7 +91,7 @@
      </g>
      <g class="labels legend" fill={{curve['stroke']}} >
       <text  x="{{xleg+30}}" y="28" >{{curve['legend']}}</text>       
-		<path stroke-width="3" stroke={{curve['stroke']}} d="M{{xleg}} 26 h26 Z" />
+      <path stroke-width="3" stroke={{curve['stroke']}} d="M{{xleg}} 26 h26 Z" />
      </g>
   %end
     
