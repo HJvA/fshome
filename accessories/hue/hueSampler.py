@@ -33,7 +33,7 @@ class hueSampler(DBsampleCollector):
 			gamut=HueLight.gamut(hueid)
 			qid = self.qCheck(None,hueid,DEVT['lamp'],dev['name'])
 			if qid:
-				logger.debug("having light:(%s) with %s" % (self.servmap[qid],gamut))
+				logger.debug("having light:(%s) with %s" % (self._servmap[qid],gamut))
 				hueSampler.devdat[qid] = HueLight(hueid,gamut,iphue,hueuser) # create light
 			
 	async def receive_message(self):
@@ -49,8 +49,9 @@ class hueSampler(DBsampleCollector):
 		
 	def set_state(self, quantity, state, prop='bri'):
 		''' stateSetter for HAP to set hue device '''
-		#super().set_state(quantity, state, prop=prop)
-		hueSampler.devdat[quantity].setValue(prop, state)
+		if not super().set_state(quantity, state, prop=prop):
+			return None
+		return hueSampler.devdat[quantity].setValue(prop, state)
 
 
 if __name__ == "__main__":
@@ -148,7 +149,7 @@ if __name__ == "__main__":
 		#while True:	
 		global bri
 		await hueobj.receive_message()  # both sensors and lights
-		for qid,tup in hueobj.servmap.items():
+		for qid in hueobj.qactive():
 			typ = hueobj.qtype(qid)
 			if typ == DEVT['lamp']:
 				bri += 1

@@ -64,7 +64,7 @@ class fs20Sampler(DBsampleCollector):
 						elif cmd=='toggle':
 							val=1
 						else:
-							logger.info("ignoring fs20 cmd:%s" % cmd)
+							logger.info("ignoring fs20 cmd:%s in %s" % (rec,msg))
 						self.check_quantity(tstamp, dbid, val)
 						return -1
 					else:
@@ -74,8 +74,10 @@ class fs20Sampler(DBsampleCollector):
 		
 	def set_state(self, quantity, state, prop=None, dur=None):
 		''' setting state to actuator '''
+		if not super().set_state(quantity, state, prop):
+			return None
 		typ=self.qtype(quantity)
-		devadr=self.servmap[quantity][0]
+		devadr=self.qdevadr(quantity)
 		logger.info("setting state of:%s to adr:%s of typ:%s with:%s" % (quantity,devadr,typ,state))
 		cmd=None
 		if typ==DEVT['outlet'] or typ==DEVT['switch'] or prop=='on':
@@ -99,6 +101,7 @@ class fs20Sampler(DBsampleCollector):
 		if cmd:
 			cmd= fstls.FS20_command(self.hausc, devadr, cmd=cmd, dur=prop)
 			self.serdev.send_message(cmd)
+		return cmd
 
 
 if __name__ == "__main__":  # for testing and discovering devices

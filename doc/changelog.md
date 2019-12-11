@@ -15,6 +15,10 @@ Sections
 ### Developers
 -->
 
+## [1.3.3] - 2019-12-11
+### Added
+- signaller class handles events by exitating actuators
+
 ## [1.3.2] - 2019-12-07
 ### Changed 
 - PIR motion sensor on AIOS tested 

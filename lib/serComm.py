@@ -78,7 +78,6 @@ class serComm(object):
 				while cnt<timeout/tres and self.ser.in_waiting+len(self.buf)<minlen:
 					await asyncio.sleep(tres)
 					cnt+=1
-			
 				if self.ser.in_waiting>0:
 					self.buf += self.ser.read(self.ser.in_waiting)
 			except KeyboardInterrupt:
@@ -87,8 +86,8 @@ class serComm(object):
 				logger.critical('error reading serial port {} \n'.format(self.ser.name, e))
 			except TypeError:
 				logger.error('serial interrupt while awaiting')
-			except Exception:
-				logger.exception("unknown serial!!!")
+			except Exception as e:
+				logger.exception("unknown serial!!! :%s" % e)
 			if len(self.buf)>minlen:
 				if termin in self.buf:
 					(data,sep,self.buf) = self.buf.partition(termin)
@@ -119,15 +118,9 @@ class serComm(object):
 		self.write(data)
 	
 	def get_info(self, command):
+		""" queries device with command """
 		self.write(command)
 		return self.read(timeout=5, termin=b'\n')
-	
-"""
-async def forever(func, *args, **kwargs):
-	''' run (await) function func over and over '''
-	while (True):
-		await func(*args, **kwargs)
-"""
 
 if __name__ == "__main__":		# just receives strings, basic parsing
 	logger = logging.getLogger()
@@ -136,11 +129,10 @@ if __name__ == "__main__":		# just receives strings, basic parsing
 	loop = asyncio.get_event_loop()
 
 	try:
-		cul = serComm(DEVICE,BAUDRATE)
+		cul = serComm(DEVICE, BAUDRATE)
 		logger.info("cul version %s" % cul.get_info(b'V\r\n'))
 		
 		loop.run_until_complete(forever(cul.asyRead, termin=b'\n'))
-									
 	except KeyboardInterrupt:
 		logger.warning("terminated by ctrl c")
 	loop.close()

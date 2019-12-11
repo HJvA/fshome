@@ -107,7 +107,7 @@ class HueBaseDev (object):
 		elif cache: # when fetching cache failed
 			logger.warnig('hueid %s not in cache %s' % (self.hueId,prop))
 		return None
-	
+		
 	def lastupdate(self):
 		''' to be overriden by ancesters to return real time updated '''
 		return self.dtActive
@@ -137,12 +137,21 @@ class HueBaseDev (object):
 		
 	def setState(self, prop='on', val='true', reskey='/state'):
 		''' executes put request for changing some hue bridge property '''
-		if self.last != val:
+		upd = self.last != val
+		if upd:
 			self.dtActive = datetime.now(timezone.utc)
-		logger.info('putState %s of %s to %s' % (prop,self.hueId,val))
-		requests.put('https://%s/api/%s' % (self.ipadr,self.user) + '/%s/%s%s' % (self.resource,self.hueId,reskey), data='{"%s":%s}' % (prop,val),verify=False)
-		self.last=val
+			if val is None or prop is None:
+				logger.warning('could not putState %s of %s to %s' % (prop,self.hueId,val))
+			else:
+				logger.info('putState %s of %s to %s' % (prop,self.hueId,val))
+				requests.put('https://%s/api/%s' % (self.ipadr,self.user) + '/%s/%s%s' % (self.resource,self.hueId,reskey), data='{"%s":%s}' % (prop,val),verify=False)
+			self.last=val
+		return upd
 	
+	def setValue(self, prop=None, val=None):
+		''' high level property setter assuming Si units '''
+		return setState(prop, val)
+
 	def deleteProperty(self, reskey, resource='config/whitelist'):
 		''' removes some property from hue bridge '''
 		logger.warning('deleting %s from %s' % (reskey,resource))
@@ -285,7 +294,7 @@ class HueLight(HueBaseDev):
 			return val/2.54
 			
 	def setValue(self, prop='on', val='true'):
-		''' executes put request for changing some hue bridge property '''
+		''' executes put request for changing some hue bridge property in Si like units '''
 		if prop=='on':
 			if val and val!='false':
 				val='true'
@@ -301,7 +310,7 @@ class HueLight(HueBaseDev):
 			val = int(val*65535/360)
 		elif prop=='sat':
 			val = int(val*2.54)
-		self.setState(prop,val)
+		return self.setState(prop,val)
 	
 	def lightTyp(cache, hueid, types=LIGHTTYPES):
 		if hueid in cache:

@@ -8,19 +8,22 @@ The application operates as a homekit bridge e.g. on a Raspberry pi which is con
 The project uses the HAP-python project by Ivan Kalchev.
 It is cloned as a submodule from <https://github.com/ikalchev/HAP-python>
 
+The project may connect to a bluetooth low energy device (see my BLE-automation project) which collects digital and/or analog signals whichever connected.
+
 The results will be stored in a sqlite database. The quantities recorded will have to be assigned to a source / room in a fs20.json / hue.json / p1DSMR.json / aios.json file.
 
 The measured temeratures and humidities and other recorded events can be displayed in a svg chart in a browser, with selectable quantities and sources. For this a web server is available using the bottle web-framework cloned from <https://github.com/bottlepy/bottle> by Marcel Hellkamp.
 
 ## Table of Contents
-1. [Installation](#Installation)
-2. [Configuration of devices](#Configure)
-3. [Configuration of Homekit](#Homekit)
-4. [Running the application](#Usage)
-4. [Use of Homekit rules](#Rules)
-5. [Notice](#Notice)
+1. [Features](#Features)
+2. [Installation](#Installation)
+3. [Configuration of devices](#Configure)
+4. [Configuration of Homekit](#Homekit)
+5. [Running the application](#Usage)
+6. [Use of Homekit rules](#Rules)
+7. [Notice](#Notice)
 
-## Features
+## Features <a name="Features"></a>
 
 The following sensors/actuators are supported:  
 - fs20 S300 temperature / humidity sensor  
@@ -47,10 +50,8 @@ DSMR is a domestic smart metering system for home electricity and natural gas.
 
 ### AIOS
 
-AIOS (Automation IO service) is an Adafruit bluetooth device gathering a variety of quantities: e.g temperature,humidity,TVOC,eCO2 and other quantities connected to the ADC and digIO channels
-PIR motion detector connected to digin pin 16
-
-
+AIOS (Automation IO service) is an Adafruit bluetooth device gathering a variety of quantities: e.g temperature,humidity,TVOC,eCO2 (on I2C bus) and other quantities connected to the ADC and digIO channels.  
+PIR motion detector connected to digin pin 16.  
 
 ## Installation <a name="Installation"></a>
 

@@ -29,7 +29,8 @@
     "name": "movement",
     "source": "aios",
     "typ": 11,
-    "mask": 16
+    "mask": 16,
+    "signal": "109=26"
   },
   "411": {
     "devadr": "11",

@@ -79,7 +79,7 @@ def FS20_command(hausc, devadr, cmd="toggle", dur=None):
 	if type(cmd) is str:
 		cde = fs20commands.index(cmd)
 	else:
-		cde = cmd
+		cde = int(cmd)
 		cmd = fs20commands[cde]
 	ee=""
 	if not dur is None:
@@ -98,7 +98,7 @@ def FS20_command(hausc, devadr, cmd="toggle", dur=None):
 # hex  to pseudoquaternäre 
 # 1212 => 12131213
 def hex2four(hexnr):
-	''' translate received nr to elv code where only first 2 bits mean '''
+	''' translate received hex (num or str) to elv code where only first 2 bits mean '''
 	if type(hexnr) is str:
 		hexnr = int(hexnr,16)
 	m=1
@@ -134,14 +134,14 @@ if __name__ == "__main__":
 	HAUSC = four2hex('12131213',"%04x")	# 0x1212
 	
 	codes = {
-		"1414": {"name":'trapkast',	"cmd":26,"dur":60, "act":0},	# sound & light
-		"1311": {"name":'garage'  ,	"cmd":26,"dur":60, "act":0},	# sound & show
-		"1111": {"name":'deurbel' ,	"cmd":'on',"dur":None, "hausc":'21414433', "act":0}, # sound
-		#"1111": {"name":'deurbel' ,	"cmd":'toggle',"dur":None, "hausc":'21414433', "act":1}, # sound
+		"1414": {"name":'trapkast',	"cmd":26,"dur":60, "act":1},	# sound normaal & light
+		"1311": {"name":'garage'  ,	"cmd":26,"dur":60, "act":0},	# sound uhahahaha & show
+		#"1111": {"name":'deurbel' ,	"cmd":'on',"dur":None, "hausc":'21414433', "act":1}, # sound normaal
+		#"1111": {"name":'deurbel' ,	"cmd":'toggle',"dur":None, "hausc":'21414433', "act":1}, # sound up-up-up-up
 		#"1111": {"name":'deurbel' ,	"cmd":'off',"dur":None, "hausc":'21414433', "act":1}, # sound
 		#"1111": {"name":'deurbel' ,	"cmd":24,"dur":None, "hausc":'21414433', "act":1}, # none
-		"1211": {"name":'gang'    ,	"cmd":26,"dur":None, "act":0},  # sound & show
-		"4424": {"name":'lampen'  ,	"cmd":'off',"dur":None}
+		"1211": {"name":'gang'    ,	"cmd":26,"dur":None, "act":1},  # sound tjeu & show
+		"4424": {"name":'lampen'  ,	"cmd":'off',"dur":None, "act":0}  # sound tring
 		}
 	
 	serdev = serComm(DEVICE, BAUDRATE)

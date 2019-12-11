@@ -7,7 +7,7 @@ if __name__ == "__main__":
 	import aiosAPI #import aiosDelegate,ENV_SVR,chANA1ST
 else:
 	import accessories.BLEAIOS.aiosAPI as aiosAPI  #import aiosDelegate,ENV_SVR
-from lib.sampleCollector import DBsampleCollector,forever
+from lib.sampleCollector import DBsampleCollector,forever,sm
 from lib.devConst import DEVT
 from lib.tls import get_logger
 from bluepy import btle
@@ -19,16 +19,13 @@ class aiosSampler(DBsampleCollector):
 	def __init__(self, loop, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		masks ={}
-		if self.servmap:
-			for qid in self.servmap:
-				if qid>0 and int(self.qdevadr(qid))==aiosAPI.chDIGI:  # get assigned input bits
-					name = self.qname(qid)
-					masks[qid] = self.servmap[qid][4]
+		for qid in self.qactive():
+			if qid>0 and int(self.qdevadr(qid))==aiosAPI.chDIGI:  # get assigned input bits
+				name = self.qname(qid)
+				masks[qid] = self.serving(qid, sm.MSK)  
 		self.aios = aiosAPI.aiosDelegate(loop=loop, chInpBits=masks)
-		for qid,tup in self.servmap.items():
-			typ = self.qtype(qid)
-			if typ < DEVT['secluded']:
-				self.aios.startChIdNotifyer(int(self.qdevadr(qid)))
+		for qid in self.qactive():
+			self.aios.startChIdNotifyer(int(self.qdevadr(qid)))
 		#self.aios.startServiceNotifyers(self.aios.dev.getServiceByUUID(btle.UUID(aiosAPI.ENV_SVR))) # activate environamental service
 		#aios.startChIdNotifyer(chDIGI, dev)
 		#self.aios.startChIdNotifyer(aiosAPI.chANA1ST+3)  # activate 3rd analog channel
