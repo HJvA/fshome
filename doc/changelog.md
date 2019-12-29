@@ -15,6 +15,11 @@ Sections
 ### Developers
 -->
 
+## [1.3.4] - 2019-12-29
+### Added
+- illuminance sensor on aios analog channel A1 over BLE
+- setting analog reference voltage using mask attribute
+
 ## [1.3.3] - 2019-12-11
 ### Added
 - signaller class handles events by exitating actuators

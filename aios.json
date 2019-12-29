@@ -1,5 +1,6 @@
 {
   "dbFile":"/mnt/extssd/storage/fs20store.sqlite",
+  "devAddress":"d8:59:5b:cd:11:0c",
   "401": {
     "devadr": "1",
     "name": "temperature",
@@ -30,12 +31,13 @@
     "source": "aios",
     "typ": 11,
     "mask": 16,
-    "signal": "109=26"
+    "NOsignal": "109=26"
   },
-  "411": {
-    "devadr": "11",
-    "name": "AnalogChan",
+  "412": {
+    "devadr": "12",
+    "name": "fotCell",
     "source": "aios",
-    "typ": 98
+    "typ": 5,
+    "mask":1.2
   }
 }

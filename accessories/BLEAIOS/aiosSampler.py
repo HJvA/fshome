@@ -16,19 +16,22 @@ class aiosSampler(DBsampleCollector):
 	""" specific AIOS database sample collector """
 	manufacturer="AdaFruit"
 	minqid=400
-	def __init__(self, loop, *args, **kwargs):
+	def __init__(self, loop, *args, devAddress=aiosAPI.DEVADDRESS, **kwargs):
 		super().__init__(*args, **kwargs)
 		masks ={}
 		for qid in self.qactive():
 			if qid>0 and int(self.qdevadr(qid))==aiosAPI.chDIGI:  # get assigned input bits
 				name = self.qname(qid)
 				masks[qid] = self.serving(qid, sm.MSK)  
-		self.aios = aiosAPI.aiosDelegate(loop=loop, chInpBits=masks)
+		self.aios = aiosAPI.aiosDelegate(loop=loop, devAddress=devAddress, chInpBits=masks)
 		for qid in self.qactive():
-			self.aios.startChIdNotifyer(int(self.qdevadr(qid)))
-		#self.aios.startServiceNotifyers(self.aios.dev.getServiceByUUID(btle.UUID(aiosAPI.ENV_SVR))) # activate environamental service
-		#aios.startChIdNotifyer(chDIGI, dev)
-		#self.aios.startChIdNotifyer(aiosAPI.chANA1ST+3)  # activate 3rd analog channel
+			aiosId = int(self.qdevadr(qid))
+			self.aios.startChIdNotifyer(aiosId)
+			anaChan = aiosId - aiosAPI.chANA1ST
+			if anaChan>=0:
+				Vmax = self.serving(qid, sm.MSK)
+				if Vmax:
+					self.aios.setAnaVoltRange(anaChan, float(Vmax))
 		task = loop.create_task(self.aios.servingNotifications())
 		
 	async def receive_message(self):
@@ -68,10 +71,11 @@ if __name__ == "__main__":
 		(DEVT['temperature'],DEVT['humidity'],DEVT['ECO2'],DEVT['TVOC'],DEVT['DIGI'],DEVT['voltage']) ) }
 	DBFILE='~/fs20store.sqlite'
 	QCONF['dbFile'] = DBFILE
+	QCONF['devAddress']=aiosAPI.DEVADDRESS
 	QCONF["%d" % (aiosAPI.chDIGI+aiosSampler.minqid,)]["mask"]=0xffff
 	loop = asyncio.get_event_loop()
 	try:
-		aios = aiosSampler(loop, DBFILE, quantities=QCONF)
+		aios = aiosSampler(loop, DBFILE, devAddress=QCONF['devAddress'], quantities=QCONF)
 		loop.run_until_complete(forever(aios.receive_message))
 	except KeyboardInterrupt:
 		logger.warning("terminated by ctrl c")

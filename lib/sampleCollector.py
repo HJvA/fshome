@@ -146,7 +146,8 @@ class sampleCollector(object):
 	def serving(self, qid, smItem):
 		''' get quantity attribute '''
 		if qid in self._servmap:
-			return self._servmap[qid][smItem]
+			if smItem in self._servmap[qid]:
+				return self._servmap[qid][smItem]
 		return None
 	def qactive(self):
 		''' list of active quantities '''

@@ -40,8 +40,8 @@ tmBACKs={ 5:(u'\u251C 5days \u2524',20,1,'%a'),
 	182.6:(u'\u251C 6mnth \u2524',24*60,30.44,'%b'), 
 	365.25:(u'\u251C 1yr \u2524',2*24*60,30.44,'%b') }
 tmBACKs={0.2:(u'5hr',5,0.0417,'%H'),
-   1:(u'1day',15,0.25,'#j4'),  #'%H:%M'), 
-	5:(u'5days',20,1,'%a'),
+   1.0:(u'1day',15,0.25,'#j4'),  #'%H:%M'), 
+	5.0:(u'5days',20,1,'%a'),
 	30.44:(u'1mnth',6*60,7,'wk%V'), 
 	182.6:(u'6mnth',24*60,30.44,'%b'), 
 	365.25:(u'1yr',2*24*60,30.44,'%b') }
@@ -307,6 +307,8 @@ def redraw(src, selqs, jdtill, ndays=7):
 	ydats=[]
 	qss=[]
 	grQuantIds=set()
+	if ndays not in tmBACKs:
+		ndays=1.0
 	xlbltup = tmBACKs[ndays]
 
 	avgminutes = xlbltup[1]

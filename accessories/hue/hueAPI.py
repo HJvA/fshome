@@ -195,7 +195,7 @@ class HueSensor (HueBaseDev):
 	def lastupdate(self):
 		''' last time the self.prop value was updated on the hue bridge'''
 		ddlast = self.state('lastupdated')
-		if ddlast:
+		if ddlast and ddlast[:4] != 'none':
 			dtm = datetime.strptime(ddlast+'+0000', "%Y-%m-%dT%H:%M:%S%z") # aware utc
 		else:
 			return datetime.now(timezone.utc)
