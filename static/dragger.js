@@ -17,7 +17,7 @@ function sendData(data) {
   for (kelm in data) {
   	  data[kelm] = data[kelm].value;
   }
-  console.log("sending ",JSON.stringify(data));
+  console.log("posting ",JSON.stringify(data));
   xhr.send(JSON.stringify(data));
 }
 // if( isMobile.any() ) alert('Mobile');
@@ -107,11 +107,14 @@ function msgState(state, destinId) {
 	statmsg.className = state;
 	//statmsg.classList.toggle(state);
 }
-function julday(cursPos,jdtill,ndays) {
-  var jd = jdtill - (900 -cursPos)/800*ndays;
+function juldaystr(jd) {
   var tm = (jd - 2440587.5) * 86400.0;
   var date = new Date(tm*1000);
   return date.getDate()+"-"+date.toLocaleTimeString();
+}
+function julday(cursPos,jdtill,ndays) {
+  var jd = jdtill - (900 -cursPos)/800*ndays;
+  return jd;
 }
 function divDict(divElm) {
   lst={};
@@ -146,7 +149,7 @@ String.prototype.format = function (args) {
 };
 String.prototype.format.regex = new RegExp("{-?[0-9]+}", "g");
 
-pageSwiper =function (ulElm, movElm, cParams){
+pageSwiper =function (ulElm, movElm, descrElm, cParams){
 	var 
 		detecttouch = !!('ontouchstart' in window) || !!('ontouchstart' in document.documentElement) || !!window.ontouchstart || !!window.Touch || !!window.onmsgesturechange || (window.DocumentTouch && window.document instanceof window.DocumentTouch),
 		startx = 0, // starting x coordinate of touch point
@@ -159,38 +162,77 @@ pageSwiper =function (ulElm, movElm, cParams){
 		pinching=false,
 		ismousedown = false,
 		params = cParams,
-		moveElm=movElm;	
+		moveElm=movElm,
+		descrElm=descrElm;	
 		//moveElm.x1.baseVal.value = taxPos;
 		//moveElm.x2.baseVal.value = taxPos;
-		console.log("setup dragger mov:",movElm.id," tpos:", orgx," quants:",params['grQuantIds'])
+		console.log("setup dragger mov:",movElm.id," tpos:", orgx," jdtill:",params['jdtill'])
 		
 	
 	var handletouch = function(srcElm,trgElm){
-			console.log("page change from %s to %s",srcElm.id,trgElm.id);
-		};
+		console.log("page change from %s to %s",srcElm.id,trgElm.id);
+	};
 		
-		
+	function getEvent(distx, kvpfunc, hysterese) {
+		hysterese = hysterese || 10.0;
+		var prm=divDict(params);
+		var jd=julday(distx+orgx, prm["jdtill"].value, prm["ndays"].value);
+		var evtDescr= JSON.parse(prm["evtData"].value);
+		prm["cursorPos"].value=distx+orgx;
+		var djd=0.0;
+		for (var ejd in evtDescr) {
+			if (Math.abs(parseFloat(ejd)-jd) < Math.abs(djd-jd))
+				djd=parseFloat(ejd);
+		}
+		if (Math.abs(djd-jd)<hysterese/1440.0) {
+			kvpfunc(djd, evtDescr[djd]);
+			return djd;
+		} else {
+			kvpfunc(djd, "");
+		}
+	}
 	function setPos(movElm, distx) {
 		if (!movElm.moving)	
 			movElm.classList.remove("stabilise"); 
 		movElm.moving=true;
 		var yOffset=0;
 		var transformAttr = ' translate(' + distx + ',' + yOffset + ')';
+		getEvent(distx, function(juday,evtDescr){
+			msg("dd: "+juldaystr(juday)+" evt:"+evtDescr);
+		});
+		
+		/*
 		var prm=divDict(params);
-      movElm.setAttribute('transform', transformAttr); 
-      msg("dd: "+julday(distx+orgx, prm["jdtill"].value, prm["ndays"].value));
+		var jd=julday(distx+orgx, prm["jdtill"].value, prm["ndays"].value);
+		var evtDescr= JSON.parse(prm["evtData"].value);
+		var djd = 0.0; //prm["jdtill"].value;
+		for (var ejd in evtDescr) {
+			if (Math.abs(parseFloat(ejd)-jd) < Math.abs(djd-jd))
+				djd=parseFloat(ejd);
+		}
+		if (Math.abs(djd-jd)<10.0/1440.0) {
+			msg("dd: "+juldaystr(djd)+" evt:"+evtDescr[djd]);
+		} else
+			msg("dd: "+juldaystr(jd)+" evt:"+djd);
+			*/
+		movElm.setAttribute('transform', transformAttr); 
 	}
 	function finaliseLi(dist){
 		if (swiping){
 		  moveElm.x1.baseVal.value = dist+orgx;
 		  moveElm.x2.baseVal.value = dist+orgx;
 		  moveElm.setAttribute("transform","null");
-		  var ps = dist+orgx;
-		  prm=divDict(params);
-        prm["cursorPos"].value=dist+orgx;
-        var ndays = prm["ndays"].value;
-        msg("dd: "+julday(dist+orgx, prm["jdtill"].value, ndays));
-		  sendData(prm);
+		  getEvent(dist, function(juday,evtDescr){
+				msg("dd: "+juldaystr(juday)+" evt:"+evtDescr);
+				descrElm.value = evtDescr;
+				console.log("setting evtDescr to",descrElm.value);
+			}); 
+
+		  //prm=divDict(params);
+        //prm["cursorPos"].value=dist+orgx;
+        //var ndays = prm["ndays"].value;
+        //msg("dd: "+juldaystr(julday(dist+orgx, prm["jdtill"].value, ndays)));
+		  sendData(divDict(params));
 		  moveElm.classList.add("stabilise");
 		  //msg("cookie "+readCookie("FSSITE"));
 		  moveElm.moving=false;

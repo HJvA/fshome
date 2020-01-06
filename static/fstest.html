@@ -22,7 +22,8 @@
     var movElm=document.getElementById('xcursor'); 
     //var grQuants=[&#039;illuminance&#039;, &#039;motion&#039;, &#039;temperature&#039;];
     var params=document.getElementById('params');
-	 var swip = new pageSwiper(touchBox,movElm,params);
+    var evtDescr=document.getElementById('evtDescr');
+	 var swip = new pageSwiper(touchBox,movElm,evtDescr,params);
   }
   function onFocus(elm){
    if (!isMobile.any()) {
@@ -34,7 +35,6 @@
   function onBlur(elm){
    elm.parentNode.style.height = '3em';
   }
-  
   </script>
     
  </head>
@@ -47,10 +47,11 @@
 
 <form method="post" action="/menu" id="mmenu">
  <div class="hidden" id="params">
-   <input name="jdtill" id="jdtill" value="2458818.280841293">
-   <input name="ndays" id="ndays" value="0.2">
-   <input name="cursorPos" id="cursorPos" value="900">
-   <input name="grQuantIds" id="grQuantIds" value="[232," 233,="" 231]="">
+   <input name="jdtill" type="text" id="jdtill" value="2458818.280841293">
+   <input name="ndays" type="text" id="ndays" value="1.0">
+   <input name="cursorPos" type="text" id="cursorPos" value="900">
+   <input name="grQuantIds" type="text" id="grQuantIds" value="[232, 233, 231]">
+   <input name="evtData" type="text" id="evtData" value='{"2458818.28": "hjva", "2458818.1": "zenta"}'>
  </div>
  <fieldset class="fields">
   <div class="menubar" id="menu">
@@ -102,6 +103,9 @@
    </div>
    <div class="menuitem">
      <button type="submit">ok </button>
+   </div>
+   <div class="menuitem">
+     <input name="comment" class="menuinput" id="evtDescr" value="comment">
    </div>
   </div>
  </fieldset>

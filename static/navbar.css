@@ -40,6 +40,17 @@
   border-radius: .25em;
   margin-right: .1vw;
 }
+.menuinput {
+  color: #eee;
+  font-size: large;
+  height: 60%;
+  position: relative;
+  display:block;
+  /*margin-top: 0.33em;*/
+  background: #5c5e60;
+  margin: 2.5% 0.2em;
+  text-align: center;
+}
 /*
 div a:hover, .dropdown:hover .dropbtn {
     background-color: red;
@@ -67,6 +78,7 @@ div a:hover, .dropdown:hover .dropbtn {
   width: 5vw;
   min-width: 3em;
 }
+
 .menuitem button:hover {
   background:red;
 }

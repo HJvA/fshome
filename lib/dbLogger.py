@@ -166,6 +166,19 @@ class sqlLogger(txtLogger):
 		logger.info("closing sqlStore")
 		self.con.close()
 		
+	def execute(self, sql, params=None):
+		''' list of tuples with field-vals '''
+		with self.con:
+			tm=time.clock()
+			cur = self.con.cursor()
+			if params:
+				cur.execute(sql, params)
+			else:
+				cur.execute(sql)
+			recs = cur.fetchall()
+			logger.debug("SQL:%s with(%s) run in %.3fs nrecs=%d" % (sql,params,time.clock()-tm, len(recs)))
+			return recs
+		
 	def fetch(self, name, daysback=100, source=None, fields='ddJulian,numval,strval,source'):
 		''' fetch logged messages from the log store '''
 		ids = self.checkitem(name,source,addUnknown=False)
@@ -176,20 +189,21 @@ class sqlLogger(txtLogger):
 			where+=" AND quantity IN (%s)" % ','.join(map(str,ids))
 		else: # len(ids)==1:
 			where+=" AND quantity=%d" % ids
-
-		with self.con:
-			cur = self.con.cursor()
-			sql ="SELECT %s FROM logdat,quantities " \
+		
+		sql ="SELECT %s FROM logdat,quantities " \
 			"WHERE ID=quantity AND ddJulian>julianday('now')-? %s" \
 			"ORDER BY ddJulian;" % (fields,where)
-			cur.execute(sql, (daysback,))
-			return cur.fetchall()  # list of tuples with field-vals
+		return self.execute(sql, (daysback,))
+		 
 	
 	def fetchlast(self, ikey):
 		''' '''
 		sql = "SELECT ddJulian AS dd,numval,source,type " \
 			"FROM logdat,quantities " \
-			"WHERE ID=quantity AND quantity=? AND ddJulian=(SELECT MAX(ddJulian) FROM logdat WHERE quantity=?);"
+			"WHERE ID=quantity AND quantity=? AND " \
+			"ddJulian=(SELECT MAX(ddJulian) FROM logdat WHERE quantity=?) LIMIT 1;"
+		return self.execute(sql, (ikey,ikey))[0]
+			
 		with self.con:
 			cur = self.con.cursor()
 			cur.execute(sql, (ikey,ikey))
@@ -218,13 +232,9 @@ class sqlLogger(txtLogger):
 			"WHERE active AND ID=quantity AND ddJulian>? AND ddJulian<? %s " \
 			"GROUP BY quantity,source,dd " \
 			"ORDER BY ddJulian;" % (where,)
-		logger.info('sql:%s' % sql)
 		try:
 			interval=1440/tstep  # minutes per day = 1440
-			with self.con:
-				cur = self.con.cursor()
-				cur.execute(sql, (interval,interval,jdend-daysback,jdend))
-				return cur.fetchall()  # list of tuples with field-vals
+			return self.execute(sql, (interval,interval,jdend-daysback,jdend))
 		except KeyboardInterrupt:
 			raise
 		except Exception:
@@ -246,31 +256,46 @@ class sqlLogger(txtLogger):
 			rslt.append(list(rc1))
 			rslt[-1][1] =rc1[1] + rec2[i2][1]
 		return rslt
-					
+		
+	def evtDescriptions(self, jdtill, ndays):
+		''' get all event descriptions in ndays period '''
+		sql = "SELECT ddJulian,descr FROM eventsLog " \
+			" WHERE ddJulian>=? AND ddJulian<=? ORDER BY ddJulian;" 
+		#interval=1440/tstep  # minutes per day = 1440
+		return self.execute(sql, (jdtill-ndays,jdtill))
+
+	def setEvtDescription(self, julDay, evtDescr, maxMinutesDiff=10.0):
+		sql = "SELECT ddJulian,descr FROM eventsLog WHERE ABS(ddJulian-?)<? LIMIT 1;"
+		recs = self.execute(sql, (julDay, maxMinutesDiff/1440.0));  # max minutes diff
+		if recs:
+			sql = "UPDATE eventsLog SET ddJulian=?,descr=? WHERE ddJulian=?;"
+			self.execute(sql, (julDay,evtDescr,recs[0][0]))
+		else:
+			sql = "INSERT INTO eventsLog (ddJulian,descr) VALUES (?,?);"
+			self.execute(sql, (julDay,evtDescr))
+
 	def statistics(self, ndays=10, flds="source,quantity,name,type"):
 		''' queries database for quantity prevalence. keeps list of them internaly '''
 		#cur = self.con.cursor()
-		with self.con:
-			sql = "SELECT %s,COUNT(*) as cnt,AVG(numval) as avgval,MIN(ddJulian) jdFirst FROM logdat,quantities WHERE ID=quantity AND ddJulian>julianday('now')-%d GROUP BY %s ORDER BY ID;" % (flds,ndays,flds)
-			cur = self.con.cursor()
-			cur.execute(sql)
-			recs= cur.fetchall()
-			for rec in recs:
-				if 'name' in rec and 'source' in rec:
-					self.checkitem(rec.name, rec.source, rec.type)
-			return recs
+		#with self.con:
+		sql = "SELECT %s,COUNT(*) as cnt,AVG(numval) as avgval,MIN(ddJulian) jdFirst FROM logdat,quantities WHERE ID=quantity AND ddJulian>julianday('now')-%d GROUP BY %s ORDER BY ID;" % (flds,ndays,flds)
+		#cur = self.con.cursor()
+		#cur.execute(sql)
+		recs= self.execute(sql) # cur.fetchall()
+		for rec in recs:
+			if 'name' in rec and 'source' in rec:
+				self.checkitem(rec.name, rec.source, rec.type)
+		return recs
 	
 	def logi(self, ikey, numval, strval=None, tstamp=None):
 		''' save value to the database '''
 		if tstamp is None:
 			tstamp = round(time.time(),0)	# granularity 1s
 		logger.debug('logging %s (%g) @jd:%.6f' % (self.qname(ikey),numval,julianday(tstamp)))
-		#cur = self.con.cursor()
 		try:
-			with self.con as cur:
-				cur.execute('INSERT INTO logdat (ddJulian,quantity,numval) VALUES (?,?,?)', (julianday(tstamp),ikey,numval))
-				if not strval is None:
-					cur.execute('UPDATE logdat SET strval="%s" WHERE ddJulian=? AND quantity=?' % strval,(julianday(tstamp),ikey))
+			self.execute('INSERT INTO logdat (ddJulian,quantity,numval) VALUES (?,?,?)', (julianday(tstamp),ikey,numval))
+			if not strval is None:
+				self.execute('UPDATE logdat SET strval="%s" WHERE ddJulian=? AND quantity=?' % strval,(julianday(tstamp),ikey))
 		except OperationalError:
 			logger.error("unable to update database with id:%d at jd:%.6f" % (ikey,julianday(tstamp)))
 		except KeyboardInterrupt:
@@ -278,8 +303,7 @@ class sqlLogger(txtLogger):
 		except Exception:
 			logger.exception("unknown !!!")
 		#cur.close()
-	
-					
+
 	def log(self, iname, numval, strval=None, source=None, tstamp=None):
 		''' add a log message to the log store 
 		creates quantity when it does not exist '''
@@ -292,21 +316,21 @@ class sqlLogger(txtLogger):
 	def additem(self, ikey, iname, isource, itype=None):
 		''' add or update a quantity descriptor (will be called automatic for unknown quantities) '''
 		super().additem(ikey,iname,isource,itype)
-		with self.con:
-			cur=self.con.cursor()
-			cur.execute('SELECT name FROM quantities WHERE ID=%d' % ikey)
-			if cur.fetchone() is None:
-				if isource is None:
-					isource='NULL'
-				else:
-					isource='"%s"' % isource
-				cur.execute('INSERT INTO quantities (ID,name,source,type,firstseen) ' 
-					'VALUES (%d,"%s",%s,%s,julianday("now"))' % (ikey,iname,isource,'NULL' if itype is None else itype))
-			else: 
-				logger.debug('db updating %s %s with %s typ %s' %(ikey,iname,isource,itype))
-				cur.execute('UPDATE quantities SET name=?,source=?,type=? WHERE ID=%d' % ikey, (iname,isource,itype))
-			#cur.close()
-			#self.con.commit()
+		#with self.con:
+		#cur=self.con.cursor()
+		recs = self.execute('SELECT name FROM quantities WHERE ID=?' ,(ikey,))
+		if recs is None:
+			if isource is None:
+				isource='NULL'
+			else:
+				isource='"%s"' % isource
+			self.execute('INSERT INTO quantities (ID,name,source,type,firstseen) ' 
+				'VALUES (%d,"%s",%s,%s,julianday("now"))' % (ikey,iname,isource,'NULL' if itype is None else itype))
+		else: 
+			logger.debug('db updating %s %s with %s typ %s' % (ikey,iname,isource,itype))
+			self.execute('UPDATE quantities SET name=?,source=?,type=? WHERE ID=?', (iname,isource,itype,ikey))
+		#cur.close()
+		#self.con.commit()
 
 #some small helpers
 

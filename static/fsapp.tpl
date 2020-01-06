@@ -25,10 +25,10 @@
   %setdefault('xaxlbl',"")
   %setdefault('yaxlbl',"")
   %setdefault('footer',"")
-  %setdefault('ylbls',[10,14,18,22])
-  %setdefault('jdtill',2458637)
-  %setdefault('ndays',1)
+  %setdefault('jdtill',2458637.0)
+  %setdefault('ndays',1.0)
   %setdefault('cursorPos',900)
+  %setdefault('evtData',{})
   %setdefault('statbar',[])
   
   <script type="text/javascript" src="dragger.js"></script>
@@ -38,7 +38,8 @@
     var movElm=document.getElementById('xcursor'); 
     //var grQuants={{[curve['legend'] for curve in curves]}};
     var params=document.getElementById('params');
-	 var swip = new pageSwiper(touchBox,movElm,params);
+    var evtDescr=document.getElementById('evtDescr');
+	 var swip = new pageSwiper(touchBox,movElm,evtDescr,params);
   }
   function onFocus(elm){
    if (!isMobile.any()) {

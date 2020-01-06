@@ -31,12 +31,12 @@
     "source": "aios",
     "typ": 11,
     "mask": 16,
-    "NOsignal": "109=26"
+    "signal": "109=26"
   },
   "412": {
     "devadr": "12",
     "name": "fotCell",
-    "source": "aios",
+    "source": "woon",
     "typ": 5,
     "mask":1.2
   }

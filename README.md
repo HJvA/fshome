@@ -55,7 +55,10 @@ PIR motion detector connected to digin pin 16.
 
 ## Installation <a name="Installation"></a>
 
-Starting on a standard Raspberry pi on Raspbian (a debian clone, but almost any linux computer probably will be ok) fist make sure you have Python 3.5 or later installed. Also install git and pip3 (e.g. using ```apt-get install <package>```  ). Then download the fshome project  
+Starting on a standard Raspberry pi on Raspbian (a debian clone, but almost any linux computer probably will be ok) fist make sure you have Python 3.5 or later installed. Also install git and pip3 (e.g. using  
+```bash  
+apt-get install <package>
+```  ). Then download the fshome project  
  
 ```bash
 git clone git://github.com/HJvA/fshome
@@ -97,13 +100,21 @@ See the log files for error conditions to be resolved.
 After a while when enough data has been acquired open a browser window on  
 ```
 <http://<ip.of.rasp.berry>:8080>
+```  
+Select the room source and select some quantities from the multi select boxes. Also select the timeframe for the chart x-axis. A cursor can be dragged to point to a particular time. The comment field can be editted having a text describing the event pointed. It will be saved pressing the ok button. Otherwise when no text was entered, the time frame will shift to the cursor position when the ok button is pressed.  
+
+
+## Using rules <a name="Rules"></a>
+
+Several systems allow to define actions following to certain events:  
+- Homekit Rules can be used to trigger actions when a certain value passes a boundary. So the lights can be switched on when someone is home and it is getting dark.    
+- fshome allows to configure an action when a value changes and is recorded. Enter the following item to a quantiity definition in a conf file:  
 ```
-Select the room source and select some quantities from the multi select boxes.
+"signal" : "109=26"  
+```  
+   where 109 is a quantityid and 26 is a command or data to be set to the quantity.  
+- The Hue bridge also can have rules setup. see e.g. the excellent 'Hue Lights' app for this.
 
-
-## Using homekit rules <a name="Rules"></a>
-
-Homekit Rules can be used to trigger actions when a certain value passes a boundary. So the lights can be switched on when someone is home and it is getting dark.
 
 ## Notice <a name="Notice"></a>
 

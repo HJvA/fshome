@@ -46,6 +46,7 @@ tmBACKs={0.2:(u'5hr',5,0.0417,'%H'),
 	182.6:(u'6mnth',24*60,30.44,'%b'), 
 	365.25:(u'1yr',2*24*60,30.44,'%b') }
 app =bottle.Bottle()
+dbStore=None
 
 def typnames(devTyps):
 	''' convert DEVT id numbers to their name '''
@@ -72,13 +73,11 @@ def srcQids():
 			Qids += qkey
 	return Qids,src
 
-		
-
 @app.route("/")
 @bottle.view(TPL)
 def index(name=TITLE):
-	''' standard opening page (having only menu i.e. no data )'''
-	logger.info("index request:%s" % bottle.request.body.read()) 
+	''' standard opening page (with settings from cookie or default) '''
+	logger.info("===== index request:%s =====" % bottle.request.body.read()) 
 
 	if bottle.request.query.title:
 		bottle.redirect('/menu')
@@ -111,22 +110,25 @@ def index(name=TITLE):
 def cursorhandler():
 	''' handle end of cursor movement
 	receive data send by dragger.js->finalise->senddata '''
+	logger.info("cursor posted:%s" % bottle.request.body.read()) 
 	rec = bottle.request.json
 	jd = float(rec['jdtill']) - (900 -float(rec['cursorPos']))/800*float(rec['ndays']);
 	qids = rec['grQuantIds']
-	logger.info("cursor %s at %s for %s " % (rec,prettydate(jd), qids))
+	logger.info("cursor %s at %s " % (rec,prettydate(jd)))
 	#logger.info("curs post:%s" % bottle.request.body.read()) 
-	return dict(dd=prettydate(jd),jdtill=jd)
+	return dict(dd=prettydate(jd),jdtill=jd,evtDescr='curs')
 
 @app.post('/menu', method="POST")
 def formhandler():
 	''' Handle form submission '''
-	logger.info("menu req posted:%s" % bottle.request.body.read()) 
+	logger.info("menu posted:%s" % bottle.request.body.read()) 
 	selqs = bottle.request.forms.getall('quantities')
 	src=bottle.request.forms.get('source')
 	tbcknm=bottle.request.forms.get('tmback')
 	cursXpos=bottle.request.forms.get('cursorPos')
 	jdtill=bottle.request.forms.get('jdtill')
+	evtDescr=bottle.request.forms.get('evtDescr')
+	evtData=bottle.request.forms.get('evtData')
 	
 	try:
 		ndays=next(tb for tb,tup in tmBACKs.items() if tbcknm in tup[0])
@@ -138,16 +140,21 @@ def formhandler():
 		jdtill=float(jdtill)  # preserve actual time frame
 	else:
 		jdtill=julianday()
-	jdtill -= jdofs
+	jdcursor = jdtill -jdofs
+	if evtDescr and evtDescr!='comment':  # define event at cursor
+		logger.info('received event descr %s at jd:%s' % (evtDescr,jdcursor))
+		dbStore.setEvtDescription(jdcursor,evtDescr)
+	else:  # place right side at cursor
+		jdtill = jdcursor
+
 	if abs(jdtill-julianday())<ndays/5.0:
 		jdtill=julianday()  # adjust to now when close
 	else:
-		logger.info("adjusting jd %g with ofs:%f" % (jdtill,jdofs))
-		
+		logger.info("adjusting jd %f with ofs:%f evt:%s" % (jdtill,jdofs,evtDescr))
 	statbar=bottle.request.forms.get('statbar')
 	logger.info("statbar=%s" % statbar)
 	
-	logger.info("menu response:qtt=%s src=%s jd=%s ndys=%s cPos=%s" % (selqs, src, prettydate(jdtill), tbcknm,cursXpos))
+	logger.info("menu response:qtt=%s src=%s jd=%s ndys=%s cPos=%s evtData=%s" % (selqs, src, prettydate(jdtill), tbcknm,cursXpos,evtData))
 	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
 	return bottle.template(TPL, redraw(src, selqs, jdtill, ndays))
 	
@@ -310,6 +317,7 @@ def redraw(src, selqs, jdtill, ndays=7):
 	if ndays not in tmBACKs:
 		ndays=1.0
 	xlbltup = tmBACKs[ndays]
+	evtData={"%f" % tup[0]:tup[1] for tup in dbStore.evtDescriptions(jdtill,ndays)}
 
 	avgminutes = xlbltup[1]
 	for qs in sorted(selqs):
@@ -333,7 +341,7 @@ def redraw(src, selqs, jdtill, ndays=7):
 				ydats.append([rec[iy] for rec in recs])
 				jdats.append([rec[0] for rec in recs])  # julian days
 				qss.append(qs)
-	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays), grQuantIds=list(grQuantIds), **buildChart(jdats,ydats,qss,jdtill,ndays))
+	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays), grQuantIds="%s" % list(grQuantIds), evtData=json.dumps(evtData), **buildChart(jdats,ydats,qss,jdtill,ndays))
 	logger.debug("page:\n%s\n" % page)
 	return page
 	
@@ -341,7 +349,7 @@ def redraw(src, selqs, jdtill, ndays=7):
 #fall back to static as last
 @app.route('/<filepath:path>')
 def server_static(filepath):
-    return bottle.static_file(filepath, root='./static/')
+	return bottle.static_file(filepath, root='./static/')
 
 
 if __name__ == '__main__':

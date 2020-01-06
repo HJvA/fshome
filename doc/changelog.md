@@ -15,10 +15,14 @@ Sections
 ### Developers
 -->
 
+## [1.3.5] - 2020-01-06
+### Added
+- storing event descriptors, beeing supported by user interface web page
+
 ## [1.3.4] - 2019-12-29
 ### Added
-- illuminance sensor on aios analog channel A1 over BLE
-- setting analog reference voltage using mask attribute
+- illuminance sensor on aios analog channel A1 over BLE  
+- setting analog reference voltage using mask config attribute over GATT valid_range descriptor   
 
 ## [1.3.3] - 2019-12-11
 ### Added

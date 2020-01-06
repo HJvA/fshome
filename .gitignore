@@ -4,3 +4,4 @@
 *.state
 fs200.json
 obsolete/
+/log/*

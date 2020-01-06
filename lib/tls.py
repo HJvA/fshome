@@ -63,6 +63,7 @@ def seconds_since_epoch(epoch = datetime.datetime.utcfromtimestamp(0), utcnow=da
 
 
 class RepeatTimer(object):
+	''' runs a function in backgroud at specified interval '''
 	def __init__(self, interval, function, *args, **kwargs):
 		logging.info('setting up interval timer to run %s every %f seconds' % (function,interval))
 		self._timer     = None
@@ -88,24 +89,6 @@ class RepeatTimer(object):
 		self._timer.cancel()
 		self._timer.join() # hold main tread till realy finished
 		self.is_running = False	
-
-"""												
-def set_logger(filename=None, format='%(levelname)-6s %(message)s', level=logging.NOTSET):
-	'''obsolete
-	'''
-	formatter = logging.Formatter(format)
-	if filename is None:
-		hand = logging.StreamHandler() # console
-	else:
-		hand = logging.FileHandler(filename=filename, mode='w')
-	hand.setLevel(level)
-	hand.setFormatter(formatter)
-	logger = logging.getLogger()
-	logger.setLevel(level)
-	[logger.removeHandler(h) for h in logger.handlers[::-1]]
-	logger.addHandler(hand)
-	return hand
-"""	
 
 def set_logger(logger, pyfile=None, levelConsole=logging.INFO, levelLogfile=logging.DEBUG):
 	""" reset logger to desired config having several handlers :
