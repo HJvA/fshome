@@ -23,7 +23,7 @@ class devConfig(object):
 			with open(fname, 'r') as fl:
 				self.itstore = json.load(fl)
 		logger.debug("loading config:%s isfile:%s len:%d\n" % (fname, os.path.isfile(fname), len(self.itstore)))
-		
+	
 	def __repr__(self):
 		return json.dumps((self.fname,self.itstore,), ensure_ascii=False, sort_keys=False)
 		
@@ -32,14 +32,14 @@ class devConfig(object):
 		if items is None:
 			items=self.itstore
 		return json.dumps(items, ensure_ascii=False, indent=2, sort_keys=True)
-		
+	
 	def updateConfig(self, config):
 		''' updates item store with config dict  '''
 		logger.info("updateConfig %s with %d" % (self.fname,len(config)))
 		for devkey,itms in config.items():
 			self.setItem(devkey, itms)
 			#self.itstore.update(config)
-				
+	
 	def askNameDialog(self, signature):
 		'''ask user to enter a name for an item '''
 		logger.critical("*** get name for unknown item ***:\n%s" % self.__str__(signature))	# both console and error.log file
@@ -48,7 +48,11 @@ class devConfig(object):
 		else:
 			name = input(self.prompt)
 		return name
-		
+	
+	def hasItem(self, ikey):
+		''' True if ikey in items '''
+		return ikey in self.itstore
+	
 	def checkItem(self, signature):
 		'''find signature in item store returns key if found
 			otherwise adds signature to item store under entered key

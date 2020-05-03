@@ -1,0 +1,5 @@
+aiohttp
+bluepy
+HAP-python
+bottle
+request

@@ -1,5 +1,5 @@
 """ some HAP-python  Accessories
-	defines homekit accessory classes for hue type products like 
+	defines homekit accessory classes for fs20 type products like 
 	"""
 import time
 import logging

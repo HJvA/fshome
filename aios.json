@@ -1,6 +1,6 @@
 {
   "dbFile":"/mnt/extssd/storage/fs20store.sqlite",
-  "devAddress":"d8:59:5b:cd:11:0c",
+  "devAddress":"D8:59:5B:CD:11:0C",
   "401": {
     "devadr": "1",
     "name": "temperature",

@@ -4,7 +4,7 @@
 
 import logging,time,json,enum,re
 from lib.dbLogger import julianday,prettydate,sqlLogger
-from lib.devConst import qCOUNTING,DEVT
+from lib.devConst import qCOUNTING,DEVT,DVrng
 logger = logging.getLogger(__name__)	# get logger from main program
 
 async def forever(func, *args, **kwargs):
@@ -25,42 +25,69 @@ class sm(enum.IntFlag):
 	SIG=5	# signaller spec
 	
 class signaller(object):
-	""" actuator for trigger events """
-	reSIGDEF = r"^(\d+)\=(\d+\.*\d*)"
+	""" detector and actuator for trigger events 
+		e.g. add to json quantity config:
+		"signal": "109=26"
+		which will cause to call set_state on quantity:109 to value 26
+		"signal": ""
+	"""
+	#reSIGDEF = r"^(\d+)\=(\d+\.*\d*)"   # qid=qval,bitnr    fs20qid=cmd
+	#reSIGPTRN = r"(?:[^|=|,])(\d+\.*\d*)"
+	reSIGPTRN = r"(?:[=|\,])*(\d+\.*\d*)"
 	def __init__(self):
+		self._eventDetect={}
 		self._signalDef={}
 		self._handlers={}
 		logger.info('setting signaller for %s' % type(self).__name__)
+		
 	def setSignalDef(self, requester, qid, defstr):
-		self._signalDef[qid] = defstr
+		''' if qid occurs then signal will be called to do defstr '''
+		sdef=defstr.split('->')
+		if len(sdef)>1:
+			self._eventDetect[qid]=sdef[0]
+		self._signalDef[qid] = sdef[-1]
 		logger.info('signal %s on detection ch:%s of %s' % (defstr,qid,requester))
-
+		
+	def checkEvent(self, qid, qval):
+		''' todo check whether qid event is occuring '''
+		if qid in self._eventDetect:
+			logger.warning('TODO: checking qid:%s with %s for having %s' % (qid,qval,self._eventDetect[qid]))
+		return True
+		
 	def signal(self, qid, qval=None):
+		''' qid has occured, now look if a signaldef is attached, then execute it '''
 		if qid in self._signalDef:
-			sdef=self._signalDef[qid]
-			mch = re.search(signaller.reSIGDEF, sdef)
+			sdef=self._signalDef[qid]  #.split('->')[-1]  # get cmd to execute after -> if there
+			mch = re.compile(signaller.reSIGPTRN).finditer(sdef)
 			if mch:
-				trgqid,trgval,trgprop = (int(mch.group(1)),float(mch.group(2)),None)
-			else:
-				trgqid,trgval,trgprop = (0,None,None)
-			logger.info('signalling %s=%s on %s' % (qid,qval,sdef))
-			for hnd,cb in self._handlers.items():
-				if cb(trgqid, trgval, trgprop):
-					break
-			else:
-				logger.debug('qid -> trg not handled:%s -> %s' % (qid,trgqid))
+				lst =[float(x.group(1)) for x in mch] 
+				lst += [None]*(4-len(lst))
+				trgqid,trgval,trgprop,trgdur = lst
+				trgqid=int(trgqid)
+				#else:
+				#	trgqid,trgval,trgprop,trgdur = (0,None,None,None)
+				logger.info('signalling %s=%s with %s => %s' % (qid,qval,sdef,lst))
+				for hnd,cb in self._handlers.items():  # check all handlers till acq
+					if cb(trgqid, trgval, trgprop, trgdur):
+						break
+				else:
+					logger.warning('qid -> trg not handled:%s -> %s' % (qid,sdef))
 		else:
 			#logger.warning('qid %s has no event handler' % qid)
 			pass
 
 	def registerStateSetter(self, handler, setStateCallback):
+		''' typically called by sampleCollector class to register its set_state method 
+			handler = name of actual sampleCollector class
+		'''
 		logger.info('setting signaller callback for %s' % (handler))
 		self._handlers[handler] = setStateCallback
+
 
 class sampleCollector(object):
 	""" base class for collection of sampling quantities """
 	signaller = None # signaller()
-	def __init__(self, *args, maxNr=120,minNr=2,minDevPerc=5.0,name=None, **kwargs):
+	def __init__(self, maxNr=120,minNr=2,minDevPerc=5.0,name=None):
 		self.maxNr = maxNr
 		self.minDevPerc = minDevPerc
 		self.minNr = minNr
@@ -83,13 +110,9 @@ class sampleCollector(object):
 		"""Return the representation of the sampler."""
 		return 'name={} quantities={}>' \
 			.format(self.name, {self.qname(qid):qid for qid in self._servmap})
-
-	async def receive_message(self):
-		''' read device state and call check_quantity '''
-		return None
 		
 	def defServices(self,quantitiesConfig):
-		''' compute dict of recognised services from quantities config in servmap '''
+		''' compute dict of recognised services from quantities config => self._servmap '''
 		for qid,rec in quantitiesConfig.items():
 			if type(rec) is dict and qid.isnumeric():
 				adr=rec['devadr'] if 'devadr' in rec else "%d" % (int(qid) % 100,)
@@ -100,7 +123,7 @@ class sampleCollector(object):
 				src =rec['source'] if 'source' in rec else ''
 				self._servmap[int(qid)]={sm.ADR:adr,sm.TYP:typ,sm.NM:nm,sm.SRC:src}
 				if 'mask' in rec:
-					logger.info('diginp bit:%d for ch:%s' % (rec['mask'],qid))
+					logger.info('masking :%s for qid:%s' % (rec['mask'],qid))
 					self._servmap[int(qid)][sm.MSK] = rec['mask']
 				if 'signal' in rec:
 					if self.signaller:
@@ -110,26 +133,25 @@ class sampleCollector(object):
 		
 	def qCheck(self,quantity,devadr,typ=None,name=None,source=None):
 		''' check whether quantity with devadr,typ,name,source attributes exists in servmap;
-			creates or updates (unknown) quantity to self.servmap '''
+			creates or updates (unknown) quantity to self._servmap '''
 		if not quantity:
 			quantity=self.qid(devadr,typ)
 		if typ and (typ>=DEVT['unknown'] or typ==DEVT['fs20']):
 			typ=None
 		if not source:
 			source = self.qsrc(quantity)
-		#mp = [devadr,typ,name,source]
 		mp = {sm.ADR:devadr, sm.TYP:typ, sm.NM:name, sm.SRC:source}
 		if quantity in self._servmap:
 			if self.qtype(quantity)==DEVT['secluded']:
 				mp[sm.TYP]=DEVT['secluded']
-			#mp = [itold if itnew is None else itnew for itnew,itold in zip(mp,self.servmap[quantity])]
 			mp = {smi:mp[smi] if smi in mp and mp[smi] is not None else it for smi,it in self._servmap[quantity].items() }
-		elif devadr:
-			if not quantity and self.minqid:
-				quantity = max(self._servmap)+1
-				if quantity<self.minqid:
-					quantity=self.minqid
-				logger.info("creating quantity:%s = %s" % (quantity,mp))
+		else:
+			if devadr:
+				if not quantity and self.minqid:
+					quantity = max(self._servmap)+1
+					if quantity<self.minqid:
+						quantity=self.minqid
+					logger.info("creating quantity:%s = %s" % (quantity,mp))
 		if mp[sm.TYP] is None:
 			mp[sm.TYP]=DEVT['unknown']
 		if quantity:
@@ -150,7 +172,7 @@ class sampleCollector(object):
 				return self._servmap[qid][smItem]
 		return None
 	def qactive(self):
-		''' list of active quantities '''
+		''' list of active quantities i.e. known and not secluded '''
 		return (qid for qid in self._servmap if qid>0 and self._servmap[qid][sm.TYP] < DEVT['secluded'])
 
 	def qname(self, qid):
@@ -176,6 +198,18 @@ class sampleCollector(object):
 			if (devadr==tp[sm.ADR] or tp[sm.ADR] == '%s' % devadr) and (typ is None or typ==tp[sm.TYP]):
 				return quid
 		return None
+	def qInRng(self, qid, value):
+		if qid in DVrng:
+			if value<DVrng[qid][0]:
+				return False
+			if value>DVrng[qid][1]:
+				return False
+			return True
+		return None
+
+	async def receive_message(self):
+		''' read device state and call check_quantity '''
+		return None
 	
 	def check_quantity(self,tstamp,quantity,val):
 		''' filters, validates, averages, checks, quantity results
@@ -187,9 +221,15 @@ class sampleCollector(object):
 			return
 		if self.qtype(quantity)>=DEVT['secluded']:	# ignore
 			return
-		self.actual[quantity] = val
+		if self.qInRng(quantity,val)==False:
+			logger.warning("quantity out of range %s" % quantity)
+			return
+		else:
+			self.actual[quantity] = val
+
 		if sampleCollector.signaller:
-			sampleCollector.signaller.signal(quantity, val)
+			if sampleCollector.signaller.checkEvent(quantity, val):
+				sampleCollector.signaller.signal(quantity, val)
 		if self.qIsCounting(quantity): 
 			if quantity in self.average and val>0: # only first and pos edge
 				self.average[quantity][qVAL] += val
@@ -229,10 +269,12 @@ class sampleCollector(object):
 		#logger.debug("accepted %s=%s tm=%s n=%d" % (quantity, qval, prettydate(julianday(tstamp)), rec[1]))
 		return qval
 		
-	def set_state(self, quantity, state, prop=None):
+	def set_state(self, quantity, state, prop=None, dur=None):
 		''' stateSetter to operate actuator; used as callback for trigger events '''
-		logger.info('setting %s to %s with %s' % (quantity, state, prop))
-		return quantity in self._servmap
+		if quantity in self._servmap:
+			logger.info('setting %s to %s with %s' % (quantity, state, prop))
+			return True
+		return False
 		# implemented by derived classes
 		
 	def get_state(self, quantity):
@@ -285,18 +327,19 @@ class DBsampleCollector(sampleCollector):
 		else:
 			self.dbStore = None
 		#self.inkeys=[] 
-		self.defServices(quantities)
+		self.defServices(quantities)  # get _servmap
 		logger.info('servmap:%s' % self._servmap)
 		for qid in self.qactive():
 			name = self.qname(qid)
 			src = self.qsrc(qid)
 			if self.dbStore and name is not None and src:
 				self.dbStore.additem(qid, name,src,self.qtype(qid))
-			#self.inkeys.append(qid)
+				if name[:3] == 'nk:' and super().qname(qid): # nk: newly discovered
+					logger.warning('changing qid:%d name:%s to %s' % (qid,name,super().qname(qid)))
+					self.dbStore.updateitem(qid, super().qname(qid)) 
 
 	def qname(self, quantity):
-		#nm = "qn:%s" % quantity
-		if quantity in self.qactive(): #inkeys:
+		if quantity in self.qactive(): 
 			nm = self.dbStore.qname(quantity)
 		else:
 			nm = super().qname(quantity)

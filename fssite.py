@@ -6,7 +6,7 @@ and sqlite database
 get values and picklists from a database which was filled by fsmain.py et al.
 """
 
-import os,sys
+import os,sys,socket
 import datetime,time
 import logging
 import json
@@ -20,12 +20,12 @@ from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate,SiNumForm
 from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb
 from lib.tls import get_logger
 
-__copyright__="<p>Copyright &copy; 2019, hjva</p>"
+__copyright__="<p>Copyright &copy; 2019,2020, hjva</p>"
 TITLE=r"fshome quantity viewer"
 CONFFILE = "./fs20.json"
 dbfile = '~/fs20store.sqlite'
 TPL='static/fsapp.tpl'
-COOKIE="FSSITE"
+COOKIE="FSSITE_" + socket.gethostname()
 AN1=60*60*24*365.25  # one year for cookie
 # definition of plot area
 plWIDTH = 800
@@ -53,6 +53,7 @@ def typnames(devTyps):
 	return [dnm for dnm,tp in DEVT.items() if tp in devTyps or tp+100 in devTyps]
 
 def srcQids():
+	''' get active quantities either from cookie or last saved to database '''
 	Qids=[]
 	cookie = bottle.request.get_cookie(COOKIE)
 	if cookie:
@@ -77,7 +78,12 @@ def srcQids():
 @bottle.view(TPL)
 def index(name=TITLE):
 	''' standard opening page (with settings from cookie or default) '''
-	logger.info("===== index request:%s =====" % bottle.request.body.read()) 
+	if 'REMOTE_ADDR' in bottle.request.environ:
+		ip = bottle.request.environ.get('REMOTE_ADDR')
+	else:
+		ip = None
+	tm=time.perf_counter()
+	logger.info("===== index request:%s from %s=====" % (bottle.request.body.read(),ip)) 
 
 	if bottle.request.query.title:
 		bottle.redirect('/menu')
@@ -103,8 +109,8 @@ def index(name=TITLE):
 	jdtill = julianday()
 	page = redraw(src, selqs, jdtill, ndays)
 	page.update( dict(title=name, footer=__copyright__)) #jdtill=julianday(),ndays=ndays,grQuantIds=quantIds))
+	logger.debug("index page:(t:%s)\n%s\n" % (time.perf_counter()-tm,page))
 	return bottle.template(TPL, page)
-
 
 @app.post('/cursor', method="POST")
 def cursorhandler():
@@ -121,6 +127,7 @@ def cursorhandler():
 @app.post('/menu', method="POST")
 def formhandler():
 	''' Handle form submission '''
+	tm=time.perf_counter()
 	logger.info("menu posted:%s" % bottle.request.body.read()) 
 	selqs = bottle.request.forms.getall('quantities')
 	src=bottle.request.forms.get('source')
@@ -142,8 +149,10 @@ def formhandler():
 		jdtill=julianday()
 	jdcursor = jdtill -jdofs
 	if evtDescr and evtDescr!='comment':  # define event at cursor
+		root = sys.modules['__main__'].__file__
 		logger.info('received event descr %s at jd:%s' % (evtDescr,jdcursor))
-		dbStore.setEvtDescription(jdcursor,evtDescr)
+		
+		dbStore.setEvtDescription(jdcursor,evtDescr,root=root)
 	else:  # place right side at cursor
 		jdtill = jdcursor
 
@@ -154,7 +163,7 @@ def formhandler():
 	statbar=bottle.request.forms.get('statbar')
 	logger.info("statbar=%s" % statbar)
 	
-	logger.info("menu response:qtt=%s src=%s jd=%s ndys=%s cPos=%s evtData=%s" % (selqs, src, prettydate(jdtill), tbcknm,cursXpos,evtData))
+	logger.info("menu response(t:%s):qtt=%s src=%s jd=%s ndys=%s cPos=%s evtData=%s" % (time.perf_counter()-tm, selqs, src, prettydate(jdtill), tbcknm,cursXpos,evtData))
 	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
 	return bottle.template(TPL, redraw(src, selqs, jdtill, ndays))
 	
@@ -170,11 +179,9 @@ def buildCurve(xdat, ydat, xsize, ysize, xstart,ystart):
 	xprv=plXMARG
 	for i in range(0,len(xdat)):
 		x = xdat[i]*xscl+xofs
-		if x-xprv>100:
+		if x-xprv>100:	# large step
 			crvs.append(crv)
 			crv = ""
-			#crv += " %.3g,%.3g" % (xprv, plYMARG+plHEIGHT)
-			#crv += " %.3g,%.3g" % (x, plYMARG+plHEIGHT)
 		crv += " %.3g,%.3g" % (x,ydat[i]*yscl+yofs)
 		xprv=x
 	if len(crv)>0:
@@ -188,15 +195,18 @@ def buildHistogram(xdat, ydat, xsize, ysize, xstart,ystart):
 	xofs=plXMARG-xstart*xscl
 	yofs=plYMARG+plHEIGHT-ystart*yscl
 	crv=""
-	for i in range(0,len(xdat)):
-		crv += " M%.3g %d V%.3g" % (xdat[i]*xscl+xofs,plYMARG+plHEIGHT, ydat[i]*yscl+yofs)
-	crv += " Z"
+	if xdat:
+		for i in range(0,len(xdat)):
+			crv += " M%.3g %d V%.3g" % (xdat[i]*xscl+xofs,plYMARG+plHEIGHT, ydat[i]*yscl+yofs)
+		crv += " Z"
 	return crv
 	
 def buildLbls(vmin,vmax, nr):
 	''' axis labels '''
-	lst = [vmin+i*(vmax-vmin)/(nr-1) for i in range(nr)]
-	return [SiNumForm(x) for x in lst]  #   ["{:5.2g}".format(lbl) for lbl in lst]
+	if nr:
+		lst = [vmin+i*(vmax-vmin)/(nr-1) for i in range(nr)]
+		return [SiNumForm(x) for x in lst]  #   ["{:5.2g}".format(lbl) for lbl in lst]
+	return []
 
 def bld_dy_lbls(jdats, form="%a"):
 	''' date interval labels '''
@@ -274,6 +284,7 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 	ret['statbar'] =[ " dd:%s , %s" % (prettydate(jdtill), " , ".join(subtitle)) ]
 	if len(data)==0:
 		logger.warning('missing chart data:jd:%d yd:%d q:%d' % (len(jdats),len(ydats),len(selqs)))
+		ret.update(dict(curves=[],xgrid=[]))
 		return ret
 	
 	xlbltup = tmBACKs[ndays]
@@ -307,6 +318,7 @@ def buildMenu(sources,selsrc,quantities,selqs,ndays,tmbacks=tmBACKs):
 	
 def redraw(src, selqs, jdtill, ndays=7):
 	''' create data for main TPL page '''
+	tm=time.perf_counter()
 	srcs=sorted(dbStore.sources())
 	#quantities=sorted(dbStore.quantities())
 	quantities=typnames(dbStore.quantities(prop=2))
@@ -342,9 +354,8 @@ def redraw(src, selqs, jdtill, ndays=7):
 				jdats.append([rec[0] for rec in recs])  # julian days
 				qss.append(qs)
 	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays), grQuantIds="%s" % list(grQuantIds), evtData=json.dumps(evtData), **buildChart(jdats,ydats,qss,jdtill,ndays))
-	logger.debug("page:\n%s\n" % page)
+	logger.debug("redraw page:(t:%s)\n%s\n" % (time.perf_counter()-tm,page))
 	return page
-	
 
 #fall back to static as last
 @app.route('/<filepath:path>')
@@ -362,9 +373,11 @@ if __name__ == '__main__':
 		dbStore = sqlLogger(dbfile)
 		logger.info("statistics:%s" %  dbStore.statistics(5)) # will get list of quantities and sources
 		logger.info('quantities:%s' % dbStore.items)
-	
-		ip=socket.gethostbyname(socket.gethostname())
-		ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
+		if config.hasItem('tailScale'):
+			ip = config.getItem('tailScale')  # ip accessible by world
+		else: # ip of localhost
+			ip=socket.gethostbyname(socket.gethostname())
+			ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
 		port = int(os.environ.get('PORT', 8080))
 		app.run(host=ip, port=port, debug=True, reloader=False)
 	finally:

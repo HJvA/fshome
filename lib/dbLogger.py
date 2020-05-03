@@ -44,8 +44,10 @@ class txtLogger(object):
 	
 	def additem(self, ikey, iname, isource, itype=None):
 		''' adds item type i.e. quantity descriptor '''
+		isnew = ikey not in self.items
 		self.items.update({ikey:(iname,isource,itype)})
-		logger.debug('new item %s,%s,%s with ikey=%s' % (iname,isource,itype,ikey))
+		logger.debug('%slogitem %s,%s,%s with ikey=%s' % ("new " if isnew else "",iname,isource,itype,ikey))
+		return isnew
 	
 	def sources(self, quantities=None):
 		''' set of actual sources that have been saved to the store '''
@@ -158,7 +160,7 @@ class sqlLogger(txtLogger):
 				"type  INT,"
 				"active INT DEFAULT 1,"
 				"firstseen REAL);")
-			cur.execute("CREATE TABLE quantitytypes(ID INT PRIMARY KEY NOT NULL, name TEXT NOT NULL, unit TEXT);")			
+			cur.execute("CREATE TABLE quantitytypes(ID INT PRIMARY KEY NOT NULL, name TEXT NOT NULL, unit TEXT);")
 			cur.close()
 		return con
 	
@@ -169,14 +171,14 @@ class sqlLogger(txtLogger):
 	def execute(self, sql, params=None):
 		''' list of tuples with field-vals '''
 		with self.con:
-			tm=time.clock()
+			tm=time.perf_counter()
 			cur = self.con.cursor()
 			if params:
 				cur.execute(sql, params)
 			else:
 				cur.execute(sql)
 			recs = cur.fetchall()
-			logger.debug("SQL:%s with(%s) run in %.3fs nrecs=%d" % (sql,params,time.clock()-tm, len(recs)))
+			logger.debug("SQL:%s with(%s) run in %.3fs nrecs=%d" % (sql,params,time.perf_counter()-tm, len(recs)))
 			return recs
 		
 	def fetch(self, name, daysback=100, source=None, fields='ddJulian,numval,strval,source'):
@@ -203,12 +205,7 @@ class sqlLogger(txtLogger):
 			"WHERE ID=quantity AND quantity=? AND " \
 			"ddJulian=(SELECT MAX(ddJulian) FROM logdat WHERE quantity=?) LIMIT 1;"
 		return self.execute(sql, (ikey,ikey))[0]
-			
-		with self.con:
-			cur = self.con.cursor()
-			cur.execute(sql, (ikey,ikey))
-			return cur.fetchone()
-			
+	
 	def fetchavg(self, name, tstep=30, daysback=100, jdend=None, source=None):
 		''' fetch logged messages from the log store 
 			takes averaged numval of name over tstep minutes intervals'''
@@ -249,12 +246,12 @@ class sqlLogger(txtLogger):
 		i2=0
 		rslt=[]
 		for rc1 in rec1:
-			while rec2[i2][0]<rc1[0]:
+			while len(rec2)>i2 and rec2[i2][0]<rc1[0]: # match ddJulian
 				i2+=1
 				if i2>=len(rec2):
 					continue
 			rslt.append(list(rc1))
-			rslt[-1][1] =rc1[1] + rec2[i2][1]
+			rslt[-1][1] =rc1[1] + rec2[i2][1]  # add both ikey numvals
 		return rslt
 		
 	def evtDescriptions(self, jdtill, ndays):
@@ -264,24 +261,20 @@ class sqlLogger(txtLogger):
 		#interval=1440/tstep  # minutes per day = 1440
 		return self.execute(sql, (jdtill-ndays,jdtill))
 
-	def setEvtDescription(self, julDay, evtDescr, maxMinutesDiff=10.0):
+	def setEvtDescription(self, julDay, evtDescr, maxMinutesDiff=10.0, root=None):
 		sql = "SELECT ddJulian,descr FROM eventsLog WHERE ABS(ddJulian-?)<? LIMIT 1;"
 		recs = self.execute(sql, (julDay, maxMinutesDiff/1440.0));  # max minutes diff
 		if recs:
 			sql = "UPDATE eventsLog SET ddJulian=?,descr=? WHERE ddJulian=?;"
-			self.execute(sql, (julDay,evtDescr,recs[0][0]))
+			self.execute(sql, (julDay,evtDescr + " ::%s" % root if root else "",recs[0][0]))
 		else:
 			sql = "INSERT INTO eventsLog (ddJulian,descr) VALUES (?,?);"
-			self.execute(sql, (julDay,evtDescr))
+			self.execute(sql, (julDay,evtDescr + " ::%s" % root if root else ""))
 
 	def statistics(self, ndays=10, flds="source,quantity,name,type"):
 		''' queries database for quantity prevalence. keeps list of them internaly '''
-		#cur = self.con.cursor()
-		#with self.con:
 		sql = "SELECT %s,COUNT(*) as cnt,AVG(numval) as avgval,MIN(ddJulian) jdFirst FROM logdat,quantities WHERE ID=quantity AND ddJulian>julianday('now')-%d GROUP BY %s ORDER BY ID;" % (flds,ndays,flds)
-		#cur = self.con.cursor()
-		#cur.execute(sql)
-		recs= self.execute(sql) # cur.fetchall()
+		recs= self.execute(sql)
 		for rec in recs:
 			if 'name' in rec and 'source' in rec:
 				self.checkitem(rec.name, rec.source, rec.type)
@@ -302,7 +295,6 @@ class sqlLogger(txtLogger):
 			raise
 		except Exception:
 			logger.exception("unknown !!!")
-		#cur.close()
 
 	def log(self, iname, numval, strval=None, source=None, tstamp=None):
 		''' add a log message to the log store 
@@ -315,22 +307,30 @@ class sqlLogger(txtLogger):
 		
 	def additem(self, ikey, iname, isource, itype=None):
 		''' add or update a quantity descriptor (will be called automatic for unknown quantities) '''
-		super().additem(ikey,iname,isource,itype)
-		#with self.con:
-		#cur=self.con.cursor()
+		isnew = super().additem(ikey,iname,isource,itype)
 		recs = self.execute('SELECT name FROM quantities WHERE ID=?' ,(ikey,))
-		if recs is None:
+		if recs is None or len(recs)==0:
+			isnew = True
 			if isource is None:
 				isource='NULL'
 			else:
 				isource='"%s"' % isource
+			logger.warning('quantities create: %s %s with %s typ %s' % (ikey,iname,isource,itype))
 			self.execute('INSERT INTO quantities (ID,name,source,type,firstseen) ' 
 				'VALUES (%d,"%s",%s,%s,julianday("now"))' % (ikey,iname,isource,'NULL' if itype is None else itype))
-		else: 
-			logger.debug('db updating %s %s with %s typ %s' % (ikey,iname,isource,itype))
-			self.execute('UPDATE quantities SET name=?,source=?,type=? WHERE ID=?', (iname,isource,itype,ikey))
-		#cur.close()
-		#self.con.commit()
+		elif isnew:
+			self.updateitem(ikey, iname, isource, itype)
+		return isnew
+
+	def updateitem(self, ikey, iname, isource=None, itype=None):
+		logger.info('quantities update: %s %s with %s typ %s' % (ikey,iname,isource,itype))
+		if iname:
+			self.execute('UPDATE quantities SET name=? WHERE ID=?', (iname,ikey))
+		if isource:
+			self.execute('UPDATE quantities SET source=? WHERE ID=?', (isource,ikey))
+		if itype:
+			self.execute('UPDATE quantities SET type=? WHERE ID=?', (itype,ikey))
+
 
 #some small helpers
 

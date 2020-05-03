@@ -1,6 +1,4 @@
 {
-	"dbFile": "/mnt/extssd/storage/fs20store.sqlite",
-		"hausc":"1212",
 		"100":{
 			"typ":0,
 		   "aid": 2,
@@ -60,10 +58,11 @@
 		"109":{
 			"typ":11,
 			"devadr":"10",
-			"source":"gang",
+			"source":"kgb",
 			"naid":"6",
 			"aid":14,
-			"name":"movgang"
+			"name":"movgang",
+			"signal" :"410=1,5,0.8"
 			},		
 		"110":{
 			"typ":11,
@@ -107,5 +106,8 @@
 			"source":"woon",    
 			"devadr": "31"	,
 			"name":"banklicht"
-			}
-	}
+			},
+	"NOtailScale":"100.126.237",
+	"dbFile": "/mnt/extssd/storage/fs20store.sqlite",
+	"hausc":"1212"
+}

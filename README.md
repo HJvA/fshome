@@ -35,6 +35,7 @@ The following sensors/actuators are supported:
 - Hue lights 
 - DSMR dutch electricity and gas utility meter  
 - AIOS GATT Bluetooth Low Energy Automation-IO client
+- WNDR4300 router reporting LAN traffic
 
 ### fs20
 
@@ -50,8 +51,12 @@ DSMR is a domestic smart metering system for home electricity and natural gas.
 
 ### AIOS
 
-AIOS (Automation IO service) is an Adafruit bluetooth device gathering a variety of quantities: e.g temperature,humidity,TVOC,eCO2 (on I2C bus) and other quantities connected to the ADC and digIO channels.  
-PIR motion detector connected to digin pin 16.  
+AIOS (Automation IO service) is an Adafruit bluetooth device gathering a variety of quantities: e.g temperature,humidity,TVOC,eCO2 (on I2C bus) and other quantities connected to the ADC and digIO channels. 
+e.g. a PIR motion detector connected to digin pin 16, and a photocell connected to analog channel A1, and a HV power LED for giving a light flash connected to digital out P0.04.  
+
+### WNDR
+
+WNDR (netgear WNDR4300 router) reporting LAN traffic. Either "rxToday" or "rxYestday" items can be requested as devadr in WNDR.json
 
 ## Installation <a name="Installation"></a>
 
@@ -67,6 +72,17 @@ git submodule init
 git submodule update --depth=1
 ```  
 When using the fs20 devices, connect the CUL transceiver to a USB port of your Raspberry. Have the CUL transceiver flashed with the latest firmware from <http://culfw.de>. Assure that ```/dev/ttyACM0``` appears on your system (it represents a serial port used for the CUL). Maybe you should enable it using raspi-config.
+
+### Tailscale
+
+Tailscale is a service that makes it easy to access your fshome site securely from the internet when you are not at home e.g. from your phone.
+
+- go to  <https://tailscale.com>
+- create an account
+- install the tailscale client on your devices (both on the server, as on the clients)
+- add the item "tailScale" : "ip.of.bottle.serv" to the fs20.json file
+  where the ip... is provided by tailscale as the ip address of the raspberry where fssite.py is running (i.e. the server)
+- on your browsing device (i.e. a client), open an internet browser to address <http://ip.of.bottle.serv:8080>
 
 ## Configuring devices <a name="Configure"></a>
 
@@ -85,7 +101,7 @@ Add a unique "aid":n entry in the json files to each quantity to be available fo
 
 ## Using the application <a name="Usage"></a>
 
-The application consist of 2 python3 programs: fsmain.py for aquistion and storage of the measured quantity values. and fssite.py serving graphical results to a browser.
+The application consist of 2 python3 programs: fsmain.py for aquistion and storage of the measured quantity values and fssite.py serving graphical results to a browser.
 
 Execute the following commands in a terminal:
 

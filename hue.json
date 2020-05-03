@@ -1,7 +1,7 @@
 {
   "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
   "huebridge": "192.168.1.21",
-  "hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqcRwsel",
+  "hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFv",
 
   "207": {
     "source": "entree",

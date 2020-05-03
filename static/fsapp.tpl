@@ -60,9 +60,8 @@
   <div class="headng">{{title}}
     <p> {{subtitle}} </p>
   </div>  
-  <br/>
-    %menu = include("static/menu.tpl")
-  <br/>
+  
+  %menu = include("static/menu.tpl")
 
  <svg class="graph" xmlns="http://www.w3.org/2000/svg" height="calc( 94vh - 16em )" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    
   

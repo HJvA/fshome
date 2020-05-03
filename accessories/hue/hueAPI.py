@@ -105,7 +105,7 @@ class HueBaseDev (object):
 				return cache[self.hueId][reskey]
 			return cache[self.hueId][reskey][prop]
 		elif cache: # when fetching cache failed
-			logger.warnig('hueid %s not in cache %s' % (self.hueId,prop))
+			logger.warning('hueid %s not in cache %s' % (self.hueId,prop))
 		return None
 		
 	def lastupdate(self):

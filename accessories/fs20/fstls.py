@@ -136,12 +136,15 @@ if __name__ == "__main__":
 	codes = {
 		"1414": {"name":'trapkast',	"cmd":26,"dur":60, "act":1},	# sound normaal & light
 		"1311": {"name":'garage'  ,	"cmd":26,"dur":60, "act":0},	# sound uhahahaha & show
-		#"1111": {"name":'deurbel' ,	"cmd":'on',"dur":None, "hausc":'21414433', "act":1}, # sound normaal
+		"1313": {"name":'test1'   ,	"cmd":17,"dur":None, "act":1},	# sound & show
+		"1314": {"name":'test2'   ,	"cmd":17,"dur":0, "act":1},	# sound & show
+
+		"1111": {"name":'deurbel' ,	"cmd":'on',"dur":None, "hausc":'21414433', "act":0}, # sound normaal
 		#"1111": {"name":'deurbel' ,	"cmd":'toggle',"dur":None, "hausc":'21414433', "act":1}, # sound up-up-up-up
 		#"1111": {"name":'deurbel' ,	"cmd":'off',"dur":None, "hausc":'21414433', "act":1}, # sound
 		#"1111": {"name":'deurbel' ,	"cmd":24,"dur":None, "hausc":'21414433', "act":1}, # none
 		"1211": {"name":'gang'    ,	"cmd":26,"dur":None, "act":1},  # sound tjeu & show
-		"4424": {"name":'lampen'  ,	"cmd":'off',"dur":None, "act":0}  # sound tring
+		"4424": {"name":'lampen'  ,	"cmd":'off',"dur":None, "act":1}  # sound tring
 		}
 	
 	serdev = serComm(DEVICE, BAUDRATE)

@@ -9,6 +9,7 @@ from bluepy import btle
 import logging
 logger = logging.getLogger(__name__)
 
+# some example GATT services
 DEVINF_SVR= "180a"  #"0000180a-0000-1000-8000-00805f9b34fb"  # device info
 BAS_SVR   = "180f"  #"0000180f-0000-1000-8000-00805f9b34fb"  # battery level
 
@@ -27,6 +28,7 @@ class bluepyDelegate(btle.DefaultDelegate):
 		must either be created in async co-routine or have loop supplied """
 	def __init__(self, devAddress, scales={}, loop=None):
 		super().__init__()
+		logger.info("connecting to BLE device:%s scaling:%s on %s" % (devAddress,scales,loop))
 		try:
 			self.dev = btle.Peripheral(devAddress, btle.ADDR_TYPE_RANDOM)
 			self.dev.withDelegate( self )
@@ -36,7 +38,7 @@ class bluepyDelegate(btle.DefaultDelegate):
 		self.queue = asyncio.Queue(loop=loop)
 		self.notifying = {}
 		self.scales=scales
-
+		
 	def handleNotification(self, cHandle, data):
 		""" callback getting notified by bluepy """
 		self.queue.put_nowait((cHandle,data))
@@ -46,7 +48,7 @@ class bluepyDelegate(btle.DefaultDelegate):
 			self.startNotification(chT)
 
 	def _CharId(self, charist):
-		""" virtual """
+		""" virtual ; returns unique id of chracteristic (also when multiple chars of same type are there) """
 		return charist.getHandle()
 
 	def startNotification(self, charist):
@@ -94,10 +96,14 @@ class bluepyDelegate(btle.DefaultDelegate):
 			
 	def write(self, charist, data):
 		#if charist.supportsWrite():
-		charist.write(data)
+		try:
+			charist.write(data)
+		except btle.BTLEInternalError as e:
+			logger.warning ('bluepy error on write charist :%s' % e)
 
 	async def awaitingNotifications(self):
 		""" keep consuming received notifications """
+		logger.info('awaiting aios notifications')
 		while self.dev is not None:
 			dat = await self.receiveCharValue()
 
@@ -123,6 +129,7 @@ class bluepyDelegate(btle.DefaultDelegate):
 			
 	async def servingNotifications(self):
 		""" keep polling bluepy for received notifications """
+		logger.info('serving aios notifications on %s' % self.dev)
 		while self.dev is not None:
 			try:
 				if self.dev._helper is not None:
@@ -141,9 +148,12 @@ class bluepyDelegate(btle.DefaultDelegate):
 					asyncio.create_task(self.servingNotifications()) ]
 	
 
-if __name__ == "__main__":	# testing 
-	logger.setLevel(logging.DEBUG)
-	DEVADDRESS = "d8:59:5b:cd:11:0c"
+if __name__ == "__main__":	# 
+	""" testing : call it with python3 accessories/BLEAIOS/bluepyBase.py | tee bluepyBase.log
+	"""
+	logging.basicConfig(level=logging.DEBUG)   #, filename="bluepyBase.log")
+
+	DEVADDRESS = "d8:59:5b:cd:11:0c"	# find your device e.g. using bluetoothctl  using scan on command
 	
 	async def main(servNotifying):
 		logger.info("Connecting...")

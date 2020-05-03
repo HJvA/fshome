@@ -14,6 +14,19 @@ Sections
 ### Breaking Changes
 ### Developers
 -->
+## [1.3.7] - 2020-04-22
+### Added
+- netgear wndr router for logging LAN traffic
+- tailScale for making bottle fssite server accessible to world
+
+## [1.3.6] - 2020-02-02
+### Added
+- signaller event handler enhanced for aios setDigPulse as actuator
+- aios setDigPulse method generates a single pulse on digital output pin
+### Changed
+- dbLogger self.execute runs most sql
+- layout fssite optimised for various ipad / iphone browsers
+- bluepyBase.py does not depend on project lib files (for logging)
 
 ## [1.3.5] - 2020-01-06
 ### Added

@@ -15,7 +15,7 @@ from bluepy import btle
 class aiosSampler(DBsampleCollector):
 	""" specific AIOS database sample collector """
 	manufacturer="AdaFruit"
-	minqid=400
+	minqid=400	# base for database quantityId for aios
 	def __init__(self, loop, *args, devAddress=aiosAPI.DEVADDRESS, **kwargs):
 		super().__init__(*args, **kwargs)
 		masks ={}
@@ -35,7 +35,7 @@ class aiosSampler(DBsampleCollector):
 		task = loop.create_task(self.aios.servingNotifications())
 		
 	async def receive_message(self):
-		''' get sensors state from BLE and check for updates and process recu when new '''
+		''' await new sensors state from BLE and process recu when new '''
 		n=0
 		adr,val = await self.aios.receiveCharValue()
 		if adr and val is not None:
@@ -44,20 +44,27 @@ class aiosSampler(DBsampleCollector):
 				#chId += aiosSampler.minqid
 			else:
 				chId=adr  # from mask
-			if not chId:
+			if chId:
+				n+=1
+			else:
 				logger.warning('no aios quantity to devadr:%s' % adr)
 			tstamp = time.time()
 			self.check_quantity(tstamp, chId, val)
 		await asyncio.sleep(1)
 		return n
 		
-	def set_state(self, quantity, state, prop='bri'):
-		''' stateSetter for HAP to set hue device '''
-		super().set_state(quantity, state, prop=prop)
+	def set_state(self, quantity, state, prop=None, dur=None):
+		''' stateSetter to set digio bit '''
+		ok = super().set_state(quantity, state, prop=prop)
+		if dur:
+			self.aios.setDigPulse(bitnr=int(prop), duration=dur)
+		else:
+			self.aios.setDigBit(bitnr=int(prop), val=state)
+		return ok
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # testing
 	import asyncio
-	DIGINPIN =16
+	DIGINPIN =16   # PIR detector
 	logger = get_logger(__file__)  #logging.getLogger()
 	# build a default config dict
 	QCONF = { "%d" % (adr+aiosSampler.minqid):{
@@ -82,8 +89,9 @@ if __name__ == "__main__":
 	except Exception as e:
 		logger.exception("unknown exception: %s" % e)
 	finally:
-		logger.warning(aios.jsonDump())
-		aios.exit()
+		if aios:
+			logger.warning(aios.jsonDump())
+			aios.exit()
 		time.sleep(2)
 		loop.close()
 else:

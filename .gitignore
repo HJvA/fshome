@@ -5,3 +5,9 @@
 fs200.json
 obsolete/
 /log/*
+/accessories/ifttt/*
+/accessories/netgear/asihttp.py
+/accessories/netgear/test.py
+/accessories/netgear/netgear.py
+/accessories/netgear/pnetgear.py
+/accessories/netgear/wndr.py

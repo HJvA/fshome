@@ -47,7 +47,7 @@ class hueSampler(DBsampleCollector):
 				await asyncio.sleep(dev.refreshInterval/100)
 		return n
 		
-	def set_state(self, quantity, state, prop='bri'):
+	def set_state(self, quantity, state, prop='bri', dur=None):
 		''' stateSetter for HAP to set hue device '''
 		if not super().set_state(quantity, state, prop=prop):
 			return None

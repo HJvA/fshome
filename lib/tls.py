@@ -5,6 +5,7 @@ import time
 import logging
 import os,re,sys
 import threading
+import hashlib, hmac
 
 def bytes_to_int(data, endian='>', signed=True):
 	"""Convert a bytearray into an integer, considering the first bit sign."""
@@ -18,8 +19,8 @@ def bytes_to_int(data, endian='>', signed=True):
 	encoded = ''.join(format(x, '02x') for x in data) 
 	return int(encoded, 16)
 
-def bytes_to_hex(data):
-	return ''.join(format(x, '02x') for x in data)
+def bytes_to_hex(data, separ='', frmt='02x'):
+	return separ.join(format(x, frmt) for x in data)
 
 def load_lod(lod, csv_fp, fields=['id','name']):
 	''' get list of dict from csv file
@@ -128,6 +129,24 @@ def get_logger(pyfile=None, levelConsole=logging.INFO, levelLogfile=logging.DEBU
 	logger.critical("starting %s dd %s" % (root, time.strftime("%d %H:%M:%S", time.localtime())))
 	return logger
 
+def hash_new_password(password: str, salt = None): # -> Tuple[bytes, bytes]:
+	"""
+    Hash the provided password with a randomly-generated salt and return the
+    salt and hash to store in the database.
+	"""
+	if not salt:
+		salt = os.urandom(16)
+	pw_hash = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+	return salt, pw_hash
+
+def is_correct_password(salt: bytes, pw_hash: bytes, password: str): # -> bool:
+	"""
+    Given a previously-stored salt and hash, and a password provided by a user
+    trying to log in, check whether the password is correct.
+	"""
+	return hmac.compare_digest(
+		pw_hash, hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+	)
 	
 if __name__ == "__main__":
 	#set_logger(level=logging.INFO)

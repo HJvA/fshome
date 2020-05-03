@@ -1,0 +1,29 @@
+{
+  "700": {
+    "devadr": "rxToday",
+    "name": "MbToday",
+    "source": "gang",
+    "typ":51
+  },
+  "701": {
+    "devadr": "rxYestday",
+    "name": "MbYesterday",
+    "source": "gang",
+    "typ":51
+  },
+  "702": {
+    "devadr": "txToday",
+    "name": "tMbToday",
+    "source": "gang",
+    "typ":51
+  },
+  "703": {
+    "devadr": "txYestday",
+    "name": "tMbYesterday",
+    "source": "gang",
+    "typ":51
+  },
+  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
+  "host": "192.168.1.1",
+  "pwd": "har"
+}

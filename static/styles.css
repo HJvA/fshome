@@ -20,7 +20,8 @@ body, html {
   border: 4px solid bisque;
   border-radius: 1em;
   text-align: center;
-  padding-top: .6em;
+  padding: .4em 0;
+  margin-bottom:  0.5vh;
 }
 .headng > p {
   color: brown;
@@ -29,6 +30,8 @@ body, html {
 }
 article{margin:10px;}
 svg.graph {
+  margin: 0.1vw 0;
+  padding: 0;
   background-color: #a2c9c0;
   border: 8px solid #cccccc; 
   border-radius: 1em;
