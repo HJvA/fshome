@@ -1,8 +1,4 @@
 {
-  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
-  "huebridge": "192.168.1.21",
-  "hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFv",
-
   "207": {
     "source": "entree",
     "name": "DeurMotion",
@@ -98,5 +94,8 @@
     "name": "eetStrip",
     "devadr":"4",
     "aid":20
-  }
+  },
+  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
+  "huebridge": "192.168.1.21",
+  "hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqc Rwsel"
 }

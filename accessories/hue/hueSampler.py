@@ -40,18 +40,20 @@ class hueSampler(DBsampleCollector):
 		''' get sensors state from hue bridge and check for updates and process recu when new '''
 		n=0
 		for qid,dev in hueSampler.devdat.items():
-			if dev.newval():
+			newval = await dev.newval()
+			if newval:
 				n-=1
-				self.check_quantity(dev.lastupdate().timestamp(), qid, dev.value())
+				dtm = await dev.lastupdate()
+				self.check_quantity(dtm.timestamp(), qid, await dev.value())
 			else:
 				await asyncio.sleep(dev.refreshInterval/100)
 		return n
 		
-	def set_state(self, quantity, state, prop='bri', dur=None):
+	def set_state(self, quantity, state, prop='bri', dur=None, loop=None):
 		''' stateSetter for HAP to set hue device '''
 		if not super().set_state(quantity, state, prop=prop):
 			return None
-		return hueSampler.devdat[quantity].setValue(prop, state)
+		return hueSampler.devdat[quantity].setValue(prop, state, loop=loop)
 
 
 if __name__ == "__main__":
@@ -145,8 +147,9 @@ if __name__ == "__main__":
 }
 	
 	bri=1
-	async def huepoll():
+	async def huepoll(hueobj):
 		#while True:	
+		#loop = asyncio.get_running_loop()
 		global bri
 		await hueobj.receive_message()  # both sensors and lights
 		for qid in hueobj.qactive():
@@ -154,32 +157,30 @@ if __name__ == "__main__":
 			if typ == DEVT['lamp']:
 				bri += 1
 				#logger.info("set bri of %s to %s" % (qid,bri))
-				hueobj.set_state(qid, bri % 100, prop='bri')
+				hueobj.set_state(qid, bri % 100, prop='bri', loop=loop)
 				#hueobj.devdat[qid].setValue(prop='bri', bri)
-			await asyncio.sleep(0.01)
-				
-	loop = asyncio.get_event_loop()
+			await asyncio.sleep(0.1)
+	
+	async def main(hueobj):
+		try:		
+			hueobj.set_state(260, 'true', prop='on')		
+			while True:
+				await huepoll(hueobj)
+		
+		except KeyboardInterrupt:
+			logger.warning("terminated by ctrl c")
+		except Exception:
+			logger.exception("unknown exception!!!")
+		finally:
+			hueobj.set_state(260, 'false', prop='on')
+			time.sleep(1)
+			hueobj.exit()
 
-	try:
-		hueSampler.minqid=None
-		hueobj = hueSampler(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=QCONF, minNr=1, maxNr=10, minDevPerc=0)
-		
-		hueobj.set_state(260, 'true', prop='on')
-		
-		#light=hueobj.jsonConfig()	
-		#loop.call_soon(hueobj.receive_message)
-		#asyncio.run(huepoll())
-		
-		loop.run_until_complete(forever(huepoll))
-		#loop.run_until_complete(forever(hueobj.receive_message))									
-	except KeyboardInterrupt:
-		logger.warning("terminated by ctrl c")
-	except Exception:
-		logger.exception("unknown exception!!!")
-	finally:
-		loop.close()
-	hueobj.set_state(260, 'false', prop='on')
-	hueobj.exit()
+	hueSampler.minqid=None
+	hueobj = hueSampler(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=QCONF, minNr=1, maxNr=10, minDevPerc=0)
+
+	loop = asyncio.get_event_loop()
+	loop.run_until_complete(main(hueobj))
 	logger.critical("bye")
 else:	# this is running as a module
 	logger = get_logger()  # get logger from main program

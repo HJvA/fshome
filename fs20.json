@@ -107,7 +107,7 @@
 			"devadr": "31"	,
 			"name":"banklicht"
 			},
-	"NOtailScale":"100.126.237",
+	"tailScale":"100.126.237.28",
 	"dbFile": "/mnt/extssd/storage/fs20store.sqlite",
 	"hausc":"1212"
-}
+	}

@@ -17,6 +17,7 @@ rxdct = dict(
 )
 
 async def traffic(session: aiohttp.ClientSession, user = 'admin',pwd=None, host = '192.168.1.1'):
+	''' gets traffic.htm page from host, parses page looking for items in rxdct '''
 	#url = 'http://' + host +'/traffic_meter_2nd.htm' 
 	#url = 'http://' + host +'/RST_statistic.htm'
 	url = 'http://' + host +'/traffic.htm'
@@ -46,6 +47,8 @@ async def traffic(session: aiohttp.ClientSession, user = 'admin',pwd=None, host 
 				logger.debug('%s mtch.grp=%s=%f spn=%s' % (itm,grp,resp[itm], mtch.span()))
 			else:
 				logger.warning('no match with %s in %s for %s' % (rx, len(stuff), itm))
+		if len(resp)==0:
+			logger.warning('wndr nothing found in stuff:%s=>%s' % (stuff,rxdct))
 	except Exception as er:
 		logger.error('%d httpErr:%s' % (i,er))
 	return resp
@@ -57,5 +60,5 @@ async def get_traffic(interval=15, host='192.168.1.1', pwd=None):
 		return await traffic(session, pwd=pwd, host=host)
 
 if __name__ == "__main__":
-	traf = asyncio.run(get_traffic(pwd='har'))
+	traf = asyncio.run(get_traffic(pwd='harrewar'))
 	logger.info('\ntraffic:\n%s' % traf)

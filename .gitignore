@@ -11,3 +11,4 @@ obsolete/
 /accessories/netgear/netgear.py
 /accessories/netgear/pnetgear.py
 /accessories/netgear/wndr.py
+/setup/rclone.txt

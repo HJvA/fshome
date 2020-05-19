@@ -22,6 +22,12 @@ class txtLogger(object):
 		self.file=open(filepath, 'a+')
 	def close(self):
 		self.file.close()
+		
+	def backup(self):
+		''' '''
+		# lock db file first!
+		# rclone copy -P /mnt/extssd/storage/fs20store.sqlite gdrive:/rpi-sync
+		pass
 	
 	def logi(self, ikey, numval, strval=None, tstamp=None):
 		if tstamp is None:

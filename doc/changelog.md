@@ -14,6 +14,11 @@ Sections
 ### Breaking Changes
 ### Developers
 -->
+## [1.3.8] - 2020-05-20
+### Changed
+- hueAPI now uses aiohttp instead of requests for having full async operation
+-
+
 ## [1.3.7] - 2020-04-22
 ### Added
 - netgear wndr router for logging LAN traffic
