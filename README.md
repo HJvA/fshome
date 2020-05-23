@@ -80,9 +80,17 @@ Tailscale is a service that makes it easy to access your fshome site securely fr
 - go to  <https://tailscale.com>
 - create an account
 - install the tailscale client on your devices (both on the server, as on the clients)
+- tailscale will provide you with an ip adres for each device in your network of servers and clients
 - add the item "tailScale" : "ip.of.bottle.serv" to the fs20.json file
   where the ip... is provided by tailscale as the ip address of the raspberry where fssite.py is running (i.e. the server)
 - on your browsing device (i.e. a client), open an internet browser to address <http://ip.of.bottle.serv:8080>
+
+### rclone
+
+rclone is a command line utility to copy or sync files to a (remote) storage provider like google drive   
+- install rclone on the fshome server, getting it from <https://github.com/rclone/rclone/releases>  
+- create an app on your google account to setup permission to save to your gdrive  
+- run the backup.sh script for making a backup  
 
 ## Configuring devices <a name="Configure"></a>
 
