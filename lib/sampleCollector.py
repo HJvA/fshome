@@ -3,6 +3,7 @@
 """
 
 import logging,time,json,enum,re
+import collections
 from lib.dbLogger import julianday,prettydate,sqlLogger
 from lib.devConst import qCOUNTING,DEVT,DVrng
 logger = logging.getLogger(__name__)	# get logger from main program
@@ -18,7 +19,7 @@ qCNT=1
 
 class sm(enum.IntFlag):
 	ADR=0	# devadr
-	TYP=1
+	TYP=1 # DEVT
 	NM=2
 	SRC=3	# source
 	MSK=4
@@ -52,6 +53,8 @@ class signaller(object):
 		''' todo check whether qid event is occuring '''
 		if qid in self._eventDetect:
 			logger.warning('TODO: checking qid:%s with %s for having %s' % (qid,qval,self._eventDetect[qid]))
+		if type(qval) is bool:
+			return qval  # only trigger once on motion detect
 		return True
 		
 	def signal(self, qid, qval=None):
@@ -86,12 +89,11 @@ class signaller(object):
 
 class sampleCollector(object):
 	""" base class for collection of sampling quantities """
-	signaller = None # signaller()
+	signaller = None # each sampler will have its own signaller set by childs
 	def __init__(self, maxNr=120,minNr=2,minDevPerc=5.0,name=None):
 		self.maxNr = maxNr
 		self.minDevPerc = minDevPerc
 		self.minNr = minNr
-		#self.signaller = signaller
 		self.average={}
 		self.lastval={}
 		self.actual={}
@@ -221,6 +223,8 @@ class sampleCollector(object):
 			return
 		if self.qtype(quantity)>=DEVT['secluded']:	# ignore
 			return
+		if isinstance(val, collections.Sequence):
+			logger.warning('not numeric %d = %s' % (quantity,val))
 		if self.qInRng(quantity,val)==False:
 			logger.warning("quantity out of range %s" % quantity)
 			return
@@ -242,7 +246,7 @@ class sampleCollector(object):
 			n = self.average[quantity][qCNT]
 			avg = self.average[quantity][qVAL] / n
 			if (n>=self.minNr and abs(val-avg)>avg*self.minDevPerc/100) or n>=self.maxNr:
-				logger.info('(%s) accepting avg n=%d avg=%g val=%s quantity=%s devPrc=%g tm=%s' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, prettydate(julianday(tstamp))))
+				logger.info('(%s) accepting avg n=%d avg=%g val=%s quantity=%s devPrc=%g>%g tm=%s' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, self.minDevPerc, prettydate(julianday(tstamp))))
 				self.accept_result((tstamp+self.average[quantity][2])/2, quantity)
 				self.average[quantity] = [val,1,tstamp]
 			else:
@@ -306,6 +310,7 @@ class sampleCollector(object):
 				rec =self.average.pop(quantity)
 				self.lastval[quantity] = 0
 				self.updated.add(quantity)
+				logger.debug('updated qid=%s rec=%s' % (quantity,rec))
 		return quantity in self.updated
 		
 	def get_last(self, quantity):

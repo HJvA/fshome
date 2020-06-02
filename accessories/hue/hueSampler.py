@@ -4,13 +4,14 @@
 import sys,os,time,logging,asyncio
 if __name__ == "__main__":
 	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../..'))
-	from hueAPI import HueSensor,HueLight
+	from hueAPI import HueSensor,HueLight,HueBaseDev
 else:
 	from accessories.hue.hueAPI import HueSensor,HueLight
 from lib.sampleCollector import DBsampleCollector,forever
 from lib.devConst import DEVT
 from lib.tls import get_logger
 
+#hueSemaphore= asyncio.Semaphore(value=1)
 
 class hueSampler(DBsampleCollector):
 	devdat = {}	# dict of hue devices (either lights or sensors)
@@ -44,23 +45,33 @@ class hueSampler(DBsampleCollector):
 			if newval:
 				n-=1
 				dtm = await dev.lastupdate()
-				self.check_quantity(dtm.timestamp(), qid, await dev.value())
+				val = await dev.value()
+				if dtm and not isinstance(val, dict):
+					self.check_quantity(dtm.timestamp(), qid, val)
+				else:
+					logger.warning('bad hue val %s at %s' % (dtm,val))
 			else:
 				await asyncio.sleep(dev.refreshInterval/100)
 		return n
 		
-	def set_state(self, quantity, state, prop='bri', dur=None, loop=None):
+	def set_state(self, quantity, state, prop='bri', dur=None):
 		''' stateSetter for HAP to set hue device '''
 		if not super().set_state(quantity, state, prop=prop):
 			return None
-		return hueSampler.devdat[quantity].setValue(prop, state, loop=loop)
-
+		return hueSampler.devdat[quantity].setValue(prop, state)
+		
+	async def setState(self, quantity, state, prop='bri'):
+		return await hueSampler.devdat[quantity].setState(prop, state)
+		
+	def semaphore(self):
+		''' to use to block concurrent http tasks '''
+		return HueBaseDef.Semaphore
 
 if __name__ == "__main__":
 	import asyncio
 	logger = get_logger(__file__)  #logging.getLogger()
 	conf={	# to be loaded from json file
-		"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqcRwsel",
+		"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqc Rwsel",
 		"huebridge": "192.168.1.21",	 
 		#"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 		"dbFile": '~/fs20store.sqlite'
@@ -151,15 +162,24 @@ if __name__ == "__main__":
 		#while True:	
 		#loop = asyncio.get_running_loop()
 		global bri
-		await hueobj.receive_message()  # both sensors and lights
-		for qid in hueobj.qactive():
+		n = await hueobj.receive_message()  # both sensors and lights
+		qa = hueobj.qactive()
+		if n:
+			logger.debug('receive_message:%d qactive=:%s' % (n,[q for q in qa]))
+		for qid in qa:
+			upd = hueobj.isUpdated(qid)
+			if upd:
+				last = hueobj.get_last(qid)
+				logger.debug('qid %s updated to %s' % (qid,last))
 			typ = hueobj.qtype(qid)
 			if typ == DEVT['lamp']:
 				bri += 1
 				#logger.info("set bri of %s to %s" % (qid,bri))
-				hueobj.set_state(qid, bri % 100, prop='bri', loop=loop)
+				await hueobj.setState(qid, bri % 100, prop='bri')
+				#hueobj.set_state(qid, bri % 100, prop='bri', loop=loop)
 				#hueobj.devdat[qid].setValue(prop='bri', bri)
-			await asyncio.sleep(0.1)
+				#await asyncio.sleep(0.1)
+		await asyncio.sleep(1)
 	
 	async def main(hueobj):
 		try:		
@@ -175,9 +195,10 @@ if __name__ == "__main__":
 			hueobj.set_state(260, 'false', prop='on')
 			time.sleep(1)
 			hueobj.exit()
-
+			
+	HueBaseDev.Semaphore = asyncio.Semaphore()
 	hueSampler.minqid=None
-	hueobj = hueSampler(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=QCONF, minNr=1, maxNr=10, minDevPerc=0)
+	hueobj = hueSampler(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=QCONF, minNr=1, maxNr=3, minDevPerc=0)
 
 	loop = asyncio.get_event_loop()
 	loop.run_until_complete(main(hueobj))

@@ -56,10 +56,11 @@ class aiosSampler(DBsampleCollector):
 	def set_state(self, quantity, state, prop=None, dur=None):
 		''' stateSetter to set digio bit '''
 		ok = super().set_state(quantity, state, prop=prop)
-		if dur:
-			self.aios.setDigPulse(bitnr=int(prop), duration=dur)
-		else:
-			self.aios.setDigBit(bitnr=int(prop), val=state)
+		if prop:  # and prop.isnumeric():
+			if dur:
+				self.aios.setDigPulse(bitnr=int(prop), duration=dur)
+			else:
+				self.aios.setDigBit(bitnr=int(prop), val=state)
 		return ok
 
 if __name__ == "__main__":  # testing

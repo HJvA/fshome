@@ -19,7 +19,7 @@ class fsBridge(Bridge):
 
 	@Accessory.run_at_interval(RUNINTERVAL)  
 	async def run(self):
-		''' called by HAP accessorie_driver class '''
+		''' called by HAP accessorie_driver class servicing all samplers '''
 		for nm,sampler in fsBridge._samplers.items():
 			remi = 1
 			while remi>0:

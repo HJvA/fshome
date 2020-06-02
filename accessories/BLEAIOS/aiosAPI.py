@@ -44,7 +44,7 @@ CHARS[chECO2]   = "6c2fe8e1-2498-420e-bab4-81823e7b7397"
 CHARS[chTVOC]   = "6c2fe8e1-2498-420e-bab4-81823e7b7398"
 CHARS[chBAT]    = 0x2a19   #"00002a19-0000-1000-8000-00805f9b34fb"
 
-CHARS[dscVALRNG]   = 0x2906
+CHARS[dscVALRNG]   = 0x2906	# valid range descriptor
 CHARS[dscPRESFORM] = 0x2904
 
 SCALES={chTEMP:100.0, chHUMI:100.0, chANA1ST:10000 }
@@ -164,6 +164,7 @@ class aiosDelegate(bluepyDelegate):
 		return charist
 		
 	def _readDigitals(self):
+		''' get aios GATT representation of digital bit values and settings '''
 		if self.dev:
 			service = self.dev.getServiceByUUID(btle.UUID(AIOS_SVR))
 			chT = service.getCharacteristics(btle.UUID(CHARS[chDIGI]))
@@ -263,6 +264,7 @@ class aiosDelegate(bluepyDelegate):
 			self._sendDigBits()
 			
 	def setDigPulse(self, bitnr, duration):
+		""" issue a binary pulse on a bitnr line """
 		if bitnr in self.digPulses:
 			logger.warning('pulse on %d still running while a new one requested')
 		else:
@@ -270,6 +272,7 @@ class aiosDelegate(bluepyDelegate):
 			logger.info('digital pulse on %s duration %f' % (bitnr,duration))
 		
 	async def pulseHandler(self):
+		""" handles pulse timing of an issued pulse """
 		logger.info('running aios pulse handler on %s' % self.digPulses)
 		while True:
 			if self.digPulses:
@@ -321,6 +324,7 @@ async def blinkTask(aios, bitnr=5):
 		await asyncio.sleep(9.1)
 
 async def main():
+	""" for testing """
 	DIGOUTBIT = 5  # MOSFET flash A3
 	REDLED =17
 	logger.info("Connecting...")

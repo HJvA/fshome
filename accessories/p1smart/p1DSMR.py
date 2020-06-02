@@ -36,7 +36,7 @@ BAUDRATE = 115200
 reOBIS = r"^(\d)\-(\d)\:(\d+\.\d+\.\d+)\((.*)\)"  # parses: "1-0:1.8.2(000754.925*kWh)"
 
 __author__ = "Henk Jan van Aalderen"
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __email__ = "hjva@notmail.nl"
 __status__ = "Development"
 
@@ -44,12 +44,12 @@ __status__ = "Development"
 # <keytelegram>:(<nameapp>,<factor>,<DEVT quantity type>)
 p1QDEF={
 	#'1.0.0':('tstamp',1),
-	'1.7.0' :('PowerTotal'   ,1000,DEVT['power']), 	#W
+	'1.7.0' :('PowerTotal'   ,1000,DEVT['power']),	#W
 	'21.7.0':('PowerL1'      ,1000,DEVT['power']),	#W
 	'41.7.0':('PowerL2'      ,1000,DEVT['power']),
 	'61.7.0':('PowerL3'      ,1000,DEVT['power']),
 	'2.7.0' :('receivedPower',1000,DEVT['power']),
-	'32.7.0':('VoltageL1'    ,1   ,DEVT['voltage']),	
+	'32.7.0':('VoltageL1'    ,1   ,DEVT['voltage']),
 	'52.7.0':('VoltageL2'    ,1   ,DEVT['voltage']),
 	'72.7.0':('VoltageL3'    ,1   ,DEVT['voltage']),
 	'31.7.0':('CurrentL1'    ,1   ,DEVT['current']),
@@ -62,26 +62,39 @@ p1QDEF={
 
 tstamp=None
 
+"""
+dsmr:"/Ene5\XS210 ESMR 5.0" => ('idf', '/Ene5\\XS210 ESMR 5.0')
+dsmr:"0-0:1.0.0(200601220401S)" => ('1.0.0', 1591041841.0, '200601220401S')
+dsmr:"1-0:1.8.1(001088.889*kWh)" => ('1.8.1', 1088.889)
+dsmr:"1-0:1.8.2(001110.138*kWh)" => ('1.8.2', 1110.138)
+dsmr:"1-0:1.7.0(00.089*kW)" => ('1.7.0', 0.089)
+dsmr:"1-0:2.7.0(00.000*kW)" => ('2.7.0', 0.0)
+dsmr:"1-0:32.7.0(233.0*V)" => ('32.7.0', 233.0)
+dsmr:"1-0:31.7.0(000*A)" => ('31.7.0', 0.0)
+dsmr:"1-0:21.7.0(00.089*kW)" => ('21.7.0', 0.089)
+dsmr:"!F1FE" => ('crc', 'F1FE')
+"""
+
 def parseDSMR(line):
 	global tstamp
 	if line and len(line)>0:
 		m = re.search(reOBIS, line)
-		#val = re.search(r"\((.*)\)", line)  # string in ( )
 		if m and len(m.groups())==4: # and val and len(val.groups())==1:
-			#logger.debug('grps:%s val:%s' % (m.groups(),val))
+			#logger.debug('grps:%s val:%s' % (m.groups(),m.group(4)))
 			try:
-				val = m.group(4) # val.group(1)
 				qkey = m.group(3)
+				val = m.group(4)
 				if qkey in p1QDEF and tstamp is not None:
-					fval=float(val.split('*')[0])
+					fval=float(val.split('*')[0].replace('\x00',''))
 					return (qkey,fval)
 				elif qkey=='1.0.0':   #  tstamp
-					dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None
+					dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None	# winter or summer time
 					tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
 					tz = timezone(timedelta(seconds=-time.timezone))
 					return (qkey,tstamp,val)
 			except ValueError as e:
-				logger.error("bad num format in:%s for %s having:%s" % (val,qkey,e))
+				if qkey in p1QDEF:
+					logger.error("bad num format in:%s for %s having:%s" % (val,qkey,e))
 		elif line[0]=='/':  # first in group
 			identific = line
 			return ('idf',line)

@@ -18,6 +18,7 @@ DEVT ={
 	"dimmer":14,   # mains (light) dimmer [%]
 	"outlet":15,   # mains outlet 
 	"switch":16,	# remote on/off switch
+	"signal":17,   # event signal
 	"power":20,		# mains actual power usage [W]
 	"energy":21,	# kWh
 	"voltage":22,	# V
@@ -29,6 +30,8 @@ DEVT ={
 	"DIGI":44,     # aios digital IO
 	"bytesPs":50,  # bytes per sec
 	"Mbytes":51,   # mega bytes 
+	"duration":60,
+	"julianDay":61,# days since 
 	"secluded":98, # known device but to be ignored
 	"unknown":99 } # unknown device
 	
@@ -52,6 +55,7 @@ SIsymb = {  # symbols and units
 	14:("dim","%"),
 	15:("mains",""),
 	16:("on",""),
+	17:("off",""),
 	20:("P","W"),
 	21:("E","kWh"),
 	22:("U","V"),
@@ -61,11 +65,13 @@ SIsymb = {  # symbols and units
 	40:("Vol","%"),
 	41:("Conc","ppm"),
 	50:("bps","1/s"),
-	51:("MB","1024")
+	51:("MB","1024"),
+	60:("t","s"),
+	61:("date","days")
 	}
 	
 DVrng = {  # quantity normal range
-	0:(-273,99), # temp
+	0:(-273,99), # temperature
 	1:(0,100),   # hum
 	2:(0,999),   # rain
 	3:(-999,999),  # speed
@@ -79,14 +85,17 @@ DVrng = {  # quantity normal range
 	14:(-999,999),   # dimming
 	15:(-999,999),  # mains
 	16:(-999,999),    # switch
+	17:(-999,999),
 	20:(-999,999),    # power
 	21:(-999,999),  # energy
 	22:(-999,999),    # voltage
 	23:(-999,999),    # current
 	30:(-999,999),  # flow
 	31:(-999,999),     # volume abs
-	40:(-999,999),      # volume perc
-	41:(-999,999),   # density
+	40:(-999,999),     # volume perc
+	41:(-999,999),     # density
 	50:(-999,9999999), # bps
-	51:(-999,9999999)  # n Mbytes
+	51:(-999,9999999), # n Mbytes
+	60:(0,9e9),   # s
+	61:(0,9e9)    # days
 	}

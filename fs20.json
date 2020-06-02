@@ -107,6 +107,18 @@
 			"devadr": "31"	,
 			"name":"banklicht"
 			},
+		"117":{
+			"typ":17,
+			"source":"woon",    
+			"devadr": "22"	,
+			"name":"signal1"
+			},
+		"118":{
+			"typ":17,
+			"source":"woon",    
+			"devadr": "23"	,
+			"name":"signal2"
+			},
 	"tailScale":"100.126.237.28",
 	"dbFile": "/mnt/extssd/storage/fs20store.sqlite",
 	"hausc":"1212"

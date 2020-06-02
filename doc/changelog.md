@@ -13,11 +13,18 @@ Sections
 ### Fixed
 ### Breaking Changes
 ### Developers
+### Confinement
 -->
+## [1.3.9] - 2020-06-02
+### Confinement
+- fs20 SIG2 signaller accepts motion events e.g. from hue motion sensor  
+### Added
+- devicetype DEVT['signal']
+- tested async http together : hue and wndr
+
 ## [1.3.8] - 2020-05-20
 ### Changed
-- hueAPI now uses aiohttp instead of requests for having full async operation
--
+- hueAPI now uses aiohttp instead of requests for having full async operation  
 
 ## [1.3.7] - 2020-04-22
 ### Added

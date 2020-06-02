@@ -63,21 +63,17 @@ class hue_happer(hueSampler):
 
 def add_HUE_to_bridge(bridge, config="hue.json"):
 	conf = devConfig(config)
+	#HueBaseDev.Semaphore = asyncio.Semaphore()
 	sampler = hue_happer(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=0)
 	#sampler.minqid=None  # do not auto create
 	bridge.add_sampler(sampler, conf.itstore)	
 
 if __name__ == "__main__":
 	""" run this 
-	"""		
-	logger = logging.getLogger()
-	hand=logging.StreamHandler()
-	hand.setLevel(logging.INFO)
-	logger.addHandler(hand)	# use console
-	logger.addHandler(logging.FileHandler(filename='hueRun.log', mode='w', encoding='utf-8')) #details to log file
-	logger.setLevel(logging.DEBUG)
-	logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S")))
-	
+	"""
+	from lib.tls import get_logger
+	logger = get_logger(__file__)
+		
 	try:
 		driver = AccessoryDriver(port=51826)
 		signal.signal(signal.SIGTERM, driver.signal_handler)

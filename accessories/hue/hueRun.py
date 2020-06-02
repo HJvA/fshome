@@ -81,7 +81,7 @@ if __name__ == "__main__":
 	
 	cnf = devConfig('hue.json')
 	if cnf['hueuser'] is None:
-		cnf['hueuser'] = "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqcRwsel"
+		cnf['hueuser'] = "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqc Rwsel"
 		#"iDBZ985sgFNMJruzFjCQzK-zYZnwcUCpd7wRoCVM"
 
 	try:

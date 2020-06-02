@@ -80,7 +80,7 @@ class fs20Sampler(DBsampleCollector):
 		devadr=self.qdevadr(quantity)
 		logger.info("setting state of:%s to adr:%s of typ:%s with:%s" % (quantity,devadr,typ,state))
 		cmd=None
-		if typ==DEVT['outlet'] or typ==DEVT['switch'] or prop=='on':
+		if typ==DEVT['outlet'] or typ==DEVT['switch'] or typ==DEVT['signal'] or prop=='on':
 			if state:
 				if dur:
 					cmd='on-old-for-timer'

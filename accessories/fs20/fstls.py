@@ -82,7 +82,7 @@ def FS20_command(hausc, devadr, cmd="toggle", dur=None):
 		cde = int(cmd)
 		cmd = fs20commands[cde]
 	ee=""
-	if not dur is None:
+	if dur is not None:
 		cde |= 0x20
 		for i in range(0,12):
 			if len(ee)==0:
@@ -91,7 +91,7 @@ def FS20_command(hausc, devadr, cmd="toggle", dur=None):
 					if val >= dur:
 						ee = "%0.2X" % (i*16+j,)
 						break
-	logger.info("sending cmd:%s (%x) dur:%s to hc:%s adr:%s" % (cmd,cde,ee,hausc,devadr))
+	logger.info("fs20 cmd:%s (%x) dur:%s to hc:%s adr:%s" % (cmd,cde,ee,hausc,devadr))
 	cmd = "%0.2X" % cde
 	return 'F'+hausc+devadr+cmd+ee
 	
@@ -136,8 +136,8 @@ if __name__ == "__main__":
 	codes = {
 		"1414": {"name":'trapkast',	"cmd":26,"dur":60, "act":1},	# sound normaal & light
 		"1311": {"name":'garage'  ,	"cmd":26,"dur":60, "act":0},	# sound uhahahaha & show
-		"1313": {"name":'test1'   ,	"cmd":17,"dur":None, "act":1},	# sound & show
-		"1314": {"name":'test2'   ,	"cmd":17,"dur":0, "act":1},	# sound & show
+		"1313": {"name":'test1'   ,	"cmd":'off',"dur":None, "act":1},	# sound gr & show
+		"1314": {"name":'test2'   ,	"cmd":'off',"dur":None, "act":1},	# sound tang & show
 
 		"1111": {"name":'deurbel' ,	"cmd":'on',"dur":None, "hausc":'21414433', "act":0}, # sound normaal
 		#"1111": {"name":'deurbel' ,	"cmd":'toggle',"dur":None, "hausc":'21414433', "act":1}, # sound up-up-up-up
@@ -164,7 +164,7 @@ if __name__ == "__main__":
 		serdev.send_message(cmd)
 		time.sleep(10)
 	
-	
+	logger.info('listening to fs20')
 	while True:
 		msg = serdev.read(minlen=8,timeout=10,termin=bytes('\r\n','ascii'))
 		if not msg:

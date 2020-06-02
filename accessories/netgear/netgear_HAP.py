@@ -3,6 +3,7 @@
 	"""
 import time
 import logging
+import asyncio
 
 cnfFile = "WNDR.json"
 
@@ -18,10 +19,10 @@ from lib.fsHapper import HAP_accessory,fsBridge
 from lib.devConst import DEVT
 from lib.devConfig import devConfig
 from pyhap.accessory_driver import AccessoryDriver
-
+from accessories.hue.hueAPI import HueBaseDev
 
 class WNDR_sampler(DBsampleCollector):
-	""" add specific methods to sampler class """
+	""" add specific WNDR methods to sampler class """
 	manufacturer="netgear"
 	def __init__(self, host, pwd, *args, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -29,6 +30,7 @@ class WNDR_sampler(DBsampleCollector):
 		self.minqid = 700
 		self.host = host
 		self.pwd = pwd
+		self.semaphore=HueBaseDev.Semaphore
 	
 	def defServices(self,quantities):
 		''' compute dict of recognised services from quantities config '''
@@ -42,7 +44,7 @@ class WNDR_sampler(DBsampleCollector):
 		return super().defServices(qtts)
 
 	async def receive_message(self):
-		rec = await get_traffic(host=self.host, pwd=self.pwd)
+		rec = await get_traffic(host=self.host, pwd=self.pwd, semaphore=self.semaphore)
 		if rec:
 			for itm,rx in rec.items():
 				tstamp = time.time()
@@ -50,8 +52,8 @@ class WNDR_sampler(DBsampleCollector):
 				self.check_quantity(tstamp, quantity=qid, val=rx)
 		else:
 			logger.warning('nothing received from wndr :%s' % rec)
-		#await asyncio.sleep(5)
-		return 0
+			await asyncio.sleep(2)
+		return 0  # remaining
 
 class WNDR_happer(WNDR_sampler):
 	""" apple HAP sampler on WNDR router """
