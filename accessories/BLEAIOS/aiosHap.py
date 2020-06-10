@@ -42,7 +42,7 @@ class aios_happer(aiosSampler):
 def add_AIOS_to_bridge(bridge, config="aios.json"):
 	conf = devConfig(config)
 	#logger.info('aios config %s ' % conf)
-	sampler = aios_happer(bridge.driver.loop, dbFile=conf['dbFile'], devAddress=conf['devAddress'], quantities=conf.itstore, minNr=2, maxNr=4, minDevPerc=0)
+	sampler = aios_happer(bridge.driver.loop, dbFile=conf['dbFile'], devAddress=conf['devAddress'], quantities=conf.itstore, minNr=2, maxNr=4, minDevPerc=1)
 	#sampler.minqid=None  # do not auto create
 	bridge.add_sampler(sampler, conf.itstore)	
 

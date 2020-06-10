@@ -17,15 +17,17 @@ A-B:C.D.E*F
 import logging,time,sys,os
 from datetime import timezone,timedelta,datetime
 import re
+import asyncio
 
 if __name__ == "__main__":
 	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../..'))
 	from lib.serComm import serComm
+	from lib.tls import get_logger
+	logger = get_logger(__file__, logging.DEBUG, logging.DEBUG)
 else:
 	from lib.serComm import serComm
 	logger = logging.getLogger(__name__)	# get logger from main program
 from lib.devConst import DEVT
-from lib.tls import get_logger
 from lib.dbLogger import julianday,prettydate
 from lib.sampleCollector import DBsampleCollector,forever
 
@@ -60,7 +62,6 @@ p1QDEF={
 	'1.8.2' :('EnergyElectrNorm',1,DEVT['energy'])	#Wh normal tarif
 	}
 
-tstamp=None
 
 """
 dsmr:"/Ene5\XS210 ESMR 5.0" => ('idf', '/Ene5\\XS210 ESMR 5.0')
@@ -75,8 +76,9 @@ dsmr:"1-0:21.7.0(00.089*kW)" => ('21.7.0', 0.089)
 dsmr:"!F1FE" => ('crc', 'F1FE')
 """
 
+_tstamp=None
 def parseDSMR(line):
-	global tstamp
+	global _tstamp
 	if line and len(line)>0:
 		m = re.search(reOBIS, line)
 		if m and len(m.groups())==4: # and val and len(val.groups())==1:
@@ -84,27 +86,26 @@ def parseDSMR(line):
 			try:
 				qkey = m.group(3)
 				val = m.group(4)
-				if qkey in p1QDEF and tstamp is not None:
+				if qkey in p1QDEF and _tstamp is not None:
 					fval=float(val.split('*')[0].replace('\x00',''))
 					return (qkey,fval)
 				elif qkey=='1.0.0':   #  tstamp
 					dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None	# winter or summer time
-					tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
+					_tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
 					tz = timezone(timedelta(seconds=-time.timezone))
-					return (qkey,tstamp,val)
+					return (qkey,_tstamp,val)
 			except ValueError as e:
 				if qkey in p1QDEF:
 					logger.error("bad num format in:%s for %s having:%s" % (val,qkey,e))
-		elif line[0]=='/':  # first in group
+		elif line.find(r'/')>=0:  # first in group
 			identific = line
 			return ('idf',line)
 		elif line[0]=='!':  # last in group
 			crc = line[1:]
 			return ('crc',crc)
 		else:
-			logger.info('bad line:%s match:%s' % (line,m))
+			logger.info('bad line:%s: n.grp:%s:' % (line, len(m.groups()) if m else None))
 	return None
-	
 
 class p1DSMR(DBsampleCollector):
 	""" add DSMR specific methods to sampler class """
@@ -128,30 +129,48 @@ class p1DSMR(DBsampleCollector):
 		return super().defServices(qtts)
 
 	async def receive_message(self):
-		line = await self.serdev.asyRead(timeout=0.1, termin=b'\r\n')	# msg is send every 1s
-		rec = parseDSMR(line)
-		if rec:
-			logger.debug('dsmr:"%s" => %s' % (line,rec))
-			if rec[0] in p1QDEF:
-				qkey=rec[0]
-				fval=rec[1]
-				qid = self.qCheck(None,qkey,name=p1QDEF[qkey][0])	# create when not there
-				self.qCheck(qid,qkey,typ=p1QDEF[qkey][2])	# define also typ
-				self.check_quantity(self.tstamp, quantity=qid, val=fval*p1QDEF[qkey][1])
-			elif rec[0]=='1.0.0':
-				self.tstamp=rec[1]
-				val=rec[2]
-				dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None
-				self.tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
-				tz = timezone(timedelta(seconds=-time.timezone))
-			elif rec[0]=='idf':
-				self.actual={}
-		return self.serdev.remaining()
+		n=0  # max nr of lines to read
+		remain = 0
+		while n<888:  # must be large to catch up when behind
+			n+=1
+			line = await self.serdev.asyRead(timeout=0.01, termin=b'\r\n')	# msg is send every 1s
+			remain = self.serdev.remaining()
+			rec = parseDSMR(line)
+			if rec:
+				if rec[0] in p1QDEF:  # known quantity
+					qkey=rec[0]
+					fval=rec[1]
+					qid = self.qCheck(None,qkey,name=p1QDEF[qkey][0])	# create when not there
+					self.qCheck(qid,qkey,typ=p1QDEF[qkey][2])	# define also typ
+					logger.debug('dsmr:"%s" => %s @ sinceAccept=%.6g' % (line, rec, self.sinceAccept(qid)))
+					self.check_quantity(self.tstamp, quantity=qid, val=fval*p1QDEF[qkey][1])
+				elif rec[0]=='1.0.0':
+					self.tstamp=rec[1]
+					val=rec[2]
+					dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None
+					self.tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
+					tz = timezone(timedelta(seconds=-time.timezone))
+					logger.debug('dsmr tstamp:%s dst:%s tz:%s val:%s:' % (self.tstamp, dst, tz, val))
+				elif rec[0]=='idf':
+					self.actual={}
+				elif rec[0]=='crc':
+					pass
+				else:
+					logger.warning('unknown dsmr:%s' % (rec,))
+				await asyncio.sleep(0.001)  # give other coroos some time but not too much
+			elif remain<18:
+				break  # no rec and no remains
+			if remain<=0:
+				break  # all fetched
+		if remain>99:
+			logger.warning('dsmr remaining data in ser buffer flushed:%d tries:%d' % (remain,n))
+			self.serdev.flush()
+			await asyncio.sleep(0.1)
+		return remain
 
 
 if __name__ == "__main__":
 	import asyncio
-	logger = get_logger(__file__, logging.DEBUG)
 	
 	QCONF = {  # example default configuration
 	"300": {

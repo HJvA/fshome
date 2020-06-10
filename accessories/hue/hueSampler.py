@@ -51,7 +51,7 @@ class hueSampler(DBsampleCollector):
 				else:
 					logger.warning('bad hue val %s at %s' % (dtm,val))
 			else:
-				await asyncio.sleep(dev.refreshInterval/100)
+				await asyncio.sleep(dev.refreshInterval/1000)
 		return n
 		
 	def set_state(self, quantity, state, prop='bri', dur=None):
@@ -69,7 +69,7 @@ class hueSampler(DBsampleCollector):
 
 if __name__ == "__main__":
 	import asyncio
-	logger = get_logger(__file__)  #logging.getLogger()
+	logger = get_logger(__file__,logging.INFO,logging.DEBUG) 
 	conf={	# to be loaded from json file
 		"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqc Rwsel",
 		"huebridge": "192.168.1.21",	 

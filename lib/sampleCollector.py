@@ -106,7 +106,9 @@ class sampleCollector(object):
 		if not sampleCollector.signaller:
 			sampleCollector.signaller = signaller()
 		sampleCollector.signaller.registerStateSetter(self.name, self.set_state)
+		logger.info('%s sampler minNr=%d maxNr=%d minDevPerc=%.5g' % (self.name,minNr,maxNr,minDevPerc))
 		self.updated=set() # quantities that have been updated and not accepted yet
+		self.tAccept = {}
 
 	def __repr__(self):
 		"""Return the representation of the sampler."""
@@ -132,6 +134,11 @@ class sampleCollector(object):
 						self.signaller.setSignalDef(self.name, int(qid), rec['signal'])
 					#self.servmap[int(qid)][sm.SIG] = rec['signal']
 		return self._servmap
+		
+	def nAvgSamps(self, qid):
+		if qid in self.average:
+			return self.average[qid][qCNT]
+		return None
 		
 	def qCheck(self,quantity,devadr,typ=None,name=None,source=None):
 		''' check whether quantity with devadr,typ,name,source attributes exists in servmap;
@@ -209,6 +216,18 @@ class sampleCollector(object):
 			return True
 		return None
 
+	def sinceAccept(self,qid=None):
+		if qid in self.tAccept:
+			return time.time()-self.tAccept[qid]
+		if len(self.tAccept)>0:
+			tmn = 0.0
+			for qid,t in self.tAccept.items():
+				if t<tmn:
+					tmn=t
+			return time.time()-tmn
+		else:
+			return 999
+
 	async def receive_message(self):
 		''' read device state and call check_quantity '''
 		return None
@@ -241,17 +260,19 @@ class sampleCollector(object):
 			else:
 				self.average[quantity] = [val,1,tstamp]
 			self.accept_result(tstamp, quantity)
-			logger.info('(%s) accepting cnt val=%s quantity=%s tm=%s' % (quantity,val,self.qname(quantity), prettydate(julianday(tstamp))))
+			logger.info('(%s) accepting cnt val=%s quantity=%s tm=%s since=%.6g' % (quantity,val, self.qname(quantity), prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
 		elif quantity in self.average:
 			n = self.average[quantity][qCNT]
 			avg = self.average[quantity][qVAL] / n
-			if (n>=self.minNr and abs(val-avg)>avg*self.minDevPerc/100) or n>=self.maxNr:
-				logger.info('(%s) accepting avg n=%d avg=%g val=%s quantity=%s devPrc=%g>%g tm=%s' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, self.minDevPerc, prettydate(julianday(tstamp))))
+			if (n>=self.minNr and abs(val-avg)>abs(avg*self.minDevPerc/100)) or n>=self.maxNr:
+				logger.info('(%s) accepting avg n=%d avg=%g val=%s quantity=%s devPrc=%g>%g tm=%s since=%.6g' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, self.minDevPerc, prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
 				self.accept_result((tstamp+self.average[quantity][2])/2, quantity)
 				self.average[quantity] = [val,1,tstamp]
 			else:
 				self.average[quantity][qVAL] += val
 				self.average[quantity][qCNT] += 1
+				if abs(avg)>0:
+					logger.debug('quantity:%d avgCount:%d devperc:%.6g' % (quantity,self.average[quantity][qCNT], (val-avg)/avg*100))
 		else:  # first avg val
 			self.average[quantity] = [val,1,tstamp]
 			if self.maxNr<=1:
@@ -270,6 +291,7 @@ class sampleCollector(object):
 		if qval:
 			self.lastval[quantity] = qval
 			self.updated.add(quantity)
+			self.tAccept[quantity] = time.time()
 		#logger.debug("accepted %s=%s tm=%s n=%d" % (quantity, qval, prettydate(julianday(tstamp)), rec[1]))
 		return qval
 		

@@ -20,14 +20,22 @@ class fsBridge(Bridge):
 	@Accessory.run_at_interval(RUNINTERVAL)  
 	async def run(self):
 		''' called by HAP accessorie_driver class servicing all samplers '''
+		coros =[]
+		nms =[]
 		for nm,sampler in fsBridge._samplers.items():
-			remi = 1
-			while remi>0:
-				remi = await sampler.receive_message()
-			if remi:
-				logger.debug("running sampler :%s having %s" % (nm,remi))
+			coros.append(sampler.receive_message())
+			nms.append(nm)
+		remies = await asyncio.gather(*coros)
+		if max(remies)>10:
+			logger.info('remaining data:%s' % dict(zip(nms,remies)))
+		#for nm,sampler in fsBridge._samplers.items():
+		#	remi = 1
+		#	while remi>0:
+		#		remi = await sampler.receive_message()
+		#		if remi:
+		#			logger.debug("running sampler :%s still having %s" % (nm,remi))
 		await super().run()  # getting accessories
-		await asyncio.sleep(RUNINTERVAL/10.0)
+		await asyncio.sleep(RUNINTERVAL/100.0)
 			
 	
 	def add_sampler(self, sampler, quantities):

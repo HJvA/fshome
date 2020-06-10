@@ -11,7 +11,7 @@ if __name__ == "__main__":  # testing this module
 	sys.path.append(os.getcwd()) # bring lib in path: to be called from cwd=fshome
 	#sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..')) # bring lib in path
 	import lib.tls as tls
-	logger = tls.get_logger(__file__, logging.DEBUG)
+	logger = tls.get_logger(__file__, logging.DEBUG, logging.DEBUG)
 else:
 	import lib.tls as tls
 	logger = tls.get_logger()
@@ -104,27 +104,28 @@ class aiosDelegate(bluepyDelegate):
 		if self.dev is None:
 			logger.error('no ble device for notifying on %d' % chId)
 			return
-		logger.info('starting notification on %s' % chId)
-		if chId>=chANA1ST:  # finding which chan
-			hand = self._getAnaMap(chId - chANA1ST)
-			if hand:
-				#hand = anamap[chId - chANA1ST]
-				charist=self.dev.getCharacteristics(hand-1,hand)[0]
-				#self.notifying[hand] = chId
-				self.startNotification(charist)
-				return
-		elif chId == chDIGI:
-			service = self.dev.getServiceByUUID(btle.UUID(AIOS_SVR))
-		elif chId in [chTEMP,chHUMI,chECO2,chTVOC]:
-			service = self.dev.getServiceByUUID(btle.UUID(ENV_SVR))
-		elif chId == chBAT:
-			service = self.dev.getServiceByUUID(btle.UUID(BAS_SVR))
-		if chId in CHARS:
-			charist = service.getCharacteristics(CHARS[chId])
-			if charist:
-				self.startNotification(charist[0])
-			else:
-				logger.error("no BLE characteristic for %s with uuid:%s in %s" % (chId,btle.UUID(CHARS[chId]),service))
+		elif self.dev.getState():
+			logger.info('starting notification on %s' % chId)
+			if chId>=chANA1ST:  # finding which chan
+				hand = self._getAnaMap(chId - chANA1ST)
+				if hand:
+					#hand = anamap[chId - chANA1ST]
+					charist=self.dev.getCharacteristics(hand-1,hand)[0]
+					#self.notifying[hand] = chId
+					self.startNotification(charist)
+					return
+			elif chId == chDIGI:
+				service = self.dev.getServiceByUUID(btle.UUID(AIOS_SVR))
+			elif chId in [chTEMP,chHUMI,chECO2,chTVOC]:
+				service = self.dev.getServiceByUUID(btle.UUID(ENV_SVR))
+			elif chId == chBAT:
+				service = self.dev.getServiceByUUID(btle.UUID(BAS_SVR))
+			if chId in CHARS:
+				charist = service.getCharacteristics(CHARS[chId])
+				if charist:
+					self.startNotification(charist[0])
+				else:
+					logger.error("no BLE characteristic for %s with uuid:%s in %s" % (chId,btle.UUID(CHARS[chId]),service))
 				
 	def _getAnaMap(self, anaChan=None):
 		''' get / create map between analog channel number and characteristic handle '''
@@ -132,7 +133,7 @@ class aiosDelegate(bluepyDelegate):
 			hand=9999
 			descr=None
 			#time.sleep(0.1)
-			if self.dev:
+			if self.dev and self.dev.getState():
 				descr = self.dev.getDescriptors()  # also having the characteristics
 			if not descr:
 				logger.warning("no descriptors for dev %s" % self.dev)
@@ -165,7 +166,7 @@ class aiosDelegate(bluepyDelegate):
 		
 	def _readDigitals(self):
 		''' get aios GATT representation of digital bit values and settings '''
-		if self.dev:
+		if self.dev and self.dev.getState()=='conn':
 			service = self.dev.getServiceByUUID(btle.UUID(AIOS_SVR))
 			chT = service.getCharacteristics(btle.UUID(CHARS[chDIGI]))
 			if chT:

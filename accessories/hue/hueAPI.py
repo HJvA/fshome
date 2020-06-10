@@ -47,7 +47,7 @@ async def hueGET(ipadr,user='',resource='',timeout=4, semaphore=None):
 				else:
 					logger.warning('bad hue response :%s' % response.status)
 					session.close()
-					await asyncio.sleep(1)
+					await asyncio.sleep(0.2)
 	except asyncio.TimeoutError as te:
 		logger.warning("hueAPI timeouterror %s :on:%s" % (te,url))
 		await asyncio.sleep(10)
@@ -195,7 +195,7 @@ class HueBaseDev (object):
 				return (val != self.last)
 			logger.debug('no prop %s in state %s' % (self.prop,val))
 		else:
-			await asyncio.sleep(0.1)
+			await asyncio.sleep(0.01)
 		return False
 
 	async def value(self):
@@ -512,14 +512,14 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	logger = logging.getLogger()
 	[logger.removeHandler(h) for h in logger.handlers[::-1]] # handlers persist between calls
 	logger.addHandler(logging.StreamHandler())	# use console
-	logger.addHandler(logging.FileHandler(filename=os.path.expanduser('hueApi.log'), mode='w', encoding='utf-8')) #details to log file
+	logger.addHandler(logging.FileHandler(filename= os.path.expanduser('hueApi.log'), mode='w', encoding='utf-8')) #details to log file
 	logger.setLevel(logging.DEBUG)
 	logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S%z")))
 	#hueSemaphore= asyncio.Semaphore(value=1)
 	#HueBaseDev.semaphore = hueSemaphore
 
 	CONF={	# defaults when not in config file
-		"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqcRwsel",
+		"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqc Rwsel",
 		"huebridge": "192.168.1.21"
 	}
 	#CONF['huebridge'] =ipadrGET()

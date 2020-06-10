@@ -2,13 +2,12 @@
 """
 
 import asyncio, aiohttp
+import re,logging
+if __name__ == "__main__":
+	import sys,os,time
+	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
+	import lib.tls as tls
 
-import sys,os,time,logging,re
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
-import lib.tls as tls
-
-
-logger = tls.get_logger(__file__, logging.DEBUG)
 RENUM=r'"([\d,\.]+)"'  #  regex for float number between "
 rxdct = dict(
 	txToday=re.compile(r'today_up='+RENUM),  #, re.MULTILINE | re.IGNORECASE | re.ASCII | re.VERBOSE ),
@@ -66,5 +65,8 @@ async def get_traffic(interval=15, host='192.168.1.1', pwd=None, semaphore=None)
 		return await traffic(session, pwd=pwd, host=host, semaphore=semaphore)
 
 if __name__ == "__main__":
+	logger = tls.get_logger(__file__, logging.DEBUG, logging.DEBUG)
 	traf = asyncio.run(get_traffic(pwd='har'))
 	logger.info('\ntraffic:\n%s' % traf)
+else:
+	logger = logging.getLogger(__name__)

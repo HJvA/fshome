@@ -24,15 +24,18 @@ class aiosSampler(DBsampleCollector):
 				name = self.qname(qid)
 				masks[qid] = self.serving(qid, sm.MSK)  
 		self.aios = aiosAPI.aiosDelegate(loop=loop, devAddress=devAddress, chInpBits=masks)
-		for qid in self.qactive():
-			aiosId = int(self.qdevadr(qid))
-			self.aios.startChIdNotifyer(aiosId)
-			anaChan = aiosId - aiosAPI.chANA1ST
-			if anaChan>=0:
-				Vmax = self.serving(qid, sm.MSK)
-				if Vmax:
-					self.aios.setAnaVoltRange(anaChan, float(Vmax))
-		task = loop.create_task(self.aios.servingNotifications())
+		if self.aios.dev is None:
+			logger.warning('no BLE device for aios')
+		else:
+			for qid in self.qactive():
+				aiosId = int(self.qdevadr(qid))
+				self.aios.startChIdNotifyer(aiosId)
+				anaChan = aiosId - aiosAPI.chANA1ST
+				if anaChan>=0:
+					Vmax = self.serving(qid, sm.MSK)
+					if Vmax:
+						self.aios.setAnaVoltRange(anaChan, float(Vmax))
+			task = loop.create_task(self.aios.servingNotifications())
 		
 	async def receive_message(self):
 		''' await new sensors state from BLE and process recu when new '''
@@ -50,7 +53,7 @@ class aiosSampler(DBsampleCollector):
 				logger.warning('no aios quantity to devadr:%s' % adr)
 			tstamp = time.time()
 			self.check_quantity(tstamp, chId, val)
-		await asyncio.sleep(1)
+		await asyncio.sleep(0.1)
 		return n
 		
 	def set_state(self, quantity, state, prop=None, dur=None):

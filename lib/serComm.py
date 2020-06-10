@@ -40,7 +40,7 @@ class serComm(object):
 		except serial.SerialException as e:
 			logger.critical('Could not open serial port {} \n'.format(self.ser.name, e))
 			#sys.exit(1)
-		logger.debug("serial opened:%s" % self.ser.name)
+		logger.debug("serial opened:%s version=%s" % (self.ser.name, serial.VERSION))
 		
 	def exit(self):
 		if self.ser.is_open:
@@ -56,7 +56,7 @@ class serComm(object):
 				time.sleep(tres)
 				cnt+=1
 			if self.ser.in_waiting>0:
-				self.buf += self.ser.read(self.ser.in_waiting)
+				self.buf += self.ser.read(self.ser.in_waiting)  # get bytes
 			if len(self.buf)>minlen:
 				if termin in self.buf:
 					(data,sep,self.buf) = self.buf.partition(termin)	
@@ -90,7 +90,11 @@ class serComm(object):
 				logger.exception("unknown serial!!! :%s" % e)
 			if len(self.buf)>minlen:
 				if termin in self.buf:
-					(data,sep,self.buf) = self.buf.partition(termin)
+					(data,sep,rema) = self.buf.partition(termin)  # split bytearray
+					#idx = self.buf.find(termin)
+					#data= self.buf[:idx]
+					#rema= self.buf[idx:]
+					self.buf = rema
 					#logger.debug("interv:%.2f read:%s remains:%d" % (cnt*tres, len(data), len(self.buf)))
 					return data.decode('ascii')
 				elif cnt>0:
@@ -104,6 +108,16 @@ class serComm(object):
 		#if self.reading:
 		#	return -1
 		return len(self.buf)
+		return self.ser.in_waiting
+		
+	def flush(self):
+		self.ser.reset_input_buffer()  #flushInput()
+		self.ser.reset_output_buffer() #flushOutput()
+		self.ser.flush()
+		n = self.ser.in_waiting
+		if n>0:
+			logger.warning('still reading %d after flush' % n)
+			self.ser.read(n)
 		
 	def write(self, data):
 		#with self.ser:
@@ -128,6 +142,11 @@ if __name__ == "__main__":		# just receives strings, basic parsing
 	logger.setLevel(logging.DEBUG)
 	loop = asyncio.get_event_loop()
 
+	devices = [port.device for port in serial.list_ports.comports()]
+	ports = [port for port in devices if port in ['/dev/ttyACM0','/dev/ttyUSB0']]
+	logger.info('devices:%s: ports:%s:' % (devices,ports))
+	ser = serial.Serial(ports[0], BAUDRATE)
+	
 	try:
 		cul = serComm(DEVICE, BAUDRATE)
 		logger.info("cul version %s" % cul.get_info(b'V\r\n'))

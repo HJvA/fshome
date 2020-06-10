@@ -6,6 +6,7 @@ import logging
 import asyncio
 
 cnfFile = "WNDR.json"
+READINTERVAL = 120
 
 if __name__ == "__main__":
 	import sys,os,signal
@@ -31,6 +32,7 @@ class WNDR_sampler(DBsampleCollector):
 		self.host = host
 		self.pwd = pwd
 		self.semaphore=HueBaseDev.Semaphore
+		
 	
 	def defServices(self,quantities):
 		''' compute dict of recognised services from quantities config '''
@@ -44,15 +46,21 @@ class WNDR_sampler(DBsampleCollector):
 		return super().defServices(qtts)
 
 	async def receive_message(self):
-		rec = await get_traffic(host=self.host, pwd=self.pwd, semaphore=self.semaphore)
-		if rec:
-			for itm,rx in rec.items():
-				tstamp = time.time()
-				qid = self.qCheck(None, devadr=itm, typ=DEVT['Mbytes'])
-				self.check_quantity(tstamp, quantity=qid, val=rx)
+		if self.sinceAccept()>=READINTERVAL:
+			rec = await get_traffic(host=self.host, pwd=self.pwd, semaphore=self.semaphore)
+			if rec:
+				logger.debug('wndr since:%.6g rec:%s' % (self.sinceAccept(),rec))
+				for itm,rx in rec.items():
+					tstamp = time.time()
+					qid = self.qCheck(None, devadr=itm, typ=DEVT['Mbytes'])
+					#logger.debug('wndr qid:%s devadr:%s=%s' % (qid,itm,rx))
+					self.check_quantity(tstamp, quantity=qid, val=rx)
+			else:
+				logger.warning('nothing received from wndr :%s' % rec)
+				await asyncio.sleep(0.2)
 		else:
-			logger.warning('nothing received from wndr :%s' % rec)
-			await asyncio.sleep(2)
+			await asyncio.sleep(0.01)
+			logger.debug('wndr waiting %.6g' % self.sinceAccept())
 		return 0  # remaining
 
 class WNDR_happer(WNDR_sampler):
@@ -65,7 +73,7 @@ def add_WNDR_to_bridge(bridge, config=cnfFile):
 	""" create WNDR_happer and add it to the application bridge """
 	conf = devConfig(config)
 	dbFile=conf['dbFile']
-	sampler = WNDR_happer(dbFile=dbFile, host=conf['host'], pwd=conf['pwd'],  quantities=conf.itstore, maxNr=180,minNr=2,minDevPerc=1)
+	sampler = WNDR_happer(dbFile=dbFile, host=conf['host'], pwd=conf['pwd'],  quantities=conf.itstore, maxNr=30,minNr=4,minDevPerc=0.02)
 	bridge.add_sampler(sampler, conf.itstore)
 
 if __name__ == "__main__":

@@ -19,17 +19,15 @@ from pyhap.accessory_driver import AccessoryDriver
 class DSMR_happer(p1DSMR):
 	def create_accessory(self, HAPdriver, quantities, aid):
 		aname="-".join([self.qname(q) for q in quantities])
-		return HAP_accessory(HAPdriver, aname, quantities=quantities, stateSetter=self.set_state, aid=aid, sampler=self)		
+		return HAP_accessory(HAPdriver, aname, quantities=quantities, stateSetter=self.set_state, aid=aid, sampler=self)
 
 def add_p1DSMR_to_bridge(bridge, config='p1DSMR.json'):
 	conf = devConfig(config)
 	p1ser = serComm(DEVICE,BAUDRATE)
 	dbFile=conf['dbFile']
-		
-	sampler = DSMR_happer(p1ser, dbFile=dbFile, quantities=conf.itstore, maxNr=180,minNr=30,minDevPerc=8.0)
+	sampler = DSMR_happer(p1ser, dbFile=dbFile, quantities=conf.itstore, maxNr=140,minNr=20,minDevPerc=2.0)
 	bridge.add_sampler(sampler, conf.itstore)
 
-		
 if __name__ == "__main__":
 	logger = logging.getLogger()
 	hand=logging.StreamHandler()
@@ -41,11 +39,8 @@ if __name__ == "__main__":
 	
 	driver = AccessoryDriver(port=51826)
 	bridge = fsBridge(driver, 'fsBridge')
-	#bridge=get_FS20_bridge(driver, config="fs20.json")
 
 	add_p1DSMR_to_bridge(bridge, config="p1DSMR.json")
-	#add_HUE_to_bridge(bridge, config="hue.json")
-
 	driver.add_accessory(accessory=bridge)
 
 	signal.signal(signal.SIGTERM, driver.signal_handler)
