@@ -9,7 +9,7 @@ import time
 import sys
 
 from pyhap.accessory_driver import AccessoryDriver
-from pyhap.const import __version__
+from pyhap.const import __version__ as pyHAP_version
 from lib.fsHapper import fsBridge
 from accessories.hue.hueHap import add_HUE_to_bridge
 from accessories.p1smart.p1DSMR_Hap import add_p1DSMR_to_bridge
@@ -24,7 +24,7 @@ __status__ = "Development"
 
 # setup logging for console and error log and generic log
 logger = get_logger(__file__, logging.INFO, logging.INFO)
-logger.info('with HAP-python %s' % __version__)
+logger.info('with HAP-python %s' % pyHAP_version)
 
 driver = AccessoryDriver(port=51826)
 bridge= fsBridge(driver, 'fsBridge')
@@ -32,6 +32,7 @@ bridge= fsBridge(driver, 'fsBridge')
 add_fs20_to_bridge(bridge, config="fs20.json")
 add_p1DSMR_to_bridge(bridge, config="p1DSMR.json")
 add_HUE_to_bridge(bridge, config="hue.json")
+#add_HUE_to_bridge(bridge, config="deCONZ.json")
 add_AIOS_to_bridge(bridge, config="aios.json")
 add_WNDR_to_bridge(bridge, config="WNDR.json")
 

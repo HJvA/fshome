@@ -16,6 +16,7 @@ async def forever(func, *args, **kwargs):
 # index to self.average[]
 qVAL=0
 qCNT=1
+qSTMP=2
 
 class sm(enum.IntFlag):
 	ADR=0	# devadr
@@ -217,6 +218,8 @@ class sampleCollector(object):
 		return None
 
 	def sinceAccept(self,qid=None):
+		''' time since qid was last accepted or least from all qs
+		'''
 		if qid in self.tAccept:
 			return time.time()-self.tAccept[qid]
 		if len(self.tAccept)>0:
@@ -227,6 +230,17 @@ class sampleCollector(object):
 			return time.time()-tmn
 		else:
 			return 999
+	
+	def sinceStamp(self,qid=None):
+		if qid and qid in self.actual:
+			trun = time.time() - self.actual[qid][qSTMP]
+		elif qid and qid in self.average:
+			trun = time.time() - self.average[qid][qSTMP]
+		elif self.actual and qid is None:
+			trun = time.time() - min([qv[qSTMP] for q,qv in self.actual.items()])
+		else:
+			trun =None
+		return trun
 
 	async def receive_message(self):
 		''' read device state and call check_quantity '''
@@ -248,7 +262,7 @@ class sampleCollector(object):
 			logger.warning("quantity out of range %s" % quantity)
 			return
 		else:
-			self.actual[quantity] = val
+			self.actual[quantity] = {qVAL:val, qSTMP:tstamp}
 
 		if sampleCollector.signaller:
 			if sampleCollector.signaller.checkEvent(quantity, val):
@@ -266,13 +280,13 @@ class sampleCollector(object):
 			avg = self.average[quantity][qVAL] / n
 			if (n>=self.minNr and abs(val-avg)>abs(avg*self.minDevPerc/100)) or n>=self.maxNr:
 				logger.info('(%s) accepting avg n=%d avg=%g val=%s quantity=%s devPrc=%g>%g tm=%s since=%.6g' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, self.minDevPerc, prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
-				self.accept_result((tstamp+self.average[quantity][2])/2, quantity)
+				self.accept_result((tstamp+self.average[quantity][qSTMP])/2, quantity)
 				self.average[quantity] = [val,1,tstamp]
 			else:
 				self.average[quantity][qVAL] += val
 				self.average[quantity][qCNT] += 1
 				if abs(avg)>0:
-					logger.debug('quantity:%d avgCount:%d devperc:%.6g' % (quantity,self.average[quantity][qCNT], (val-avg)/avg*100))
+					logger.debug('quantity:%d avgCount:%d devperc:%.6g ' % (quantity,self.average[quantity][qCNT], (val-avg)/avg*100) )
 		else:  # first avg val
 			self.average[quantity] = [val,1,tstamp]
 			if self.maxNr<=1:
@@ -314,7 +328,7 @@ class sampleCollector(object):
 				qval = rec[qVAL]/rec[qCNT]
 			#self.updated.discard(quantity)
 		elif quantity in self.actual:
-			qval = self.actual[quantity]
+			qval = self.actual[quantity][qVAL]
 		elif self.qIsCounting(quantity):
 			qval=0	# initial val for HAP
 		else:
@@ -326,13 +340,13 @@ class sampleCollector(object):
 	def isUpdated(self, quantity):
 		''' quantity value has changed since get_last call '''
 		if self.qIsCounting(quantity) and quantity in self.average and self.average[quantity][qCNT]>0:
-			trun = time.time() - self.average[quantity][2]
+			trun = time.time() - self.average[quantity][qSTMP]
 			#logger.debug("qcnt:%s trun=%s" % (quantity,trun))
-			if trun > 60:
+			if trun > 60:  # assume counting quantity updated
 				rec =self.average.pop(quantity)
 				self.lastval[quantity] = 0
 				self.updated.add(quantity)
-				logger.debug('updated qid=%s rec=%s' % (quantity,rec))
+				logger.debug('assume counting qid=%s rec=%s' % (quantity,rec))
 		return quantity in self.updated
 		
 	def get_last(self, quantity):

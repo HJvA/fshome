@@ -31,7 +31,7 @@ class WNDR_sampler(DBsampleCollector):
 		self.minqid = 700
 		self.host = host
 		self.pwd = pwd
-		self.semaphore=HueBaseDev.Semaphore
+		self.semaphore=None  # HueBaseDev.Semaphore
 		
 	
 	def defServices(self,quantities):
@@ -46,22 +46,25 @@ class WNDR_sampler(DBsampleCollector):
 		return super().defServices(qtts)
 
 	async def receive_message(self):
-		if self.sinceAccept()>=READINTERVAL:
+		n=0
+		if (self.sinceStamp() or READINTERVAL) >=READINTERVAL:
 			rec = await get_traffic(host=self.host, pwd=self.pwd, semaphore=self.semaphore)
 			if rec:
-				logger.debug('wndr since:%.6g rec:%s' % (self.sinceAccept(),rec))
+				logger.debug('wndr since:%s rec:%s' % (self.sinceStamp(),rec))
 				for itm,rx in rec.items():
 					tstamp = time.time()
 					qid = self.qCheck(None, devadr=itm, typ=DEVT['Mbytes'])
-					#logger.debug('wndr qid:%s devadr:%s=%s' % (qid,itm,rx))
+					logger.debug('wndr qid:%s devadr:%s=%s' % (qid,itm,rx))
 					self.check_quantity(tstamp, quantity=qid, val=rx)
+					n-=1
 			else:
 				logger.warning('nothing received from wndr :%s' % rec)
 				await asyncio.sleep(0.2)
+				n+=1
 		else:
-			await asyncio.sleep(0.01)
-			logger.debug('wndr waiting %.6g' % self.sinceAccept())
-		return 0  # remaining
+			await asyncio.sleep(0.06)
+			logger.info('wndr waiting %s' % self.sinceStamp())
+		return n  # remaining
 
 class WNDR_happer(WNDR_sampler):
 	""" apple HAP sampler on WNDR router """

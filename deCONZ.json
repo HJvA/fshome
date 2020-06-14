@@ -1,0 +1,18 @@
+{
+  "270": {
+    "source": "entree",
+    "name": "ikBel",
+    "devadr": "1",
+    "typ": 10
+  },
+  
+  "280":{
+	 "source" :"gang",
+    "typ": 13,
+    "name": "deurLmp",
+    "devadr":"2"
+  },
+  "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
+  "huebridge": "192.168.1.24",
+  "hueuser": "B1565DF16E"
+ }

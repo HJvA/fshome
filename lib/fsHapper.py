@@ -146,7 +146,7 @@ class HAP_accessory(sampler_accessory):
 			self._chars[quantity].update({'on': serv.configure_char('On',setter_callback=self.HAPonoff)})
 		elif typ==DEVT['doorbell']:
 			serv = self.add_preload_service('StatelessProgrammableSwitch')
-			self._chars[quantity] = {'lev': serv.configure_char('ProgrammableSwitchEvent',setter_callback=self.HAPringing)}
+			self._chars[quantity] = {'lev': serv.configure_char('ProgrammableSwitchEvent', setter_callback=self.HAPringing)}
 		elif typ==DEVT['motion']:
 			serv = self.add_preload_service('MotionSensor')
 			self._chars[quantity] = {'lev': serv.configure_char('MotionDetected')}
@@ -160,7 +160,9 @@ class HAP_accessory(sampler_accessory):
 			serv = self.add_preload_service('BatteryService')
 			self._chars[quantity] = {'lev': serv.configure_char('BatteryLevel')}
 			self._chars[quantity].update({'act': serv.configure_char('ChargingState')})
-			self._chars[quantity].update({'stl': serv.configure_char('StatusLowBattery')})
+			self._chars[quantity].update({'stl': serv.configure_char('StatusLowBattery')}) 
+		else:
+			logger.info('unknow quantity %s type %s for HAP' % (quantity,typ))
 		logger.info("adding HAP service:%s with typ:%d for quantity:%s to aid:%s" % (serv,typ,quantity,self.aid))
 		
 	def sendValue(self, value, quantity=None):

@@ -48,8 +48,9 @@ class aiosSampler(DBsampleCollector):
 			else:
 				chId=adr  # from mask
 			if chId:
-				n+=1
+				n-=1
 			else:
+				n+=1
 				logger.warning('no aios quantity to devadr:%s' % adr)
 			tstamp = time.time()
 			self.check_quantity(tstamp, chId, val)

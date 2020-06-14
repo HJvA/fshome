@@ -15,6 +15,13 @@ Sections
 ### Developers
 ### Confinement
 -->
+
+## [1.4.0] - 2020-06-14
+### Changed
+- DSMR & WNDR reduced data rate using sinceStamp  
+### Fixed
+- asyncio loop errors in hueAPI and WNDR (using no semaphore)
+
 ## [1.3.9] - 2020-06-02
 ### Confinement
 - fs20 SIG2 signaller accepts motion events e.g. from hue motion sensor  

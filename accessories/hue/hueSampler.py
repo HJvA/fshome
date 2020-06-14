@@ -31,7 +31,7 @@ class hueSampler(DBsampleCollector):
 		for hueid,dev in devlst.items():
 			#typ = DEVT['lamp']
 			#lightTyp = HueLight.lightTyp(devlst,hueid)
-			gamut=HueLight.gamut(hueid)
+			gamut=HueLight.gamut(iphue, hueid)
 			qid = self.qCheck(None,hueid,DEVT['lamp'],dev['name'])
 			if qid:
 				logger.debug("having light:(%s) with %s" % (self._servmap[qid],gamut))
