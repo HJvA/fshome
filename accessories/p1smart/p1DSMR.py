@@ -117,6 +117,7 @@ class p1DSMR(DBsampleCollector):
 		self.serdev = serdev
 		self.tstamp = None
 		self.minqid = 300
+		self.defSignaller()
 	
 	def defServices(self,quantities):
 		''' compute dict of recognised services from quantities config '''
@@ -129,9 +130,10 @@ class p1DSMR(DBsampleCollector):
 		return super().defServices(qtts)
 
 	async def receive_message(self):
+		dt = datetime.now()
 		n=0  # max nr of lines to read
 		remain = 0
-		while n<888:  # must be large to catch up when behind
+		while n<333:  # must be large to catch up when behind
 			n+=1
 			line = await self.serdev.asyRead(timeout=0.01, termin=b'\r\n')	# msg is send every 1s
 			remain = self.serdev.remaining()
@@ -142,7 +144,7 @@ class p1DSMR(DBsampleCollector):
 					fval=rec[1]
 					qid = self.qCheck(None,qkey,name=p1QDEF[qkey][0])	# create when not there
 					self.qCheck(qid,qkey,typ=p1QDEF[qkey][2])	# define also typ
-					logger.debug('dsmr:"%s" => %s @ sinceAccept=%.6g' % (line, rec, self.sinceAccept(qid)))
+					#logger.debug('dsmr:"%s" => %s @ sinceAccept=%.6g' % (line, rec, self.sinceAccept(qid)))
 					self.check_quantity(self.tstamp, quantity=qid, val=fval*p1QDEF[qkey][1])
 				elif rec[0]=='1.0.0':
 					self.tstamp=rec[1]
@@ -166,7 +168,7 @@ class p1DSMR(DBsampleCollector):
 			logger.warning('dsmr remaining data in ser buffer flushed:%d tries:%d' % (remain,n))
 			self.serdev.flush()
 			await asyncio.sleep(0.1)
-		return remain
+		return remain,await super().receive_message(dt)
 
 
 if __name__ == "__main__":

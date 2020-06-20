@@ -1,58 +1,74 @@
 #!/usr/bin/env python3.5
 """ logs hue sensor values to a database """
 
-import sys,os,time,logging,asyncio
+import sys,os,time,logging,asyncio,datetime
 if __name__ == "__main__":
 	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../..'))
 	from hueAPI import HueSensor,HueLight,HueBaseDev
 else:
 	from accessories.hue.hueAPI import HueSensor,HueLight
-from lib.sampleCollector import DBsampleCollector,forever
+from lib.sampleCollector import DBsampleCollector
 from lib.devConst import DEVT
 from lib.tls import get_logger
 
-#hueSemaphore= asyncio.Semaphore(value=1)
-
 class hueSampler(DBsampleCollector):
 	devdat = {}	# dict of hue devices (either lights or sensors)
-	manufacturer="Signify"
+	#objCount=0
+	@property
+	def manufacturer(self):
+		return "deCONZ" if self.deCONZ else "Signify"
 	minqid=200
 	def __init__(self,iphue,hueuser, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		devlst = HueSensor.devTypes(iphue,hueuser) # list of sensors from hue bridge
-		logger.info("hue sensors:\n%s\n" % devlst)
 		self.minqid=hueSampler.minqid
+		self.deCONZ = False
+		#hueSampler.objCount+=1
 		for hueid,dev in devlst.items():
 			qid = self.qCheck(None,hueid,dev['typ'],dev['name'])
 			if qid:
 				hueSampler.devdat[qid] = HueSensor(hueid,iphue,hueuser) # create sensor 
+				if hueSampler.devdat[qid].deCONZ and not self.deCONZ:
+					self.deCONZ = True
+					logger.info('qid %s deConz=>on, sensor=%s' % (qid, dev))
+		logger.info("%s sensors:\n%s\n" % (self.manufacturer,devlst))
+		
 		devlst = HueLight.devTypes(iphue,hueuser)
-		logger.info("hue lights:\n%s\n" % devlst)
 		for hueid,dev in devlst.items():
 			#typ = DEVT['lamp']
 			#lightTyp = HueLight.lightTyp(devlst,hueid)
-			gamut=HueLight.gamut(iphue, hueid)
+			#gamut=HueLight.gamut(iphue, hueid)
 			qid = self.qCheck(None,hueid,DEVT['lamp'],dev['name'])
 			if qid:
-				logger.debug("having light:(%s) with %s" % (self._servmap[qid],gamut))
-				hueSampler.devdat[qid] = HueLight(hueid,gamut,iphue,hueuser) # create light
+				#logger.debug("having light:(%s) with %s" % (self._servmap[qid],gamut))
+				hueSampler.devdat[qid] = HueLight(hueid,iphue,hueuser) # create light
+				#self.deCONZ = self.deCONZ or hueSampler.devdat[qid].deCONZ
+				if hueSampler.devdat[qid].deCONZ and not self.deCONZ:
+					self.deCONZ = True
+					logger.info('qid %s deConz=>on, light=%s' % (qid,dev))
+		logger.info("%s lights:\n%s\n" % (self.manufacturer,devlst))
+		self.defSignaller()
 			
 	async def receive_message(self):
 		''' get sensors state from hue bridge and check for updates and process recu when new '''
 		n=0
+		dt=datetime.datetime.now()
 		for qid,dev in hueSampler.devdat.items():
-			newval = await dev.newval()
-			if newval:
-				n-=1
-				dtm = await dev.lastupdate()
-				val = await dev.value()
-				if dtm and not isinstance(val, dict):
-					self.check_quantity(dtm.timestamp(), qid, val)
+			if self.deCONZ == dev.deCONZ:  # same bridge
+				newval = await dev.newval()
+				if newval:
+					n-=1
+					dtm = await dev.lastupdate()
+					val = await dev.value()
+					if dtm and not isinstance(val, dict):
+						self.check_quantity(dtm.timestamp(), qid, val)
+					else:
+						logger.warning('bad hue val %s at %s' % (dtm,val))
 				else:
-					logger.warning('bad hue val %s at %s' % (dtm,val))
+					await asyncio.sleep(dev.refreshInterval/1000)
 			else:
-				await asyncio.sleep(dev.refreshInterval/1000)
-		return n
+				logger.debug('(%d) other hue_sampler %s<>%s in %s' % (qid,self.deCONZ,dev.deCONZ,self.manufacturer))
+		return n,await super().receive_message(dt)
 		
 	def set_state(self, quantity, state, prop='bri', dur=None):
 		''' stateSetter for HAP to set hue device '''

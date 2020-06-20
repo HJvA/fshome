@@ -65,7 +65,10 @@ class bluepyDelegate(btle.DefaultDelegate):
 		else:
 			logger.warning('NOTIFY not supported by:%s on %s' % (hand,charist))
 		val = self.read(charist)
-
+	
+	def hasCharValue(self):
+		return self.queue.qsize()
+		
 	async def receiveCharValue(self):
 		""" consume received notification data """
 		tup = await self.queue.get()

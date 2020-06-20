@@ -27,16 +27,18 @@ async def traffic(session: aiohttp.ClientSession, user = 'admin',pwd=None, host=
 		auth = aiohttp.BasicAuth(user, pwd)
 	else:
 		auth = None
-	if semaphore is None:
-		semaphore = asyncio.Semaphore()
-		logger.info('WNDR no synchronisation with other http requests')
+	#if semaphore is None:
+	#	semaphore = asyncio.Semaphore()
+	#	logger.debug('WNDR no synchronisation with other http requests')
 		
 	for i in range(2):  # try it twice
 		try:
-			async with semaphore, session.get(url=url, auth=auth, timeout=4) as response:
+			async with session.get(url=url, auth=auth, timeout=4) as response:
 				stuff = await response.text()
 				if len(stuff)>1 and response.status<400:
 					break  # success
+				else:
+					logger.info('no stuff from wndr stat=%d' % response.status)
 		except Exception as e:
 			logger.warning('%d wndr HTTPerror : %s' % (i,e))
 			stuff = ''
@@ -58,9 +60,7 @@ async def traffic(session: aiohttp.ClientSession, user = 'admin',pwd=None, host=
 
 async def get_traffic(host='192.168.1.1', pwd=None, semaphore=None):
 	""" get traffic from wndr router in Mbytes """
-	await asyncio.sleep(0.04)
-	#if semaphore is None:
-	#	semaphore = HueBaseDev.Semaphore
+	await asyncio.sleep(0.01)  # lower priority
 	async with aiohttp.ClientSession() as session:
 		return await traffic(session, pwd=pwd, host=host, semaphore=semaphore)
 

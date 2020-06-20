@@ -2,8 +2,9 @@
   "270": {
     "source": "entree",
     "name": "ikBel",
-    "devadr": "1",
-    "typ": 10
+    "devadr": "2",
+    "typ": 12,
+	 "signal" :"116=17,4cfa"
   },
   
   "280":{

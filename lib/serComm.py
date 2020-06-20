@@ -69,7 +69,7 @@ class serComm(object):
 		''' tries to read a string from self.ser till either termin is found, or timeout occurs.
 			asynchronously i.e. uses await to allow cpu to other tasks
 		'''
-		tres=timeout*0.2	# poll resolution
+		tres=timeout*0.1	# poll resolution
 		if self.ser.is_open:  #not self.reading:
 			#with self.ser:      # will open close
 			self.reading=True

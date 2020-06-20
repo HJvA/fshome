@@ -27,14 +27,16 @@ class fs20Sampler(DBsampleCollector):
 		self.serdev.send_message("X21")  # prepare to receive known msg with RSSI
 		self.minqid=100
 		#self.qtyp = super().quantitymap(quantities,'typ')
+		self.defSignaller()
 	
 	def exit(self):
 		super().exit()
 		self.serdev.send_message("X00")
 		self.serdev.exit()
 		
-	async def receive_message(self,timeout=2, minlen=8, termin='\r\n'):
+	async def receive_message(self,timeout=0.4, minlen=8, termin='\r\n'):
 		''' get sensors msg from the cul device and check for updates and process recu when new '''
+		dt = datetime.now()
 		msg = await self.serdev.asyRead(timeout, minlen, bytes(termin,'ascii'))
 		if msg:
 			tstamp = time.time()  #datetime.now()
@@ -70,7 +72,7 @@ class fs20Sampler(DBsampleCollector):
 					else:
 						logger.info("unknown quantity in:%s" % rec)
 						return -3
-		return self.serdev.remaining()
+		return self.serdev.remaining(),await super().receive_message(dt)
 		
 	def set_state(self, quantity, state, prop=None, dur=None):
 		''' setting state to actuator '''
@@ -78,7 +80,8 @@ class fs20Sampler(DBsampleCollector):
 			return None
 		typ=self.qtype(quantity)
 		devadr=self.qdevadr(quantity)
-		logger.info("setting state of:%s to adr:%s of typ:%s with:%s" % (quantity,devadr,typ,state))
+		logger.info("setting state of:%s to adr:%s of typ:%s with:%s prop:%s" % (quantity,devadr,typ,state,prop))
+		hausc = self.hausc
 		cmd=None
 		if typ==DEVT['outlet'] or typ==DEVT['switch'] or typ==DEVT['signal'] or prop=='on':
 			if state:
@@ -96,10 +99,14 @@ class fs20Sampler(DBsampleCollector):
 				cmd = fstls.fs20commands[self.level]
 			else:
 				cmd ='off'
+		elif typ==DEVT['doorbell']: # simulate bell
+			cmd = state
+			hausc = '4cfa'  # fixed hauscode for doorbell button
+			prop = None
 		else:
 			cmd = state
 		if cmd:
-			cmd= fstls.FS20_command(self.hausc, devadr, cmd=cmd, dur=prop)
+			cmd= fstls.FS20_command(hausc, devadr, cmd=cmd, dur=prop)
 			self.serdev.send_message(cmd)
 		return cmd
 

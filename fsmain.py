@@ -6,7 +6,7 @@
 import logging
 import signal
 import time
-import sys
+import os
 
 from pyhap.accessory_driver import AccessoryDriver
 from pyhap.const import __version__ as pyHAP_version
@@ -29,12 +29,18 @@ logger.info('with HAP-python %s' % pyHAP_version)
 driver = AccessoryDriver(port=51826)
 bridge= fsBridge(driver, 'fsBridge')
 
-add_fs20_to_bridge(bridge, config="fs20.json")
-add_p1DSMR_to_bridge(bridge, config="p1DSMR.json")
-add_HUE_to_bridge(bridge, config="hue.json")
-#add_HUE_to_bridge(bridge, config="deCONZ.json")
-add_AIOS_to_bridge(bridge, config="aios.json")
-add_WNDR_to_bridge(bridge, config="WNDR.json")
+if os.path.isfile("fs20.json"):
+	add_fs20_to_bridge(bridge, config="fs20.json")
+if os.path.isfile("p1DSMR.json"):
+	add_p1DSMR_to_bridge(bridge, config="p1DSMR.json")
+if os.path.isfile("hue.json"):
+	add_HUE_to_bridge(bridge, config="hue.json")
+if os.path.isfile("deCONZ.json"):
+	add_HUE_to_bridge(bridge, config="deCONZ.json")
+if os.path.isfile("aios.json"):
+	add_AIOS_to_bridge(bridge, config="aios.json")
+if os.path.isfile("WNDR.json"):
+	add_WNDR_to_bridge(bridge, config="WNDR.json")
 
 driver.add_accessory(accessory=bridge)
 

@@ -8,7 +8,7 @@ from lib.devConst import DEVT
 from pyhap.accessory import Accessory,Bridge
 from pyhap.const import CATEGORY_SENSOR,CATEGORY_SWITCH,CATEGORY_PROGRAMMABLE_SWITCH,CATEGORY_LIGHTBULB
 
-RUNINTERVAL=1.0
+RUNINTERVAL=3.0 # s
 
 class fsBridge(Bridge):
 	_samplers={}		# static dict of unique samplers
@@ -26,22 +26,19 @@ class fsBridge(Bridge):
 			coros.append(sampler.receive_message())
 			nms.append(nm)
 		remies = await asyncio.gather(*coros)
-		if max(remies)>10:
-			logger.info('remaining data:%s' % dict(zip(nms,remies)))
-		#for nm,sampler in fsBridge._samplers.items():
-		#	remi = 1
-		#	while remi>0:
-		#		remi = await sampler.receive_message()
-		#		if remi:
-		#			logger.debug("running sampler :%s still having %s" % (nm,remi))
-		await super().run()  # getting accessories
-		await asyncio.sleep(RUNINTERVAL/100.0)
+		#if max(remies)>2:
+		tm0 = time.time()
+		logger.info('remaining data:%s' % (dict(zip(nms,remies))))
+		await super().run()  # getting accessories via HAP bridge
+		#await asyncio.sleep(RUNINTERVAL/100.0)	# room for HAP
 			
 	
 	def add_sampler(self, sampler, quantities):
 		''' add a sampler to the HAP bridge '''
-		logger.info("adding %s with %s to fsBridge" % (sampler.name,quantities))
+		logger.info("adding %s with %s to fsBridge from %s" % (sampler.name,quantities,sampler.manufacturer))
 		qaid={}
+		if sampler.name in fsBridge._samplers:
+			logger.warning('sampler %s allready in fsBridge' % sampler.name)
 		fsBridge._samplers[sampler.name] = sampler
 		for quantity,rec in quantities.items():
 			if 'typ' in rec:
@@ -74,10 +71,9 @@ class sampler_accessory(Accessory):
 		''' called by HAP accessorie_driver class '''
 		#logger.debug("checking %s in %s nm:%s" % (self.quantity,self.receiver,self.display_name))
 		if self.check_status() is None:
-			#logger.debug("no more items for %s" % self.quantity)
-			await asyncio.sleep(RUNINTERVAL/10.0)
+			await asyncio.sleep(RUNINTERVAL/1000.0)
 		else:
-			await asyncio.sleep(RUNINTERVAL/10.0)
+			await asyncio.sleep(RUNINTERVAL/100.0)
 
 	def qtype(self, qkey):
 		''' quantity DEVT type '''

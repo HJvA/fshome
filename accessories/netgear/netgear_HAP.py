@@ -1,7 +1,7 @@
 """ some HAP-python  Accessories
 	defines homekit accessory classes for netgear type products like WNDR4300
 	"""
-import time
+import time,datetime
 import logging
 import asyncio
 
@@ -32,7 +32,7 @@ class WNDR_sampler(DBsampleCollector):
 		self.host = host
 		self.pwd = pwd
 		self.semaphore=None  # HueBaseDev.Semaphore
-		
+		self.defSignaller()
 	
 	def defServices(self,quantities):
 		''' compute dict of recognised services from quantities config '''
@@ -47,6 +47,7 @@ class WNDR_sampler(DBsampleCollector):
 
 	async def receive_message(self):
 		n=0
+		dt = datetime.datetime.now()
 		if (self.sinceStamp() or READINTERVAL) >=READINTERVAL:
 			rec = await get_traffic(host=self.host, pwd=self.pwd, semaphore=self.semaphore)
 			if rec:
@@ -62,11 +63,11 @@ class WNDR_sampler(DBsampleCollector):
 				await asyncio.sleep(0.2)
 				n+=1
 		else:
-			await asyncio.sleep(0.06)
-			logger.info('wndr waiting %s' % self.sinceStamp())
-		return n  # remaining
+			await asyncio.sleep(0.01)
+			logger.debug('wndr waiting %.4g' % self.sinceStamp())
+		return n,await super().receive_message(dt)  # remaining
 
-class WNDR_happer(WNDR_sampler):
+#class WNDR_happer(WNDR_sampler):
 	""" apple HAP sampler on WNDR router """
 	def create_accessory(self, HAPdriver, quantities, aid):
 		aname="-".join([self.qname(q) for q in quantities])
@@ -76,7 +77,7 @@ def add_WNDR_to_bridge(bridge, config=cnfFile):
 	""" create WNDR_happer and add it to the application bridge """
 	conf = devConfig(config)
 	dbFile=conf['dbFile']
-	sampler = WNDR_happer(dbFile=dbFile, host=conf['host'], pwd=conf['pwd'],  quantities=conf.itstore, maxNr=30,minNr=4,minDevPerc=0.02)
+	sampler = WNDR_sampler(dbFile=dbFile, host=conf['host'], pwd=conf['pwd'],  quantities=conf.itstore, maxNr=30,minNr=4,minDevPerc=0.02)
 	bridge.add_sampler(sampler, conf.itstore)
 
 if __name__ == "__main__":

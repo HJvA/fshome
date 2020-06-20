@@ -2,8 +2,9 @@
 """ generic template for sampler devices generating (averaged and filtered) data to be stored
 """
 
-import logging,time,json,enum,re
+import logging,time,json,enum,re,datetime
 import collections
+import asyncio
 from lib.dbLogger import julianday,prettydate,sqlLogger
 from lib.devConst import qCOUNTING,DEVT,DVrng
 logger = logging.getLogger(__name__)	# get logger from main program
@@ -14,16 +15,16 @@ async def forever(func, *args, **kwargs):
 		await func(*args, **kwargs)
 
 # index to self.average[]
-qVAL=0
-qCNT=1
-qSTMP=2
+qVAL=0	# meas value
+qCNT=1	# counted events
+qSTMP=2	# time stamp
 
 class sm(enum.IntFlag):
 	ADR=0	# devadr
 	TYP=1 # DEVT
-	NM=2
+	NM=2  # name
 	SRC=3	# source
-	MSK=4
+	MSK=4	# mask
 	SIG=5	# signaller spec
 	
 class signaller(object):
@@ -84,13 +85,21 @@ class signaller(object):
 		''' typically called by sampleCollector class to register its set_state method 
 			handler = name of actual sampleCollector class
 		'''
-		logger.info('setting signaller callback for %s' % (handler))
-		self._handlers[handler] = setStateCallback
-
+		logger.info('%ssetting signaller callback for %s' % ("RE-" if handler in self._handlers else "" , handler))
+		self._handlers[handler] = setStateCallback  # !!!
+		
+	def registerEventSource(self, handler, eventSrc):
+		asyncio.create_task(eventSrc.eventListener(signaller=self))
 
 class sampleCollector(object):
 	""" base class for collection of sampling quantities """
 	signaller = None # each sampler will have its own signaller set by childs
+	objCount=0
+	dtStart = datetime.datetime.now()
+	@property
+	def manufacturer(self):
+		return self.name
+
 	def __init__(self, maxNr=120,minNr=2,minDevPerc=5.0,name=None):
 		self.maxNr = maxNr
 		self.minDevPerc = minDevPerc
@@ -100,22 +109,30 @@ class sampleCollector(object):
 		self.actual={}
 		self.minqid=None	# allow unknown quantities to be created if not None
 		self._servmap={}
+		sampleCollector.objCount+=1
 		if name is None:
-			self.name=type(self).__name__ #hash(self)
+			self.name=type(self).__name__ + "_%d" % sampleCollector.objCount		# name of class
 		else:
 			self.name=name
-		if not sampleCollector.signaller:
-			sampleCollector.signaller = signaller()
-		sampleCollector.signaller.registerStateSetter(self.name, self.set_state)
 		logger.info('%s sampler minNr=%d maxNr=%d minDevPerc=%.5g' % (self.name,minNr,maxNr,minDevPerc))
 		self.updated=set() # quantities that have been updated and not accepted yet
 		self.tAccept = {}
+		#self.dtStart = datetime.datetime.now()
+		#self.defSignaller()
 
 	def __repr__(self):
 		"""Return the representation of the sampler."""
 		return 'name={} quantities={}>' \
 			.format(self.name, {self.qname(qid):qid for qid in self._servmap})
+	
+	def defSignaller(self, forName=None):
+		if not sampleCollector.signaller:
+			sampleCollector.signaller = signaller()
+		if forName is None:
+			forName = self.name  # unique for each sampler
+		sampleCollector.signaller.registerStateSetter(forName, self.set_state)
 		
+	
 	def defServices(self,quantitiesConfig):
 		''' compute dict of recognised services from quantities config => self._servmap '''
 		for qid,rec in quantitiesConfig.items():
@@ -146,7 +163,7 @@ class sampleCollector(object):
 			creates or updates (unknown) quantity to self._servmap '''
 		if not quantity:
 			quantity=self.qid(devadr,typ)
-		if typ and (typ>=DEVT['unknown'] or typ==DEVT['fs20']):
+		if typ and (typ>=DEVT['unknown'] or typ==DEVT['fs20']):  # not precise
 			typ=None
 		if not source:
 			source = self.qsrc(quantity)
@@ -161,7 +178,7 @@ class sampleCollector(object):
 					quantity = max(self._servmap)+1
 					if quantity<self.minqid:
 						quantity=self.minqid
-					logger.info("creating quantity:%s = %s" % (quantity,mp))
+					logger.info("%s creating quantity:%s = %s" % (self.manufacturer,quantity,mp))
 		if mp[sm.TYP] is None:
 			mp[sm.TYP]=DEVT['unknown']
 		if quantity:
@@ -181,6 +198,7 @@ class sampleCollector(object):
 			if smItem in self._servmap[qid]:
 				return self._servmap[qid][smItem]
 		return None
+
 	def qactive(self):
 		''' list of active quantities i.e. known and not secluded '''
 		return (qid for qid in self._servmap if qid>0 and self._servmap[qid][sm.TYP] < DEVT['secluded'])
@@ -188,7 +206,6 @@ class sampleCollector(object):
 	def qname(self, qid):
 		''' quantity name '''
 		return self.serving(qid, sm.NM)
-
 	def qsrc(self, qid):
 		''' quantity source or location '''
 		return self.serving(qid, sm.SRC)
@@ -232,6 +249,7 @@ class sampleCollector(object):
 			return 999
 	
 	def sinceStamp(self,qid=None):
+		''' time since previous sample of qid '''
 		if qid and qid in self.actual:
 			trun = time.time() - self.actual[qid][qSTMP]
 		elif qid and qid in self.average:
@@ -242,16 +260,19 @@ class sampleCollector(object):
 			trun =None
 		return trun
 
-	async def receive_message(self):
+	async def receive_message(self, dt=None):
 		''' read device state and call check_quantity '''
-		return None
+		if dt is None:
+			dt = sampleCollector.dtStart
+		tdelt = datetime.datetime.now()-dt
+		return tdelt.total_seconds()
 	
 	def check_quantity(self,tstamp,quantity,val):
 		''' filters, validates, averages, checks, quantity results
 		 calls accept_result when quantity rules are fullfilled
 		 to be called by receive_message  '''
 		if quantity not in self._servmap:
-			logger.info("unknown quantity:%s val=%s in %s" % (quantity,val,self.name))
+			logger.info("unknown quantity:%s val=%s in %s" % (quantity,val,self.manufacturer))
 			#self.servmap[quantity] = {'typ':DEVT['unknown']}
 			return
 		if self.qtype(quantity)>=DEVT['secluded']:	# ignore
@@ -312,7 +333,7 @@ class sampleCollector(object):
 	def set_state(self, quantity, state, prop=None, dur=None):
 		''' stateSetter to operate actuator; used as callback for trigger events '''
 		if quantity in self._servmap:
-			logger.info('setting %s to %s with %s' % (quantity, state, prop))
+			logger.info('setting %s to %s with %s in %s' % (quantity, state, prop, self.manufacturer))
 			return True
 		return False
 		# implemented by derived classes
@@ -369,7 +390,7 @@ class DBsampleCollector(sampleCollector):
 			self.dbStore = None
 		#self.inkeys=[] 
 		self.defServices(quantities)  # get _servmap
-		logger.info('servmap:%s' % self._servmap)
+		logger.info('%s servmap:%s' % (self.name,self._servmap))
 		for qid in self.qactive():
 			name = self.qname(qid)
 			src = self.qsrc(qid)

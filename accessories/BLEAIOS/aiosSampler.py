@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.5
 """ logs hue sensor values to a database """
 
-import sys,os,time,logging,asyncio
+import sys,os,time,logging,asyncio,datetime
 if __name__ == "__main__":
 	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 	import aiosAPI #import aiosDelegate,ENV_SVR,chANA1ST
@@ -36,26 +36,31 @@ class aiosSampler(DBsampleCollector):
 					if Vmax:
 						self.aios.setAnaVoltRange(anaChan, float(Vmax))
 			task = loop.create_task(self.aios.servingNotifications())
+		self.defSignaller()
 		
 	async def receive_message(self):
 		''' await new sensors state from BLE and process recu when new '''
+		dt = datetime.datetime.now()
 		n=0
-		adr,val = await self.aios.receiveCharValue()
-		if adr and val is not None:
-			if adr<aiosSampler.minqid:
-				chId = self.qCheck(None,adr) # search devadr in servmap
-				#chId += aiosSampler.minqid
-			else:
-				chId=adr  # from mask
-			if chId:
-				n-=1
-			else:
-				n+=1
-				logger.warning('no aios quantity to devadr:%s' % adr)
-			tstamp = time.time()
-			self.check_quantity(tstamp, chId, val)
-		await asyncio.sleep(0.1)
-		return n
+		if self.aios.hasCharValue():
+			adr,val = await self.aios.receiveCharValue()
+			if adr and val is not None:
+				if adr<aiosSampler.minqid:
+					chId = self.qCheck(None,adr) # search devadr in servmap
+					#chId += aiosSampler.minqid
+				else:
+					chId=adr  # from mask
+				if chId:
+					n-=1
+				else:
+					n+=1
+					logger.warning('no aios quantity to devadr:%s' % adr)
+				tstamp = time.time()
+				self.check_quantity(tstamp, chId, val)
+		else:
+			await asyncio.sleep(0.01)
+		#await asyncio.sleep(0.01)
+		return n,await super().receive_message(dt)
 		
 	def set_state(self, quantity, state, prop=None, dur=None):
 		''' stateSetter to set digio bit '''

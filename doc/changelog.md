@@ -16,6 +16,10 @@ Sections
 ### Confinement
 -->
 
+## [1.4.1] - 2020-06-16
+### Added
+- dresden electronik deCONZ Raspbee II together with HUE bridge for Tradfri on/off switch
+
 ## [1.4.0] - 2020-06-14
 ### Changed
 - DSMR & WNDR reduced data rate using sinceStamp  

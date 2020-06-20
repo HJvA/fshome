@@ -25,7 +25,7 @@ class HUE_accessory(HAP_accessory):
 		''' add lamp characteristics to HUE accessory '''
 		if typ==DEVT['lamp']:
 			sampler = fsBridge._samplers[self.receiver]
-			self.gamut = sampler.devdat[quantity].gamut
+			self.gamut = sampler.devdat[quantity].gamut()
 			self.level=None
 			chars=None
 			if type(self.gamut) is list:	# color can be set
@@ -41,7 +41,7 @@ class HUE_accessory(HAP_accessory):
 				if 'Hue' in chars:
 					self._chars[quantity].update({'hue': serv.configure_char('Hue',setter_callback=self.HAPsethue)})
 				if 'Saturation' in chars:
-					self._chars[quantity].update({'sat': serv.configure_char('Saturation',setter_callback=self.HAPsetsat)})		
+					self._chars[quantity].update({'sat': serv.configure_char('Saturation',setter_callback=self.HAPsetsat)})
 		else:
 			super().addService(quantity, typ)
 	
@@ -54,7 +54,6 @@ class HUE_accessory(HAP_accessory):
 	def HAPsetsat(self, value):
 		self.setValue(value, 'sat')
 
-
 class hue_happer(hueSampler):
 	""" HUE accessories for HAP bridge """
 	def create_accessory(self, HAPdriver, quantities, aid):
@@ -63,13 +62,12 @@ class hue_happer(hueSampler):
 
 def add_HUE_to_bridge(bridge, config="hue.json"):
 	conf = devConfig(config)
-	#HueBaseDev.Semaphore = asyncio.Semaphore()
 	sampler = hue_happer(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=0)
 	#sampler.minqid=None  # do not auto create
 	bridge.add_sampler(sampler, conf.itstore)	
 
 if __name__ == "__main__":
-	""" run this 
+	""" run this for testing
 	"""
 	from lib.tls import get_logger
 	logger = get_logger(__file__)

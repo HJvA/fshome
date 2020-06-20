@@ -295,7 +295,7 @@ class aiosDelegate(bluepyDelegate):
 					for bitnr in plsdone:
 						del self.digPulses[bitnr]
 			else:
-				await asyncio.sleep(0.2)
+				await asyncio.sleep(0.1)
 
 
 	async def receiveCharValue(self):

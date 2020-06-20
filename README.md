@@ -10,7 +10,7 @@ It is cloned as a submodule from <https://github.com/ikalchev/HAP-python>
 
 The project may connect to a bluetooth low energy device (see my BLE-automation project) which collects digital and/or analog signals whichever connected.
 
-The results will be stored in a sqlite database. The quantities recorded will have to be assigned to a source / room in a fs20.json / hue.json / p1DSMR.json / aios.json file.
+The results will be stored in a sqlite database. The quantities recorded will have to be assigned to a source / room in a fs20.json / hue.json / p1DSMR.json / aios.json / WNDR.json / deCONZ.json file.
 
 The measured temeratures and humidities and other recorded events can be displayed in a svg chart in a browser, with selectable quantities and sources. For this a web server is available using the bottle web-framework cloned from <https://github.com/bottlepy/bottle> by Marcel Hellkamp.
 
@@ -35,7 +35,8 @@ The following sensors/actuators are supported:
 - Hue lights 
 - DSMR dutch electricity and gas utility meter  
 - AIOS GATT Bluetooth Low Energy Automation-IO client
-- WNDR4300 router reporting LAN traffic
+- WNDR4300 router reporting LAN traffic  
+- IKEA Tradfri switch|light via deCONZ zigbee gateway
 
 ### fs20
 
@@ -44,6 +45,11 @@ Fs20 represents a family of devices with many actuators and sensors which commun
 ### Hue
 
 Signify-Philips-Hue devices represent the Hue ecosystem which control your lights.  
+
+### deCONZ
+
+Alternative or supplemental bridge for Hue lights or other Zigbee devices.  
+The raspberry server has been provided with a <https://phoscon.de/en/raspbee2> Zigbee gateway.
 
 ### DSMR
 
@@ -148,5 +154,6 @@ Fs20 devices are/were distributed by <https://www.elv.de/fs20-funkschaltsystem.h
 Information on the hue devices can be found here <https://www2.meethue.com/en-us>  
 Information on the DSMR meter can be found here <https://www.netbeheernederland.nl/dossiers/slimme-meter-15/documenten>  
 The bluetooth low energy library <https://github.com/IanHarvey/bluepy>
-The BLE AIOS server project : <https://github.com/HJvA/BLE-automation>
+The BLE AIOS server project : <https://github.com/HJvA/BLE-automation>  
+The deCONZ API for the Zigbee gateway: <https://dresden-elektronik.github.io/deconz-rest-doc>
 
