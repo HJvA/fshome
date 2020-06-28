@@ -28,10 +28,8 @@ class fsBridge(Bridge):
 		remies = await asyncio.gather(*coros)
 		#if max(remies)>2:
 		tm0 = time.time()
-		logger.info('remaining data:%s' % (dict(zip(nms,remies))))
+		logger.debug('remaining data:%s' % (dict(zip(nms,remies))))
 		await super().run()  # getting accessories via HAP bridge
-		#await asyncio.sleep(RUNINTERVAL/100.0)	# room for HAP
-			
 	
 	def add_sampler(self, sampler, quantities):
 		''' add a sampler to the HAP bridge '''

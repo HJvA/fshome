@@ -41,8 +41,11 @@ class signaller(object):
 		self._eventDetect={}
 		self._signalDef={}
 		self._handlers={}
-		logger.info('setting signaller for %s' % type(self).__name__)
-		
+		logger.info('settings signaller for %s' % self)
+	
+	def __repr__(self):
+		return '%s with %s' % (type(self).__name__,['%s' % hnd for hnd in self._handlers])
+
 	def setSignalDef(self, requester, qid, defstr):
 		''' if qid occurs then signal will be called to do defstr '''
 		sdef=defstr.split('->')
@@ -88,8 +91,11 @@ class signaller(object):
 		logger.info('%ssetting signaller callback for %s' % ("RE-" if handler in self._handlers else "" , handler))
 		self._handlers[handler] = setStateCallback  # !!!
 		
-	def registerEventSource(self, handler, eventSrc):
-		asyncio.create_task(eventSrc.eventListener(signaller=self))
+	def registerEventSource(self, handler, eventListenerCoro):
+		loop =asyncio.get_event_loop()
+		task=loop.create_task(eventListenerCoro)
+		logger.info('created events task from %s task:%s on:%s' % (handler,task,loop))
+		time.sleep(5)
 
 class sampleCollector(object):
 	""" base class for collection of sampling quantities """
@@ -131,7 +137,9 @@ class sampleCollector(object):
 		if forName is None:
 			forName = self.name  # unique for each sampler
 		sampleCollector.signaller.registerStateSetter(forName, self.set_state)
-		
+		if hasattr(self, 'eventListener'):  # may be defined in ancester
+			sampleCollector.signaller.registerEventSource(forName, self.eventListener(signaller=sampleCollector.signaller))
+			logger.info('registered eventListener for %s on %s' % (forName,sampleCollector.signaller))
 	
 	def defServices(self,quantitiesConfig):
 		''' compute dict of recognised services from quantities config => self._servmap '''
@@ -175,7 +183,7 @@ class sampleCollector(object):
 		else:
 			if devadr:
 				if not quantity and self.minqid:
-					quantity = max(self._servmap)+1
+					quantity = max(self._servmap)+1  # TODO look for exists
 					if quantity<self.minqid:
 						quantity=self.minqid
 					logger.info("%s creating quantity:%s = %s" % (self.manufacturer,quantity,mp))

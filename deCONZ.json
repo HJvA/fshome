@@ -1,19 +1,18 @@
 {
-  "270": {
-    "source": "entree",
-    "name": "ikBel",
+  "570": {
+    "source": "gang",
+    "name": "gangSwitch",
     "devadr": "2",
     "typ": 12,
-	 "signal" :"116=17,4cfa"
+    "signal" :"116=17,4cfa"
   },
-  
-  "280":{
-	 "source" :"gang",
+  "580":{
+    "source" :"gang",
     "typ": 13,
     "name": "deurLmp",
-    "devadr":"2"
+    "devadr": "2"
   },
   "dbFile": "/mnt/extssd/storage/fs20store.sqlite",
   "huebridge": "192.168.1.24",
-  "hueuser": "B1565DF16E"
+  "hueuser": "B1565D=F16E"
  }

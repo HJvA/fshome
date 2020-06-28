@@ -13,17 +13,15 @@ from lib.tls import get_logger
 
 class hueSampler(DBsampleCollector):
 	devdat = {}	# dict of hue devices (either lights or sensors)
-	#objCount=0
 	@property
 	def manufacturer(self):
 		return "deCONZ" if self.deCONZ else "Signify"
-	minqid=200
+	minqid=200  # 500 for deCONZ
 	def __init__(self,iphue,hueuser, *args, **kwargs):
 		super().__init__(*args, **kwargs)
+		nDev = len(hueSampler.devdat)
 		devlst = HueSensor.devTypes(iphue,hueuser) # list of sensors from hue bridge
-		self.minqid=hueSampler.minqid
 		self.deCONZ = False
-		#hueSampler.objCount+=1
 		for hueid,dev in devlst.items():
 			qid = self.qCheck(None,hueid,dev['typ'],dev['name'])
 			if qid:
@@ -31,8 +29,8 @@ class hueSampler(DBsampleCollector):
 				if hueSampler.devdat[qid].deCONZ and not self.deCONZ:
 					self.deCONZ = True
 					logger.info('qid %s deConz=>on, sensor=%s' % (qid, dev))
-		logger.info("%s sensors:\n%s\n" % (self.manufacturer,devlst))
-		
+		logger.info("%s sensors:%s" % (self.manufacturer,len(hueSampler.devdat)-nDev))
+		nDev = len(hueSampler.devdat)
 		devlst = HueLight.devTypes(iphue,hueuser)
 		for hueid,dev in devlst.items():
 			#typ = DEVT['lamp']
@@ -46,7 +44,8 @@ class hueSampler(DBsampleCollector):
 				if hueSampler.devdat[qid].deCONZ and not self.deCONZ:
 					self.deCONZ = True
 					logger.info('qid %s deConz=>on, light=%s' % (qid,dev))
-		logger.info("%s lights:\n%s\n" % (self.manufacturer,devlst))
+		self.minqid = hueSampler.minqid+300 if self.deCONZ else hueSampler.minqid
+		logger.info("%s lights:%s" % (self.manufacturer,len(hueSampler.devdat)-nDev))
 		self.defSignaller()
 			
 	async def receive_message(self):
@@ -70,14 +69,44 @@ class hueSampler(DBsampleCollector):
 				logger.debug('(%d) other hue_sampler %s<>%s in %s' % (qid,self.deCONZ,dev.deCONZ,self.manufacturer))
 		return n,await super().receive_message(dt)
 		
+	async def eventListener(self, signaller):
+		logger.info('%s eventListener %d deconz:%s' % (self.name,len(hueSampler.devdat),self.deCONZ))
+		if self.deCONZ:
+			#await asyncio.sleep(10)
+			for qid,dev in hueSampler.devdat.items():
+				logger.info('running eventListener for (%s) %s' % (qid,dev))
+				if self.deCONZ and dev.deCONZ:  # deCONZ bridge
+					#await asyncio.sleep(30)
+					devName = await dev.name()
+					logger.info('waiting for events on %s for %s with %s' % (qid,devName,self))
+					while True:
+						msg = await dev.eventListener()
+						if msg:
+							logger.info('event msg %s from %s' % (msg,devName))
+							qid = self.qCheck(quantity=None,devadr=msg['id'])
+							if qid and 'state' in msg:
+								val = msg['state']
+								logger.info('%s event on %s=>%s' % (devName,qid,val))
+								signaller.signal(qid, val)
+						else:
+							await asyncio.sleep(0.01)
+		logger.warning('no eventListener in %s, deCONZ:%s' % (self,self.deCONZ))
+			
+		
 	def set_state(self, quantity, state, prop='bri', dur=None):
 		''' stateSetter for HAP to set hue device '''
 		if not super().set_state(quantity, state, prop=prop):
 			return None
-		return hueSampler.devdat[quantity].setValue(prop, state)
-		
+		if quantity in hueSampler.devdat:
+			return hueSampler.devdat[quantity].setValue(prop, state)
+		else:
+			logger.warning('no such quantity:%s' % quantity)
+
 	async def setState(self, quantity, state, prop='bri'):
-		return await hueSampler.devdat[quantity].setState(prop, state)
+		if quantity in hueSampler.devdat:
+			return await hueSampler.devdat[quantity].setState(prop, state)
+		else:
+			logger.warning('no such quantity:%s' % quantity)
 		
 	def semaphore(self):
 		''' to use to block concurrent http tasks '''
@@ -87,12 +116,28 @@ if __name__ == "__main__":
 	import asyncio
 	logger = get_logger(__file__,logging.INFO,logging.DEBUG) 
 	conf={	# to be loaded from json file
-		"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqc Rwsel",
-		"huebridge": "192.168.1.21",	 
+		#"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqc=Rwsel",
+		#"huebridge": "192.168.1.21",	
+		"hueuser":"B1565D=F16E",
+		"huebridge": "192.168.1.24",	
 		#"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 		"dbFile": '~/fs20store.sqlite'
 	}
 	QCONF = {  # example default configuration
+  "570": {
+    "source": "gang",
+    "name": "gangSwitch",
+    "devadr": "2",
+    "typ": 12,
+    "signal" :"116=17,4cfa"
+  },
+  "580":{
+    "source" :"gang",
+    "typ": 13,
+    "name": "deurLmp",
+    "devadr": "2"
+	 },
+	 
   "207": {
     "source": "entree",
     "name": "DeurMotion",
@@ -181,7 +226,7 @@ if __name__ == "__main__":
 		n = await hueobj.receive_message()  # both sensors and lights
 		qa = hueobj.qactive()
 		if n:
-			logger.debug('receive_message:%d qactive=:%s' % (n,[q for q in qa]))
+			logger.debug('receive_message:%s qactive=:%s' % (n,[q for q in qa]))
 		for qid in qa:
 			upd = hueobj.isUpdated(qid)
 			if upd:
@@ -199,7 +244,7 @@ if __name__ == "__main__":
 	
 	async def main(hueobj):
 		try:		
-			hueobj.set_state(260, 'true', prop='on')		
+			#hueobj.set_state(260, 'true', prop='on')		
 			while True:
 				await huepoll(hueobj)
 		
@@ -208,12 +253,12 @@ if __name__ == "__main__":
 		except Exception:
 			logger.exception("unknown exception!!!")
 		finally:
-			hueobj.set_state(260, 'false', prop='on')
+			#hueobj.set_state(260, 'false', prop='on')
 			time.sleep(1)
 			hueobj.exit()
 			
 	HueBaseDev.Semaphore = asyncio.Semaphore()
-	hueSampler.minqid=None
+	#hueSampler.minqid=None
 	hueobj = hueSampler(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=QCONF, minNr=1, maxNr=3, minDevPerc=0)
 
 	loop = asyncio.get_event_loop()

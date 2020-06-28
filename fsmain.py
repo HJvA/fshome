@@ -6,7 +6,7 @@
 import logging
 import signal
 import time
-import os
+import os,asyncio
 
 from pyhap.accessory_driver import AccessoryDriver
 from pyhap.const import __version__ as pyHAP_version
@@ -19,26 +19,27 @@ from accessories.netgear.netgear_HAP import add_WNDR_to_bridge
 from lib.tls import get_logger
 
 __maintainer__ = "Henk Jan van Aalderen"
-__email__ = "hjva@notmail.nl"
+__email__  = "hjva@notmail.nl"
 __status__ = "Development"
 
 # setup logging for console and error log and generic log
 logger = get_logger(__file__, logging.INFO, logging.INFO)
 logger.info('with HAP-python %s' % pyHAP_version)
 
-driver = AccessoryDriver(port=51826)
+loop = asyncio.get_event_loop()  # unique loop for application
+driver = AccessoryDriver(port=51826,loop=loop) # prevent renewing loop 
 bridge= fsBridge(driver, 'fsBridge')
 
+if os.path.isfile("aios.json"):
+	add_AIOS_to_bridge(bridge, config="aios.json")
+if os.path.isfile("deCONZ.json"):
+	add_HUE_to_bridge(bridge, config="deCONZ.json")
+if os.path.isfile("hue.json"):
+	add_HUE_to_bridge(bridge, config="hue.json")
 if os.path.isfile("fs20.json"):
 	add_fs20_to_bridge(bridge, config="fs20.json")
 if os.path.isfile("p1DSMR.json"):
 	add_p1DSMR_to_bridge(bridge, config="p1DSMR.json")
-if os.path.isfile("hue.json"):
-	add_HUE_to_bridge(bridge, config="hue.json")
-if os.path.isfile("deCONZ.json"):
-	add_HUE_to_bridge(bridge, config="deCONZ.json")
-if os.path.isfile("aios.json"):
-	add_AIOS_to_bridge(bridge, config="aios.json")
 if os.path.isfile("WNDR.json"):
 	add_WNDR_to_bridge(bridge, config="WNDR.json")
 

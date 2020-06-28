@@ -16,6 +16,10 @@ Sections
 ### Confinement
 -->
 
+## [1.4.2] - 2020-06-28
+### Added
+- deCONZ webSocket allows real time event handling
+
 ## [1.4.1] - 2020-06-16
 ### Added
 - dresden electronik deCONZ Raspbee II together with HUE bridge for Tradfri on/off switch

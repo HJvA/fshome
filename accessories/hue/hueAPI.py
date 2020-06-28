@@ -141,23 +141,25 @@ async def webSocket(ipadr,user,port=443,reskey='state'):
 	'''
 	url='ws://'+ipadr + ':%d' % port
 	try:
+		logger.info('waiting for events on webSocket :%s' % url)
 		jsdat = {}
+		#timeout = aiohttp.ClientTimeout(total=6000)
 		async with aiohttp.ClientSession() as session:
-			async with session.ws_connect(url) as ws:
+			async with session.ws_connect(url,timeout=None) as ws:
 				async for msg in ws:
-					logger.info('ws type:%s data:%s' % (msg.type,msg.data))
+					logger.info('deCONZ event type:%s data:%s' % (msg.type,msg.data))
 					if msg.type == aiohttp.WSMsgType.TEXT:
 						jsdat = msg.json()
 						break
 					elif msg.type == aiohttp.WSMsgType.CLOSED:
-						break
+						logger.warning('webSocket closed')
 					elif msg.type == aiohttp.WSMsgType.ERROR:
-						break
-					#logger.info('webSocket:%s typ:%s' % (ws,msg.type))
+						logger.warning('webSocket error')
+					else:
+						logger.warning('webSocket:%s unknown typ:%s' % (url,msg.type))
 		return jsdat
 	except Exception as ex:
 		logger.warning('error websocket %s' % ex)
-	
 
 class HueBaseDev (object):
 	''' base class for a hue bridge characteristic '''
@@ -178,6 +180,7 @@ class HueBaseDev (object):
 		if HueBaseDev.Semaphore is None:
 			HueBaseDev.Semaphore = asyncio.Semaphore()
 			logger.info('setting up hueSemaphore')
+		#logger.info('creating hue dev:%s for %s' % (hueId,userid))
 		#urllib.disable_warnings(InsecureRequestWarning)
 	
 	@property
@@ -185,6 +188,9 @@ class HueBaseDev (object):
 		descr ="deCONZ" if self.deCONZ else "Signify"  # either deCONZ or HUE bridge
 		return descr
 		
+	def __repr__(self):
+		return 'device={} hueId={}>'.format(self.devDescr, self.hueId)
+
 	async def hueGET(self,resource):
 		''' get state info from hue bridge '''
 		r = await hueGET(self.ipadr, self.user, resource, semaphore=HueBaseDev.Semaphore, ssl=not self.deCONZ)
@@ -193,6 +199,11 @@ class HueBaseDev (object):
 			return {}
 		#logger.debug('hueGET resource:%s with %s ret:%d at %s' % (resource,r.url,r.status_code,datetime.now()))
 		return r
+	
+	async def eventListener(self):
+		msg = await webSocket(self.ipadr, self.user)
+		logger.info('event from webSocket:%s' % msg)
+		return msg
 		
 	async def refresh(self):
 		self._cache(await self.hueGET(self.resource))
@@ -539,13 +550,15 @@ async def tst_light(lmp):
 	lmp.setValue('on', False)
 	
 async def tst_webSock(ipadr,user):
-	logger.info('waiting for event on webSocket')
-	msg = await webSocket(ipadr,user)
-	if msg:
-		#rec = await ws.receive()
-		#await ws.close()
-		logger.info('webSock rec:%s' % msg)
-		#ws.close()
+	logger.info('testing on webSocket ')
+	for i in range(8):
+		msg = await webSocket(ipadr,user)
+		if msg:
+			#rec = await ws.receive()
+			#await ws.close()
+			logger.info('webSock %d rec:%s' % (i,msg))
+			#ws.close()
+		await asyncio.sleep(2)
 		
 async def main(ipadr,user,sensors,lmp):
 	await asyncio.gather(* [tst_sensors(sensors), tst_light(lmp), tst_webSock(ipadr,user)])
@@ -562,8 +575,8 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	#HueBaseDev.semaphore = hueSemaphore
 
 	CONF={	# defaults when not in config file
-		#"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqcRwsel",
-		"hueuser":"B1565DF16E",
+		#"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqc=Rwsel",
+		"hueuser":"B1565D=F16E",
 		#"huebridge": "192.168.1.21"
 		"huebridge": "192.168.1.24"
 	}
@@ -581,9 +594,7 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 			     "motGeneric":{0:"tempTerras", 5:"luxTerras", 11:"motTerras"} }
 
 	_loop = asyncio.get_event_loop()
-
-	#asyncio.create_task(tst_webSock(ipadr,user))
-		
+	
 	config = st_hueGET(ipadr,user=user, resource='config')
 	logger.info('config:%s' % config)
 
@@ -596,6 +607,8 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	else:
 		for adr,rec in sns.items():
 			logger.info("rsns %s:%s" % (adr,rec))
+			
+		#asyncio.create_task(tst_webSock(ipadr,user))
 			
 		sensors = HueSensor.devTypes(ipadr,user)
 		lights = HueLight.devTypes(ipadr,user)

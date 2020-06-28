@@ -49,7 +49,8 @@ Signify-Philips-Hue devices represent the Hue ecosystem which control your light
 ### deCONZ
 
 Alternative or supplemental bridge for Hue lights or other Zigbee devices.  
-The raspberry server has been provided with a <https://phoscon.de/en/raspbee2> Zigbee gateway.
+The raspberry server has been provided with a <https://phoscon.de/en/raspbee2> Zigbee gateway.  
+The deCONZ api is similar to the HUE api, however deCONZ allows real time event handling through webSockets. So pressing a button will immediately be handled by the signaller class of fshome.
 
 ### DSMR
 

@@ -67,6 +67,7 @@ class aiosDelegate(bluepyDelegate):
 		self.digPulses={}
 		self._digiParse(self._readDigitals())
 		if loop:
+			logger.info('aios pulseHandler on loop running:%s' % loop.is_running())
 			loop.create_task(self.pulseHandler())
 		else:
 			asyncio.create_task(self.pulseHandler())
@@ -105,7 +106,7 @@ class aiosDelegate(bluepyDelegate):
 			logger.error('no ble device for notifying on %d' % chId)
 			return
 		elif self.dev.getState():
-			logger.info('starting notification on %s' % chId)
+			logger.info('starting notification on %s dev=%s' % (chId,self.dev.getState()))
 			if chId>=chANA1ST:  # finding which chan
 				hand = self._getAnaMap(chId - chANA1ST)
 				if hand:
@@ -121,6 +122,7 @@ class aiosDelegate(bluepyDelegate):
 			elif chId == chBAT:
 				service = self.dev.getServiceByUUID(btle.UUID(BAS_SVR))
 			if chId in CHARS:
+				logger.info('getCharacteristics:%s on %s' % (CHARS[chId],service))
 				charist = service.getCharacteristics(CHARS[chId])
 				if charist:
 					self.startNotification(charist[0])
@@ -274,7 +276,7 @@ class aiosDelegate(bluepyDelegate):
 		
 	async def pulseHandler(self):
 		""" handles pulse timing of an issued pulse """
-		logger.info('running aios pulse handler on %s' % self.digPulses)
+		logger.info('running aios pulse handler with %s on %s' % (self.digPulses,self))
 		while True:
 			if self.digPulses:
 				plsdone=[]
@@ -294,6 +296,7 @@ class aiosDelegate(bluepyDelegate):
 					logger.debug('dequeu pulses :%s' % plsdone)
 					for bitnr in plsdone:
 						del self.digPulses[bitnr]
+				await asyncio.sleep(0.02)
 			else:
 				await asyncio.sleep(0.1)
 

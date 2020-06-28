@@ -91,7 +91,7 @@ class RepeatTimer(object):
 		self._timer.join() # hold main tread till realy finished
 		self.is_running = False	
 
-def set_logger(logger, pyfile=None, levelConsole=logging.INFO, levelLogfile=logging.DEBUG):
+def set_logger(logger, pyfile=None, levelConsole=logging.INFO, levelLogfile=logging.DEBUG, destDir='/tmp/'):
 	""" reset logger to desired config having several handlers :
 	Console; logFile; errorLogFile"""
 	[logger.removeHandler(h) for h in logger.handlers[::-1]] # handlers may persist between calls
@@ -100,7 +100,7 @@ def set_logger(logger, pyfile=None, levelConsole=logging.INFO, levelLogfile=logg
 	logger.addHandler(hand)	# use console
 	
 	# always save errors to a file
-	hand = logging.FileHandler(filename='error.log', mode='a')
+	hand = logging.FileHandler(filename=destDir+'error_fsHome.log', mode='a')
 	hand.setLevel(logging.ERROR)	# error and critical
 	logger.addHandler(hand)
 	
@@ -110,7 +110,7 @@ def set_logger(logger, pyfile=None, levelConsole=logging.INFO, levelLogfile=logg
 		base=base.group(1)
 	else:
 		base=__name__
-	logger.addHandler(logging.FileHandler(filename=base+'.log', mode='w', encoding='utf-8'))
+	logger.addHandler(logging.FileHandler(filename=destDir+base+'.log', mode='w', encoding='utf-8'))
 	logger.setLevel(levelLogfile)
 	if pyfile == "__main__":
 		logger.critical("### running %s dd %s ###" % (__name__,time.strftime("%y%m%d %H:%M:%S")))
