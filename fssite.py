@@ -365,13 +365,14 @@ def server_static(filepath):
 
 if __name__ == '__main__':
 	import socket
-	logger = get_logger(__file__)
+	logger = get_logger(__file__,logging.INFO,logging.DEBUG)
 	
 	config = devConfig(CONFFILE)
 	dbfile = config.getItem('dbFile',dbfile)
 	try:
 		dbStore = sqlLogger(dbfile)
-		logger.info("statistics:%s" %  dbStore.statistics(5)) # will get list of quantities and sources
+		dbStore.sources(minDaysBack=5)
+		#logger.info("statistics:%s" %  dbStore.statistics(5)) # will get list of quantities and sources
 		logger.info('quantities:%s' % dbStore.items)
 		if config.hasItem('tailScale'):
 			ip = config.getItem('tailScale')  # ip accessible by world

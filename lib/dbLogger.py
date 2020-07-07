@@ -5,12 +5,18 @@ from sqlite3 import connect,OperationalError
 import logging
 import os
 import time
+import enum
 
 __author__ = "Henk Jan van Aalderen"
 __version__ = "1.0.0"
 __email__ = "hjva@notmail.nl"
 __status__ = "Development"
 
+class its(enum.IntEnum):
+	SRC=0
+	NAME=2
+	KEY=1
+	TYP=3
 
 class txtLogger(object):
 	""" handler for log messages in a text file
@@ -134,6 +140,7 @@ class sqlLogger(txtLogger):
 			logger.info("opening sqlStore in %s with %s" % (store,self.con.isolation_level))
 			with self.con:
 				cur = self.con.cursor()
+				""" SELECT quantity,name,source,type,COUNT(*) as cnt,AVG(numval) as avgval,MIN(ddJulian) jdFirst FROM logdat,quantities WHERE ID=quantity AND ddJulian>julianday('now')-1 GROUP BY source,quantity,name,type ORDER BY ID """
 				sql = "SELECT qs.ID,qs.name,qs.source,qs.type,qt.unit FROM quantities AS qs LEFT JOIN quantitytypes AS qt ON qs.type=qt.ID WHERE qs.active;"
 				try:
 					cur.execute(sql)
@@ -285,6 +292,16 @@ class sqlLogger(txtLogger):
 			if 'name' in rec and 'source' in rec:
 				self.checkitem(rec.name, rec.source, rec.type)
 		return recs
+	
+	def sources(self, quantities=None, minDaysBack=None):
+		if minDaysBack is None and self.items:
+			return super().sources(quantities)
+		self.items={}
+		recs = self.statistics(minDaysBack)
+		logger.info('building sources :%s' % recs)
+		for rec in recs:
+			super().additem(ikey=rec[its.KEY], iname=rec[its.NAME], isource=rec[its.SRC], itype=rec[its.TYP])
+		return super().sources(quantities)
 	
 	def logi(self, ikey, numval, strval=None, tstamp=None):
 		''' save value to the database '''

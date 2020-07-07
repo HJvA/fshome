@@ -36,6 +36,8 @@ DEVICE = '/dev/ttyUSB0'
 BAUDRATE = 115200
 
 reOBIS = r"^(\d)\-(\d)\:(\d+\.\d+\.\d+)\((.*)\)"  # parses: "1-0:1.8.2(000754.925*kWh)"
+reOBIS = r"^(\d)\-(\d)\:(\d+\.\d+\.\d+)(\(([\d\.]+[^()]+)\))+"  # parses: "1-0:1.8.2(000754.925*kWh)"
+
 
 __author__ = "Henk Jan van Aalderen"
 __version__ = "1.0.1"
@@ -81,30 +83,33 @@ def parseDSMR(line):
 	global _tstamp
 	if line and len(line)>0:
 		m = re.search(reOBIS, line)
-		if m and len(m.groups())==4: # and val and len(val.groups())==1:
+		if m and len(m.groups())==5: # and val and len(val.groups())==1:
 			#logger.debug('grps:%s val:%s' % (m.groups(),m.group(4)))
 			try:
 				qkey = m.group(3)
-				val = m.group(4)
+				val = m.group(5)
 				if qkey in p1QDEF and _tstamp is not None:
 					fval=float(val.split('*')[0].replace('\x00',''))
 					return (qkey,fval)
 				elif qkey=='1.0.0':   #  tstamp
 					dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None	# winter or summer time
 					_tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
+					#logger.debug('tstamp:%s dst:%s line:%s' % (_tstamp,dst,line))
 					tz = timezone(timedelta(seconds=-time.timezone))
 					return (qkey,_tstamp,val)
 			except ValueError as e:
 				if qkey in p1QDEF:
-					logger.error("bad num format in:%s for %s having:%s" % (val,qkey,e))
+					logger.error("bad num format in:%s for %s having:%s" % (line,qkey,e))
 		elif line.find(r'/')>=0:  # first in group
 			identific = line
 			return ('idf',line)
 		elif line[0]=='!':  # last in group
 			crc = line[1:]
 			return ('crc',crc)
+		elif m and m.groups():
+			logger.info('bad dsmr line:%s: n.grp:%s:' % (line, len(m.groups()) if m else None))
 		else:
-			logger.info('bad line:%s: n.grp:%s:' % (line, len(m.groups()) if m else None))
+			logger.debug('unreconised dsmr line:%s' % line)
 	return None
 
 class p1DSMR(DBsampleCollector):
@@ -144,7 +149,7 @@ class p1DSMR(DBsampleCollector):
 					fval=rec[1]
 					qid = self.qCheck(None,qkey,name=p1QDEF[qkey][0])	# create when not there
 					self.qCheck(qid,qkey,typ=p1QDEF[qkey][2])	# define also typ
-					#logger.debug('dsmr:"%s" => %s @ sinceAccept=%.6g' % (line, rec, self.sinceAccept(qid)))
+					logger.debug('dsmr:"%s" => %s @ sinceAccept=%.6g' % (line, rec, self.sinceAccept(qid)))
 					self.check_quantity(self.tstamp, quantity=qid, val=fval*p1QDEF[qkey][1])
 				elif rec[0]=='1.0.0':
 					self.tstamp=rec[1]
@@ -152,7 +157,7 @@ class p1DSMR(DBsampleCollector):
 					dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None
 					self.tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
 					tz = timezone(timedelta(seconds=-time.timezone))
-					logger.debug('dsmr tstamp:%s dst:%s tz:%s val:%s:' % (self.tstamp, dst, tz, val))
+					logger.debug('dsmr tstamp:%s dst:%s tz:%s val:%s:' % (prettydate(julianday(self.tstamp)), dst, tz, val))
 				elif rec[0]=='idf':
 					self.actual={}
 				elif rec[0]=='crc':

@@ -19,6 +19,12 @@ Sections
 ## [1.4.2] - 2020-06-28
 ### Added
 - deCONZ webSocket allows real time event handling
+### Changed
+- logging to /tmp folder, which might be located on RAM to reduce sdcard wear  
+  (also updated /etc/fstab to include /tmp on tmpfs)
+- fssite now only shows sources in its picklist that have recent results stored  
+### Fixed
+- gasVolume read correctly from DSMR meter as it the smart meter was installed
 
 ## [1.4.1] - 2020-06-16
 ### Added

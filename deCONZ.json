@@ -6,7 +6,13 @@
     "typ": 12,
     "signal" :"116=17,4cfa"
   },
-  "580":{
+  "572": {
+    "source": "garage",
+    "name": "motTrad",
+    "devadr": "4",
+    "typ": 11
+ },
+ "580":{
     "source" :"gang",
     "typ": 13,
     "name": "deurLmp",
