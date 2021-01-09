@@ -17,7 +17,7 @@ else:
 	from .aiowndr import get_traffic
 from lib.sampleCollector import DBsampleCollector
 from lib.fsHapper import HAP_accessory,fsBridge 
-from lib.devConst import DEVT
+from lib.devConst import DEVT,QID
 from lib.devConfig import devConfig
 from pyhap.accessory_driver import AccessoryDriver
 from accessories.hue.hueAPI import HueBaseDev
@@ -28,7 +28,7 @@ class WNDR_sampler(DBsampleCollector):
 	def __init__(self, host, pwd, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.tstamp = None
-		self.minqid = 700
+		self.minqid = QID['WNDR']
 		self.host = host
 		self.pwd = pwd
 		self.semaphore=None  # HueBaseDev.Semaphore

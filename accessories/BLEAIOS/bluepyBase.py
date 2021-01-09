@@ -19,9 +19,12 @@ def showChars(svr):
 	for ch in svr.getCharacteristics():
 		logger.info("ch %s %s %s" % (str(ch),ch.propertiesToString(),ch.uuid))
 		if ch.supportsRead():
-			byts = ch.read()
-			num = int.from_bytes(byts, byteorder='little', signed=False)
-			logger.info("read %d:%s %s" % (ch.getHandle(),byts,num))
+			try:
+				byts = ch.read()
+				num = int.from_bytes(byts, byteorder='little', signed=False)
+				logger.info("read %d:%s %s" % (ch.getHandle(),byts,num))
+			except Exception as ex:
+				logger.info('exception reading:%s' % ex)
 
 class bluepyDelegate(btle.DefaultDelegate):
 	""" handling notifications asynchronously 
@@ -44,6 +47,7 @@ class bluepyDelegate(btle.DefaultDelegate):
 		self.queue.put_nowait((cHandle,data))
 
 	def startServiceNotifyers(self, service):
+		""" start notification on all characteristics of a service """
 		for chT in service.getCharacteristics(): 
 			self.startNotification(chT)
 
@@ -52,7 +56,7 @@ class bluepyDelegate(btle.DefaultDelegate):
 		return charist.getHandle()
 
 	def startNotification(self, charist):
-		''' sets charist on ble device to notification mode '''
+		""" sets charist on ble device to notification mode """
 		hand = charist.getHandle()
 		if charist.properties & btle.Characteristic.props["NOTIFY"]:
 			if hand in self.notifying:
@@ -89,7 +93,7 @@ class bluepyDelegate(btle.DefaultDelegate):
 		return chId,val
 
 	def read(self, charist):
-		''' read value from characteristic on device put result also in async queue '''
+		""" read value from characteristic on device put result also in async queue """
 		if charist.supportsRead():
 			val = charist.read()
 			if self.queue:
@@ -111,6 +115,7 @@ class bluepyDelegate(btle.DefaultDelegate):
 			dat = await self.receiveCharValue()
 
 	async def _recoverConnection(self):
+		""" try to reconnect and restore notifying state, when BLE connection got lost """
 		try:
 			logger.error('BLE disconnected adr:%s adrtp:%s' % (self.dev.addr,self.dev.addrType))
 			await asyncio.sleep(5)
@@ -156,7 +161,8 @@ if __name__ == "__main__":	#
 	"""
 	logging.basicConfig(level=logging.DEBUG)   #, filename="bluepyBase.log")
 
-	DEVADDRESS = "d8:59:5b:cd:11:0c"	# find your device e.g. using bluetoothctl  using scan on command
+	DEVADDRESS = "d8:59:5b:cd:11:0c"	# find your device e.g. using bluetoothctl  using the 'scan on' command
+	DEVADDRESS = "C9:04:5E:8D:26:97"
 	
 	async def main(servNotifying):
 		logger.info("Connecting...")
@@ -169,7 +175,8 @@ if __name__ == "__main__":	#
 	
 		logger.info("Services...")
 		for svc in delg.dev.services:
-			logger.info(str(svc))
+			stat = delg.dev.getStat()
+			logger.info('stat:%s service:%s' % (stat,str(svc)))
 			time.sleep(0.1)
 			showChars(svc)
 		time.sleep(5)

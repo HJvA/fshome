@@ -1,6 +1,17 @@
 """ system constants
 """
 
+# base id numbers for a specific device
+QID={
+	"fs20" : 100,
+	"DSMR" : 300,
+	"AIOS" : 400,
+	"HUE"  : 200,
+	"deCONZ" : 500,
+	"WNDR" : 700,
+	"SND"  : 600
+}
+
 # known device types enumeration
 DEVT ={
 	"temperature":0, # temperature sensor [°C]

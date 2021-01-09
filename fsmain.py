@@ -16,6 +16,7 @@ from accessories.p1smart.p1DSMR_Hap import add_p1DSMR_to_bridge
 from accessories.fs20.fs20_hap import add_fs20_to_bridge
 from accessories.BLEAIOS.aiosHap import add_AIOS_to_bridge
 from accessories.netgear.netgear_HAP import add_WNDR_to_bridge
+from accessories.sounder.sounds import add_SND_to_bridge
 from lib.tls import get_logger
 
 __maintainer__ = "Henk Jan van Aalderen"
@@ -30,6 +31,7 @@ loop = asyncio.get_event_loop()  # unique loop for application
 driver = AccessoryDriver(port=51826,loop=loop) # prevent renewing loop 
 bridge= fsBridge(driver, 'fsBridge')
 
+add_SND_to_bridge(bridge,config=None)
 if os.path.isfile("aios.json"):
 	add_AIOS_to_bridge(bridge, config="aios.json")
 if os.path.isfile("deCONZ.json"):

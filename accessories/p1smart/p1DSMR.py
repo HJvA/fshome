@@ -27,7 +27,7 @@ if __name__ == "__main__":
 else:
 	from lib.serComm import serComm
 	logger = logging.getLogger(__name__)	# get logger from main program
-from lib.devConst import DEVT
+from lib.devConst import DEVT,QID
 from lib.dbLogger import julianday,prettydate
 from lib.sampleCollector import DBsampleCollector,forever
 
@@ -121,7 +121,7 @@ class p1DSMR(DBsampleCollector):
 			serdev=serComm(DEVICE,BAUDRATE)
 		self.serdev = serdev
 		self.tstamp = None
-		self.minqid = 300
+		self.minqid = QID['DSMR']
 		self.defSignaller()
 	
 	def defServices(self,quantities):

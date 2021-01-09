@@ -14,6 +14,7 @@ rclone lsl gdrive:rpibu
 rclone copy --include \*.json \. gdrive:rpibu -Pu --max-depth 1
 rclone copy /etc/samba/smb.conf gdrive:rpibu -Pu
 rclone copy /etc/fstab gdrive:rpibu -Pu
+rclone copy /etc/ztab gdrive:rpibu -Pu
 rclone copy /etc/rc.local gdrive:rpibu -Pu
 rclone copy ~/.config/rclone/rclone.conf gdrive:rpibu -Pu
 rclone copy /etc/wpa_supplicant/wpa_supplicant.conf gdrive:rpibu -Pu

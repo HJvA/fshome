@@ -8,7 +8,7 @@ if __name__ == "__main__":
 else:
 	from accessories.hue.hueAPI import HueSensor,HueLight
 from lib.sampleCollector import DBsampleCollector
-from lib.devConst import DEVT
+from lib.devConst import DEVT,QID
 from lib.tls import get_logger
 
 class hueSampler(DBsampleCollector):
@@ -16,7 +16,8 @@ class hueSampler(DBsampleCollector):
 	@property
 	def manufacturer(self):
 		return "deCONZ" if self.deCONZ else "Signify"
-	minqid=200  # 500 for deCONZ
+	#minqid= QID['HUE'] # 500 for deCONZ
+	
 	def __init__(self,iphue,hueuser, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		nDev = len(hueSampler.devdat)
@@ -44,7 +45,7 @@ class hueSampler(DBsampleCollector):
 				if hueSampler.devdat[qid].deCONZ and not self.deCONZ:
 					self.deCONZ = True
 					logger.info('qid %s deConz=>on, light=%s' % (qid,dev))
-		self.minqid = hueSampler.minqid+300 if self.deCONZ else hueSampler.minqid
+		self.minqid = QID['deCONZ'] if self.deCONZ else QID['HUE']
 		logger.info("%s lights:%s" % (self.manufacturer,len(hueSampler.devdat)-nDev))
 		self.defSignaller()
 			
@@ -70,9 +71,9 @@ class hueSampler(DBsampleCollector):
 		return n,await super().receive_message(dt)
 		
 	async def eventListener(self, signaller):
-		logger.info('%s eventListener %d deconz:%s' % (self.name,len(hueSampler.devdat),self.deCONZ))
+		await super().eventListener(signaller)
 		if self.deCONZ:
-			#await asyncio.sleep(10)
+			mcnt=0
 			for qid,dev in hueSampler.devdat.items():
 				logger.info('running eventListener for (%s) %s' % (qid,dev))
 				if self.deCONZ and dev.deCONZ:  # deCONZ bridge
@@ -82,12 +83,17 @@ class hueSampler(DBsampleCollector):
 					while True:
 						msg = await dev.eventListener()
 						if msg:
-							logger.info('event msg %s from %s' % (msg,devName))
 							qid = self.qCheck(quantity=None,devadr=msg['id'])
 							if qid and 'state' in msg:
 								val = msg['state']
-								logger.info('%s event on %s=>%s' % (devName,qid,val))
+								if 'buttonevent' in val:
+									logger.info('button chg:%s' % val['buttonevent'])
+								logger.info('%s event on %s=>%s cnt:%s' % (devName,qid,val,mcnt))
 								signaller.signal(qid, val)
+								await asyncio.sleep(4)
+								mcnt=0
+							else:
+								mcnt +=1
 						else:
 							await asyncio.sleep(0.01)
 		logger.warning('no eventListener in %s, deCONZ:%s' % (self,self.deCONZ))

@@ -136,7 +136,10 @@ class aiosDelegate(bluepyDelegate):
 			descr=None
 			#time.sleep(0.1)
 			if self.dev and self.dev.getState():
-				descr = self.dev.getDescriptors()  # also having the characteristics
+				try:
+					descr = self.dev.getDescriptors()  # also having the characteristics
+				except btle.BTLEDisconnectError as e:
+					descr = None
 			if not descr:
 				logger.warning("no descriptors for dev %s" % self.dev)
 				return None
@@ -272,7 +275,7 @@ class aiosDelegate(bluepyDelegate):
 			logger.warning('pulse on %d still running while a new one requested')
 		else:
 			self.digPulses[bitnr] = {'start':None, 'dur':duration}
-			logger.info('digital pulse on %s duration %f' % (bitnr,duration))
+			logger.info('digital pulse on %s duration %s' % (bitnr,duration))
 		
 	async def pulseHandler(self):
 		""" handles pulse timing of an issued pulse """
@@ -322,6 +325,7 @@ async def blinkTask(aios, bitnr=5):
 	logger.info('running blink task')
 	while True:
 		aios.setDigPulse(bitnr, 0.9)
+		logger.info('aios:%s' % aios.receiveCharValue())
 		#aios.setDigBit(bitnr, True)
 		#await asyncio.sleep(0.1)
 		#aios.setDigBit(bitnr, False)
@@ -339,7 +343,7 @@ async def main():
 		aios.startServiceNotifyers(aios.dev.getServiceByUUID(btle.UUID(ENV_SVR))) 
 		aios.setAnaVoltRange(1, 1.2)
 		aios.startChIdNotifyer(chDIGI)
-		aios.startChIdNotifyer(chANA1ST+1)  # activate A1 analog channel
+		aios.startChIdNotifyer(chANA1ST+0)  # activate A0 analog channel
 		aios.startChIdNotifyer(chTEMP)
 	try:
 		tasks = aios.tasks()

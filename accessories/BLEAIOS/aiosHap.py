@@ -32,7 +32,6 @@ class AIOS_accessory(HAP_accessory):
 	def HAPsetlev(self, value):
 		self.setValue(value, 'bri')
 
-
 class aios_happer(aiosSampler):
 	""" accessories for HAP bridge """
 	def create_accessory(self, HAPdriver, quantities, aid):
@@ -42,7 +41,7 @@ class aios_happer(aiosSampler):
 def add_AIOS_to_bridge(bridge, config="aios.json"):
 	conf = devConfig(config)
 	#logger.info('aios config %s ' % conf)
-	sampler = aios_happer(bridge.driver.loop, dbFile=conf['dbFile'], devAddress=conf['devAddress'], quantities=conf.itstore, minNr=2, maxNr=4, minDevPerc=1)
+	sampler = aios_happer(bridge.driver.loop, dbFile=conf['dbFile'], devAddress=conf['devAddress'], quantities=conf.itstore, minNr=2, maxNr=8, minDevPerc=0.2)
 	#sampler.minqid=None  # do not auto create
 	bridge.add_sampler(sampler, conf.itstore)	
 

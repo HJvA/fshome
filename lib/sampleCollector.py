@@ -36,11 +36,14 @@ class signaller(object):
 	"""
 	#reSIGDEF = r"^(\d+)\=(\d+\.*\d*)"   # qid=qval,bitnr    fs20qid=cmd
 	#reSIGPTRN = r"(?:[^|=|,])(\d+\.*\d*)"
-	reSIGPTRN = r"(?:[=|\,])*(\d+\.*\d*)"
+	reSIGPTRN = r'(“(?:[^"]*)"|[^,=]*)(,|=|$)'  #r"(?:[=|\,])*(\d+\.*\d*)"  # numbers csv
+	minEventInterval = 120
+	
 	def __init__(self):
 		self._eventDetect={}
 		self._signalDef={}
 		self._handlers={}
+		self._occurances={}
 		logger.info('settings signaller for %s' % self)
 	
 	def __repr__(self):
@@ -55,10 +58,11 @@ class signaller(object):
 		logger.info('signal %s on detection ch:%s of %s' % (defstr,qid,requester))
 		
 	def checkEvent(self, qid, qval):
-		''' todo check whether qid event is occuring '''
+		''' check loaded qid whether it arms an event. todo check qval for something in def '''
 		if qid in self._eventDetect:
 			logger.warning('TODO: checking qid:%s with %s for having %s' % (qid,qval,self._eventDetect[qid]))
 		if type(qval) is bool:
+			logger.info('bool event:%d = %s' % (qid,qval))
 			return qval  # only trigger once on motion detect
 		return True
 		
@@ -66,20 +70,30 @@ class signaller(object):
 		''' qid has occured, now look if a signaldef is attached, then execute it '''
 		if qid in self._signalDef:
 			sdef=self._signalDef[qid]  #.split('->')[-1]  # get cmd to execute after -> if there
-			mch = re.compile(signaller.reSIGPTRN).finditer(sdef)
-			if mch:
-				lst =[float(x.group(1)) for x in mch] 
-				lst += [None]*(4-len(lst))
-				trgqid,trgval,trgprop,trgdur = lst
-				trgqid=int(trgqid)
-				#else:
-				#	trgqid,trgval,trgprop,trgdur = (0,None,None,None)
-				logger.info('signalling %s=%s with %s => %s' % (qid,qval,sdef,lst))
-				for hnd,cb in self._handlers.items():  # check all handlers till acq
-					if cb(trgqid, trgval, trgprop, trgdur):
-						break
-				else:
-					logger.warning('qid -> trg not handled:%s -> %s' % (qid,sdef))
+			if qid in self._occurances:
+				tsince = datetime.datetime.now() - self._occurances[qid]
+				tsince = tsince.total_seconds()
+			else:
+				tsince = None
+			if tsince and tsince<signaller.minEventInterval:
+				logger.warning('event on %s occuring to soon:%s' % (qid,tsince))
+			else:
+				mch = re.compile(signaller.reSIGPTRN).finditer(sdef)
+				if mch :
+					lst =[x.group(1) for x in mch] 
+					#lst =[float(x) if x.isnumeric() else x for x in lst]
+					lst += [None]*(4-len(lst))
+					trgqid,trgval,trgprop,trgdur = lst[:4]
+					trgqid=int(trgqid)
+					#else:
+					#	trgqid,trgval,trgprop,trgdur = (0,None,None,None)
+					logger.info('signalling %s=%s with %s => %s' % (qid,qval,sdef,lst))
+					for hnd,cb in self._handlers.items():  # check all handlers till acq
+						if cb(trgqid, trgval, trgprop, trgdur):  # set_state
+							self._occurances[qid] = datetime.datetime.now()
+							break
+					else:
+						logger.warning('qid -> trg not handled:%s -> %s' % (qid,sdef))
 		else:
 			#logger.warning('qid %s has no event handler' % qid)
 			pass
@@ -132,6 +146,9 @@ class sampleCollector(object):
 			.format(self.name, {self.qname(qid):qid for qid in self._servmap})
 	
 	def defSignaller(self, forName=None):
+		""" creates signaller class, registers set_state for each sampler
+		   registers eventListener of a sampler if it has one
+		"""
 		if not sampleCollector.signaller:
 			sampleCollector.signaller = signaller()
 		if forName is None:
@@ -144,20 +161,25 @@ class sampleCollector(object):
 	def defServices(self,quantitiesConfig):
 		''' compute dict of recognised services from quantities config => self._servmap '''
 		for qid,rec in quantitiesConfig.items():
-			if type(rec) is dict and qid.isnumeric():
-				adr=rec['devadr'] if 'devadr' in rec else "%d" % (int(qid) % 100,)
+			if type(qid) == str:
+				if qid.isnumeric():
+					qid = int(qid)
+				else:
+					qid = None
+			if type(rec) is dict and qid:  # and qid.isnumeric():
+				adr=rec['devadr'] if 'devadr' in rec else "%d" % (qid % 100,)
 				typ=rec['typ'] if 'typ' in rec else DEVT['unknown']
 				if type(typ) is str:
 					typ = DEVT[typ]
 				nm =rec['name'] if 'name' in rec else "no:%s" % adr
 				src =rec['source'] if 'source' in rec else ''
-				self._servmap[int(qid)]={sm.ADR:adr,sm.TYP:typ,sm.NM:nm,sm.SRC:src}
+				self._servmap[qid]={sm.ADR:adr,sm.TYP:typ,sm.NM:nm,sm.SRC:src}
 				if 'mask' in rec:
 					logger.info('masking :%s for qid:%s' % (rec['mask'],qid))
-					self._servmap[int(qid)][sm.MSK] = rec['mask']
+					self._servmap[qid][sm.MSK] = rec['mask']
 				if 'signal' in rec:
 					if self.signaller:
-						self.signaller.setSignalDef(self.name, int(qid), rec['signal'])
+						self.signaller.setSignalDef(self.name, qid, rec['signal'])
 					#self.servmap[int(qid)][sm.SIG] = rec['signal']
 		return self._servmap
 		
@@ -294,7 +316,7 @@ class sampleCollector(object):
 			self.actual[quantity] = {qVAL:val, qSTMP:tstamp}
 
 		if sampleCollector.signaller:
-			if sampleCollector.signaller.checkEvent(quantity, val):
+			if sampleCollector.signaller.checkEvent(quantity, val):  # handle event by polling
 				sampleCollector.signaller.signal(quantity, val)
 		if self.qIsCounting(quantity): 
 			if quantity in self.average and val>0: # only first and pos edge
@@ -303,12 +325,12 @@ class sampleCollector(object):
 			else:
 				self.average[quantity] = [val,1,tstamp]
 			self.accept_result(tstamp, quantity)
-			logger.info('(%s) accepting cnt val=%s quantity=%s tm=%s since=%.6g' % (quantity,val, self.qname(quantity), prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
+			logger.info('(%s) cnt val=%s quantity=%s tm=%s since=%.6g' % (quantity,val, self.qname(quantity), prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
 		elif quantity in self.average:
 			n = self.average[quantity][qCNT]
 			avg = self.average[quantity][qVAL] / n
 			if (n>=self.minNr and abs(val-avg)>abs(avg*self.minDevPerc/100)) or n>=self.maxNr:
-				logger.info('(%s) accepting avg n=%d avg=%g val=%s quantity=%s devPrc=%g>%g tm=%s since=%.6g' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, self.minDevPerc, prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
+				logger.info('(%s) n=%d avg=%g val=%s quantity=%s devPrc=%g>%g tm=%s since=%.6g' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, self.minDevPerc, prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
 				self.accept_result((tstamp+self.average[quantity][qSTMP])/2, quantity)
 				self.average[quantity] = [val,1,tstamp]
 			else:
@@ -383,6 +405,13 @@ class sampleCollector(object):
 		self.updated.discard(quantity)
 		return self.lastval[quantity]	
 		
+	async def eventListener(self, signaller):
+		""" virtual: to be overriden; should wait indefinitely for events e.g. on webSocket
+		"""
+		logger.info('%s waiting for events in eventListener' % self.name)
+		#signaller.signal(qid, val)
+		
+		
 	""" should not depend on HAP here 
 	def create_accessory(self, HAPdriver, qname, quantity, qtyp, stateSetter, aid, samplername):
 		return HAP_accessory(HAPdriver, qname, quantity=quantity, typ=qtyp,  stateSetter=stateSetter, aid=aid, receiver=samplername)
@@ -409,7 +438,7 @@ class DBsampleCollector(sampleCollector):
 					self.dbStore.updateitem(qid, super().qname(qid)) 
 
 	def qname(self, quantity):
-		if quantity in self.qactive(): 
+		if self.dbStore and quantity in self.qactive(): 
 			nm = self.dbStore.qname(quantity)
 		else:
 			nm = super().qname(quantity)
@@ -419,7 +448,11 @@ class DBsampleCollector(sampleCollector):
 		src = super().qsrc(qkey)
 		if src:
 			return src
-		return self.dbStore.qsource(qkey)
+		if self.dbStore:
+			return self.dbStore.qsource(qkey)
+		else:
+			return src
+			
 		
 	def accept_result(self,tstamp,quantity):
 		qval = super().accept_result(tstamp,quantity)

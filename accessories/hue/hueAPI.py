@@ -21,7 +21,7 @@ RESOURCES = ['lights','sensors','whitelist','groups','locations','config', 'scen
 SENSTYPES = {'temperature':0,'lightlevel':5,'buttonevent':12,'presence':11}
 LIGHTTYPES = ['On/off light','Dimmable light','Extended color light','Color temperature light']
 
-UPDATEINTERVAL=90
+UPDATEINTERVAL=300
 
 async def hueGET(ipadr,user='',resource='',timeout=2, semaphore=None, ssl=True):
 	''' get state info from hue bridge '''
@@ -46,7 +46,7 @@ async def hueGET(ipadr,user='',resource='',timeout=2, semaphore=None, ssl=True):
 						logger.warning('bad json:%s:%s' % (resource,stuff))
 						stuff=None
 				else:
-					logger.warning('bad hue response :%s' % response.status)
+					logger.warning('bad hue response :%s on %s' % (response.status,url))
 					session.close()
 					await asyncio.sleep(0.2)
 	except asyncio.TimeoutError as te:
@@ -140,16 +140,20 @@ async def webSocket(ipadr,user,port=443,reskey='state'):
 		https://dresden-elektronik.github.io/deconz-rest-doc/websocket/
 	'''
 	url='ws://'+ipadr + ':%d' % port
+	if reskey:
+		url += "/%s" % reskey
 	try:
-		logger.info('waiting for events on webSocket :%s' % url)
+		logger.debug('waiting for events on webSocket :%s' % url)
 		jsdat = {}
 		#timeout = aiohttp.ClientTimeout(total=6000)
 		async with aiohttp.ClientSession() as session:
 			async with session.ws_connect(url,timeout=None) as ws:
 				async for msg in ws:
-					logger.info('deCONZ event type:%s data:%s' % (msg.type,msg.data))
 					if msg.type == aiohttp.WSMsgType.TEXT:
 						jsdat = msg.json()
+						if 'state' in jsdat:
+							logger.info('deCONZ event type:%s data:%s' % (msg.type,msg.data))
+						await asyncio.sleep(0.5)
 						break
 					elif msg.type == aiohttp.WSMsgType.CLOSED:
 						logger.warning('webSocket closed')
@@ -201,8 +205,8 @@ class HueBaseDev (object):
 		return r
 	
 	async def eventListener(self):
-		msg = await webSocket(self.ipadr, self.user)
-		logger.info('event from webSocket:%s' % msg)
+		msg = await webSocket(self.ipadr, self.user, reskey=None ) #'state/%s' % self.hueId)
+		#logger.info('event from webSocket:%s' % msg)
 		return msg
 		
 	async def refresh(self):
@@ -303,7 +307,7 @@ class HueSensor (HueBaseDev):
 			
 	async def name(self):
 		''' get name from actual cache '''
-		return super().name(cache=HueSensor._sensors)
+		return super().name(cache=HueSensor._sensors[self.ipadr])
 		
 	async def _cache(self, setval=None):
 		''' get or set_local cache. cache will be refreshed from bridge automatically if too old i.e. > self.refreshInterval '''
@@ -358,7 +362,12 @@ class HueSensor (HueBaseDev):
 		else:
 			if self.prop is None:
 				self.prop = next(typ for typ in SENSTYPES if typ in val)
-				val = await self.state(prop=self.prop)
+				val1 = await self.state(prop=self.prop)
+				if val1 is None:
+					logger.warning('no event val for %s at %s val:%s' % (self.hueId,self.prop,val))
+					return None
+				else:
+					val=val1
 			if self.prop=='temperature':
 				val/=100.0
 			elif self.prop=='lightlevel': # compute lux

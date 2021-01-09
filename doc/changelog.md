@@ -16,6 +16,10 @@ Sections
 ### Confinement
 -->
 
+## [1.4.3] - 2020-08-23
+### Added 
+- sounder : plays wav files as signaller reacting to events
+
 ## [1.4.2] - 2020-06-28
 ### Added
 - deCONZ webSocket allows real time event handling

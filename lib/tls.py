@@ -6,6 +6,7 @@ import logging
 import os,re,sys
 import threading
 import hashlib, hmac
+from pathlib import Path
 
 def bytes_to_int(data, endian='>', signed=True):
 	"""Convert a bytearray into an integer, considering the first bit sign."""
@@ -91,14 +92,17 @@ class RepeatTimer(object):
 		self._timer.join() # hold main tread till realy finished
 		self.is_running = False	
 
-def set_logger(logger, pyfile=None, levelConsole=logging.INFO, levelLogfile=logging.DEBUG, destDir='/tmp/'):
+def set_logger(logger, pyfile=None, levelConsole=logging.INFO, levelLogfile=logging.DEBUG, destDir='~/log/'):
 	""" reset logger to desired config having several handlers :
 	Console; logFile; errorLogFile"""
 	[logger.removeHandler(h) for h in logger.handlers[::-1]] # handlers may persist between calls
 	hand=logging.StreamHandler()
 	hand.setLevel(levelConsole)
 	logger.addHandler(hand)	# use console
-	
+	if destDir:
+		destDir = os.path.expanduser(destDir)
+		if not os.path.isdir(destDir):
+			Path(destDir).mkdir(parents=False, exist_ok=False)
 	# always save errors to a file
 	hand = logging.FileHandler(filename=destDir+'error_fsHome.log', mode='a')
 	hand.setLevel(logging.ERROR)	# error and critical
@@ -113,7 +117,7 @@ def set_logger(logger, pyfile=None, levelConsole=logging.INFO, levelLogfile=logg
 	logger.addHandler(logging.FileHandler(filename=destDir+base+'.log', mode='w', encoding='utf-8'))
 	logger.setLevel(levelLogfile)
 	if pyfile == "__main__":
-		logger.critical("### running %s dd %s ###" % (__name__,time.strftime("%y%m%d %H:%M:%S")))
+		logger.critical("### running %s dd %s logging to %s ###" % (__name__,time.strftime("%y%m%d %H:%M:%S"),destDir+base+'.log'))
 	return logger
 
 def get_logger(pyfile=None, levelConsole=logging.INFO, levelLogfile=logging.DEBUG):

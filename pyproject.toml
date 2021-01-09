@@ -1,0 +1,38 @@
+[project]
+name = "fshome"
+version = "1.4.2"
+description = "domotica sampler and shower"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE.txt"}
+keywords = ["hue", "fs20", "DSMR", "deCONZ", "homekit"]
+authors = [
+  {email = "hjva@hotmail.nl"},
+  {name = "Henk Jan van Aalderen"}
+]
+maintainers = [
+  {name = "", email = ""}
+]
+classifiers = [
+  "Development Status :: Beta",
+  "Programming Language :: Python"
+]
+
+# Using 'dependencies' and 'optional-dependencies' as an example
+# as those fields' format are an Open Issue.
+dynamic = o["bottle", "HAP-python", "bluepy"]
+
+[project.urls]
+homepage = ""
+documentation = ""
+repository = "github.com"
+changelog = "github.com/hjva/fshome/master/doc/CHANGELOG.md"
+
+[project.scripts]
+fshome-cli = "fsmain"
+
+[project.gui-scripts]
+fshome-gui = "fssite"
+
+[project.entry-points."fshome.magical"]
+tomatoes = "fshome:main_tomatoes"

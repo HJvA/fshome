@@ -23,7 +23,7 @@ from lib.tls import get_logger
 __copyright__="<p>Copyright &copy; 2019,2020, hjva</p>"
 TITLE=r"fshome quantity viewer"
 CONFFILE = "./fs20.json"
-dbfile = '~/fs20store.sqlite'
+dbfile = None # '~/fs20store.sqlite'
 TPL='static/fsapp.tpl'
 COOKIE="FSSITE_" + socket.gethostname()
 AN1=60*60*24*365.25  # one year for cookie
@@ -46,6 +46,7 @@ tmBACKs={0.2:(u'5hr',5,0.0417,'%H'),
 	182.6:(u'6mnth',24*60,30.44,'%b'), 
 	365.25:(u'1yr',2*24*60,30.44,'%b') }
 app =bottle.Bottle()
+bottle.debug(True)
 dbStore=None
 
 def typnames(devTyps):
@@ -128,7 +129,12 @@ def cursorhandler():
 def formhandler():
 	''' Handle form submission '''
 	tm=time.perf_counter()
-	logger.info("menu posted:%s" % bottle.request.body.read()) 
+	if 'REMOTE_ADDR' in bottle.request.environ:
+		ip = bottle.request.environ.get('REMOTE_ADDR')
+	else:
+		ip = None
+		
+	logger.info("==== menu handler from %s =====:\n%s" % (ip,bottle.request.body.read())) 
 	selqs = bottle.request.forms.getall('quantities')
 	src=bottle.request.forms.get('source')
 	tbcknm=bottle.request.forms.get('tmback')
@@ -375,7 +381,7 @@ if __name__ == '__main__':
 		#logger.info("statistics:%s" %  dbStore.statistics(5)) # will get list of quantities and sources
 		logger.info('quantities:%s' % dbStore.items)
 		if config.hasItem('tailScale'):
-			ip = config.getItem('tailScale')  # ip accessible by world
+			ip = config.getItem('tailScale')  # ip accessible by world, issued by tailScale
 		else: # ip of localhost
 			ip=socket.gethostbyname(socket.gethostname())
 			ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]

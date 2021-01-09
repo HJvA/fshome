@@ -18,11 +18,12 @@ class devConfig(object):
 		self.itstore = {}
 		self.prompt=newItemPrompt
 		self.fname=fname
-		fname=os.path.expanduser(fname)
-		if os.path.isfile(fname):
-			with open(fname, 'r') as fl:
-				self.itstore = json.load(fl)
-		logger.debug("loading config:%s isfile:%s len:%d\n" % (fname, os.path.isfile(fname), len(self.itstore)))
+		if fname:
+			fname=os.path.expanduser(fname)
+			if os.path.isfile(fname):
+				with open(fname, 'r') as fl:
+					self.itstore = json.load(fl)
+		logger.debug("loading config:%s isfile:%s len:%d\n" % (fname, os.path.isfile(fname) if fname else None, len(self.itstore)))
 	
 	def __repr__(self):
 		return json.dumps((self.fname,self.itstore,), ensure_ascii=False, sort_keys=False)
@@ -102,10 +103,11 @@ class devConfig(object):
 		''' saves itemstore to disc '''
 		if fname is None:
 			fname=self.fname
-		fname = os.path.expanduser(fname)
-		logger.debug("config saving to:%s" % fname)
-		with open(fname, 'w') as fl:
-			json.dump(self.itstore, fl, ensure_ascii=False, indent=2, sort_keys=False)
+		if fname:
+			fname = os.path.expanduser(fname)
+			logger.debug("config saving to:%s" % fname)
+			with open(fname, 'w') as fl:
+				json.dump(self.itstore, fl, ensure_ascii=False, indent=2, sort_keys=False)
 
 if __name__ == "__main__":		# for testing
 	logger = logging.getLogger()

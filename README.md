@@ -73,7 +73,7 @@ apt-get install <package>
 ```  ). Then download the fshome project  
  
 ```bash
-git clone git://github.com/HJvA/fshome
+git clone --recursive  git://github.com/HJvA/fshome
 cd fshome
 git submodule init
 git submodule update --depth=1
@@ -140,7 +140,7 @@ Select the room source and select some quantities from the multi select boxes. A
 Several systems allow to define actions following to certain events:  
 - Homekit Rules can be used to trigger actions when a certain value passes a boundary. So the lights can be switched on when someone is home and it is getting dark.    
 - fshome allows to configure an action when a value changes and is recorded. Enter the following item to a quantiity definition in a conf file:  
-```
+```json
 "signal" : "109=26"  
 ```  
    where 109 is a quantityid and 26 is a command or data to be set to the quantity.  
@@ -157,4 +157,6 @@ Information on the DSMR meter can be found here <https://www.netbeheernederland.
 The bluetooth low energy library <https://github.com/IanHarvey/bluepy>
 The BLE AIOS server project : <https://github.com/HJvA/BLE-automation>  
 The deCONZ API for the Zigbee gateway: <https://dresden-elektronik.github.io/deconz-rest-doc>
+The adafruit CircuitPython tools <https://learn.adafruit.com/circuitpython-on-raspberrypi-linux/installing-circuitpython-on-raspberry-pi>
+The soundcard driver for the waveshare wm8960 <https://github.com/pguyot/wm8960>  
 

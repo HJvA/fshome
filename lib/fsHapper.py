@@ -43,12 +43,14 @@ class fsBridge(Bridge):
 				typ=rec['typ']
 			else:
 				typ=DEVT['unknown']
-			if typ<90 and quantity.isnumeric():
+			if type(quantity) is str and quantity.isnumeric():
+				quantity = int(quantity)
+			if typ<90:
 				if 'aid' in rec:	# it is an apple HAP item
 					if rec['aid'] in qaid:
-						qaid[rec['aid']].append(int(quantity))
+						qaid[rec['aid']].append(quantity)
 					else:
-						qaid[rec['aid']] = [int(quantity)]
+						qaid[rec['aid']] = [quantity]
 		for aid,qs in qaid.items():
 			acce = sampler.create_accessory(self.driver, quantities=qs, aid=aid)
 			self.add_accessory(acce)

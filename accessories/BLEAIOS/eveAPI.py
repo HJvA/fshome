@@ -1,6 +1,30 @@
 """
 	GATT client for Elgato eve devices (preliminary)
 	using bluepy from http://ianharvey.github.io/bluepy-doc/index.html
+bluetoothctl scan on
+Device D8:59:5B:CD:11:0C AIOS fshome
+Device FB:E3:89:87:00:BF Eve Energy DFF5
+Device F1:B0:B8:80:03:F8 Eve Energy 1B30
+Device 48:70:DE:6C:C6:4F 48-70-DE-6C-C6-4F
+Device CC:CC:CC:5A:85:25 Hue Lamp
+Device 48:94:F9:EA:96:46 48-94-F9-EA-96-46
+Device E7:E7:E0:CA:88:2A 5852A719784E30A3E9
+Device C6:F2:F9:C8:64:B2 Hue Lamp
+Device CD:52:18:3D:2A:95 Hue Lamp
+Device F6:FB:49:21:24:23 Hue Lamp
+Device F8:E4:E3:6E:8B:96 ZMED
+Device 75:E7:2B:31:C3:17 75-E7-2B-31-C3-17
+
+Device D8:59:5B:CD:11:0C AIOS fshome
+Device FB:E3:89:87:00:BF Eve Energy DFF5
+Device 56:F0:C4:E2:68:85 56-F0-C4-E2-68-85
+Device F1:B0:B8:80:03:F8 Eve Energy 1B30
+Device 63:18:AC:E2:1B:A6 63-18-AC-E2-1B-A6
+Device CC:CC:CC:5A:85:25 Hue Lamp
+Device D8:E0:E1:11:7F:B1 [TV] Samsung 7 Series (55)
+Device F8:E4:E3:6E:8B:96 ZMED
+Device C6:F2:F9:C8:64:B2 Hue Lamp
+Device CE:82:6F:67:FA:26 Eve Degree B5C3
 """
 import time
 import asyncio
@@ -20,13 +44,20 @@ from accessories.BLEAIOS.bluepyBase import bluepyDelegate,BAS_SVR,showChars
 #sudo hcitool lescan
 DEVADDRESS = "FB:E3:89:87:00:BF" # Eve Energy DFF5
 DEVADDRESS = "F1:B0:B8:80:03:F8" # Eve Energy 1B30
-#F1:B0:B8:80:03:F8 Eve
+DEVADDRESS = "CE:82:6F:67:FA:26" # Eve Degree
 
+ENERGY_SVR = "0000003E-0000-1000-8000-0026BB765291"
+ROOM_SVR   = "0000003E-0000-1000-8000-0026BB765291"
+TEMP_SVR   = "0000008A-0000-1000-8000-0026BB765291"
+HUM_SVR    = "00000082-0000-1000-8000-0026BB765291"
+PRESS_SVR  = "E863F00A-079E-48FF-8F27-9C2605A29F52"
 
 chPOW=1
 chENRG=2
 chVOLT=3
 chAMP =4
+chAIRQ=5
+chTEMP=6
 
 chDIGI    = 10		# func id for digitals
 chANA1ST  = 11		# func id for first analog channel
@@ -39,6 +70,8 @@ CHARS[chENRG]   = "E863F10C-079E-48FF-8F27-9C2605A29F52"
 CHARS[chPOW]    = "E863F10D-079E-48FF-8F27-9C2605A29F52"
 CHARS[chVOLT]   = "E863F10A-079E-48FF-8F27-9C2605A29F52"
 CHARS[chAMP]    = "E863F126-079E-48FF-8F27-9C2605A29F52"
+CHARS[chTEMP]   = "00000011-0000-1000-8000-0026BB765291"
+CHARS[chAIRQ]   = "E863F10B-079E-48FF-8F27-9C2605A29F52"
 CHARS[chBAT]    = 0x2a19   #"00002a19-0000-1000-8000-00805f9b34fb"
 
 class eveDelegate(bluepyDelegate):
@@ -104,8 +137,6 @@ class eveDelegate(bluepyDelegate):
 		else:
 			return chId,val
 
-			
-
 async def main():
 	""" for testing """
 	logger.info("Connecting...")
@@ -114,9 +145,14 @@ async def main():
 	logger.info('dev %s iface:%s' % (delg.dev,delg.dev.iface if delg.dev else None) )
 	
 	if delg.dev:
+		service = delg.dev.getServiceByUUID(btle.UUID(TEMP_SVR))
+		charist = service.getCharacteristics(CHARS[chTEMP])
+		logger.info('Tsrv:%s char:%s ' % (service,charist))
+		logger.info(' temp:%s' % delg.read(charist[0]))
+		
 		logger.info("Services...")
 		for svc in delg.dev.services:
-			logger.info(str(svc))
+			logger.info('stat:%s service:%s' % (delg.dev.getState(),str(svc)))
 			time.sleep(0.1)
 			showChars(svc)
 		time.sleep(5)

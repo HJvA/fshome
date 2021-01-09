@@ -77,18 +77,18 @@ def FS20_command(hausc, devadr, cmd="toggle", dur=None):
 	''' build message in fs20 format
 	'''
 	if type(cmd) is str:
-		cde = fs20commands.index(cmd)
+		cde = fs20commands.index(cmd)  # error when not in list
 	else:
 		cde = int(cmd)
 		cmd = fs20commands[cde]
 	ee=""
-	if dur is not None:
+	if dur and dur is not None:
 		cde |= 0x20
 		for i in range(0,12):
 			if len(ee)==0:
 				for j in range(0,15):
 					val = (2**i)*j*0.25
-					if val >= dur:
+					if val >= float(dur):
 						ee = "%0.2X" % (i*16+j,)
 						break
 	logger.info("fs20 cmd:%s (%x) dur:%s to hc:%s adr:%s" % (cmd,cde,ee,hausc,devadr))
