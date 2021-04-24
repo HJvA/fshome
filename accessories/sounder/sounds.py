@@ -2,7 +2,7 @@ import pygame
 
 import sys,os,time,logging,asyncio,datetime
 if __name__ == "__main__":
-	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../..'))
+	sys.path.append(os.path.join( os.path.dirname(os.path.realpath(__file__)),'../..') )
 else:
 	pass
 from lib.sampleCollector import DBsampleCollector
@@ -17,7 +17,6 @@ class sounder(DBsampleCollector):
 	def manufacturer(self):
 		return "RaspBerry default sound card"
 
-	
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.minqid=QID['SND']

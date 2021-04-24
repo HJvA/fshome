@@ -28,7 +28,7 @@ else:
 	from lib.serComm import serComm
 	logger = logging.getLogger(__name__)	# get logger from main program
 from lib.devConst import DEVT,QID
-from lib.dbLogger import julianday,prettydate
+from lib.grtls import julianday,prettydate
 from lib.sampleCollector import DBsampleCollector,forever
 
 # Serial Device

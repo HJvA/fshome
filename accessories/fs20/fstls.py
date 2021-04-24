@@ -76,7 +76,7 @@ def parseFS20(msg):
 def FS20_command(hausc, devadr, cmd="toggle", dur=None):
 	''' build message in fs20 format
 	'''
-	if type(cmd) is str:
+	if type(cmd) is str and not cmd.isnumeric():
 		cde = fs20commands.index(cmd)  # error when not in list
 	else:
 		cde = int(cmd)

@@ -58,11 +58,6 @@ def lookup_lod(lod, **kw):
 			return row,i
 	return None,-1
 
-def seconds_since_epoch(epoch = datetime.datetime.utcfromtimestamp(0), utcnow=datetime.datetime.utcnow()):
-	''' time in s since 1970-1-1 midnight utc
-	'''
-	return (utcnow - epoch).total_seconds()
-
 
 class RepeatTimer(object):
 	''' runs a function in backgroud at specified interval '''
@@ -77,6 +72,7 @@ class RepeatTimer(object):
 		self.start()
 
 	def _run(self):
+		''' calling this at each interval '''
 		self.is_running = False
 		self.start()
 		self.function(*self.args, **self.kwargs)
@@ -163,6 +159,5 @@ if __name__ == "__main__":
 	logger.debug('debugging')
 	logger.warning(os.getcwd())
 	logger.error(os.getlogin())
-	print('seconds since epoch : %s' % seconds_since_epoch())
 	print('(0xff,0xff,0x7f) bytes_to_int = %0x' % bytes_to_int((0xff,0xff,0xfe),'<'))
 	logging.shutdown()

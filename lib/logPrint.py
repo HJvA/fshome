@@ -5,7 +5,8 @@
 """
 
 import sys,logging
-from dbLogger import sqlLogger,prettyprint,graphyprint
+from dbLogger import sqlLogger
+from grtls import prettyprint,graphyprint,julianday
 from devConfig import devConfig
 from devConst import DEVT
 from tls import get_logger

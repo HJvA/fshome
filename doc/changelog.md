@@ -15,11 +15,17 @@ Sections
 ### Developers
 ### Confinement
 -->
+## [1.4.4] - 2021-04-11
+### Added
+- inkplate peripheral test (e-paper display handled on seperate raspberry)
+- fssite restfull api requesting ancient data over the network
+- openweather data from internet
+### Changed
+- moved to Raspberry 3+; tested installation (better bluetooth reception)
 
 ## [1.4.3] - 2020-08-23
 ### Added 
 - sounder : plays wav files as signaller reacting to events
-
 ## [1.4.2] - 2020-06-28
 ### Added
 - deCONZ webSocket allows real time event handling

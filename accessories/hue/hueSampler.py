@@ -4,14 +4,15 @@
 import sys,os,time,logging,asyncio,datetime
 if __name__ == "__main__":
 	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../..'))
-	from hueAPI import HueSensor,HueLight,HueBaseDev
+	from hueAPI import HueSensor,HueLight,HueBaseDev,getTyp,getProp
 else:
-	from accessories.hue.hueAPI import HueSensor,HueLight
+	from accessories.hue.hueAPI import HueSensor,HueLight,getTyp,getProp
 from lib.sampleCollector import DBsampleCollector
 from lib.devConst import DEVT,QID
 from lib.tls import get_logger
 
 class hueSampler(DBsampleCollector):
+	""" fshome interface to a Hue or deCONZ bridge """
 	devdat = {}	# dict of hue devices (either lights or sensors)
 	@property
 	def manufacturer(self):
@@ -30,6 +31,8 @@ class hueSampler(DBsampleCollector):
 				if hueSampler.devdat[qid].deCONZ and not self.deCONZ:
 					self.deCONZ = True
 					logger.info('qid %s deConz=>on, sensor=%s' % (qid, dev))
+			else:
+				logger.debug('unknown sensor hueid=%s : %s' % (hueid,dev))
 		logger.info("%s sensors:%s" % (self.manufacturer,len(hueSampler.devdat)-nDev))
 		nDev = len(hueSampler.devdat)
 		devlst = HueLight.devTypes(iphue,hueuser)
@@ -45,6 +48,8 @@ class hueSampler(DBsampleCollector):
 				if hueSampler.devdat[qid].deCONZ and not self.deCONZ:
 					self.deCONZ = True
 					logger.info('qid %s deConz=>on, light=%s' % (qid,dev))
+			else:
+				logger.info('unknown light hueid=%s : %s' % (hueid,dev))
 		self.minqid = QID['deCONZ'] if self.deCONZ else QID['HUE']
 		logger.info("%s lights:%s" % (self.manufacturer,len(hueSampler.devdat)-nDev))
 		self.defSignaller()
@@ -71,7 +76,9 @@ class hueSampler(DBsampleCollector):
 		return n,await super().receive_message(dt)
 		
 	async def eventListener(self, signaller):
+		''' waiting for websocket events '''
 		await super().eventListener(signaller)
+		
 		if self.deCONZ:
 			mcnt=0
 			for qid,dev in hueSampler.devdat.items():
@@ -81,15 +88,20 @@ class hueSampler(DBsampleCollector):
 					devName = await dev.name()
 					logger.info('waiting for events on %s for %s with %s' % (qid,devName,self))
 					while True:
-						msg = await dev.eventListener()
-						if msg:
+						msg = await dev.eventListener()  # calls websocket
+						if msg and 'id' in msg:
 							qid = self.qCheck(quantity=None,devadr=msg['id'])
 							if qid and 'state' in msg:
-								val = msg['state']
-								if 'buttonevent' in val:
-									logger.info('button chg:%s' % val['buttonevent'])
-								logger.info('%s event on %s=>%s cnt:%s' % (devName,qid,val,mcnt))
-								signaller.signal(qid, val)
+								rec = msg['state']
+								typ = getTyp(rec)
+								val = getProp(rec)
+								#if typ!=dev.typ:
+								#	logger.warning('uneq event types: %d != %d' % (typ,dev.typ))
+								if 'buttonevent' in rec:
+									logger.info('button chg:%s' % rec['buttonevent'])
+								if signaller.checkEvent(qid,val):
+									logger.info('%s event by %s=>%s typ(%s) cnt:%s' % (devName,qid,rec,typ,mcnt))
+									signaller.signal(qid, rec)
 								await asyncio.sleep(4)
 								mcnt=0
 							else:
@@ -122,9 +134,7 @@ if __name__ == "__main__":
 	import asyncio
 	logger = get_logger(__file__,logging.INFO,logging.DEBUG) 
 	conf={	# to be loaded from json file
-		#"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqc=Rwsel",
-		#"huebridge": "192.168.1.21",	
-		"hueuser":"B1565D=F16E",
+		"hueuser":"",
 		"huebridge": "192.168.1.24",	
 		#"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 		"dbFile": '~/fs20store.sqlite'

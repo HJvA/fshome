@@ -16,7 +16,7 @@ __status__ = "Development"
 
 # Serial Device
 DEVICE = '/dev/ttyACM0'
-BAUDRATE = 9600 #38400
+BAUDRATE = 9600 # 38400  115200
 PARITY = 'N'
 RTSCTS = False
 XONXOFF = False
@@ -25,12 +25,12 @@ TIMEOUT = 1
 class serComm(object):
 	""" transceiver for sending commands and receiving messages to/from serial devices
 	"""
-	def __init__(self, serdev=DEVICE, baud=BAUDRATE):
+	def __init__(self, serdev=DEVICE, baud=BAUDRATE, parity=PARITY):
 		''' constructor : setup elementary io functions 
 		'''
 		self.ser = serial.serial_for_url(serdev, do_not_open=True, timeout=TIMEOUT)
 		self.ser.baudrate = baud
-		self.ser.parity = PARITY
+		self.ser.parity = parity
 		self.ser.rtscts = RTSCTS
 		self.ser.xonxoff = XONXOFF
 		self.buf=b""
@@ -47,7 +47,7 @@ class serComm(object):
 			self.ser.close()
 		
 	def read(self, timeout=1, minlen=1, termin=b''):
-		''' tries to read a string from self.ser till either termin is found, or timeout occurs. 
+		''' tries to read bytes from self.ser till either termin is found, or timeout occurs. 
 		'''
 		with lock:
 			cnt=0
@@ -57,15 +57,27 @@ class serComm(object):
 				cnt+=1
 			if self.ser.in_waiting>0:
 				self.buf += self.ser.read(self.ser.in_waiting)  # get bytes
-			if len(self.buf)>minlen:
-				if termin in self.buf:
+			if len(self.buf)>=minlen:
+				if termin is None or len(termin)==0:
+					data = self.buf
+					self.buf=b""
+				elif termin in self.buf:
 					(data,sep,self.buf) = self.buf.partition(termin)	
 					#data.strip(b' \t\n\r')
 					logger.debug("interv:%.2f read:%s remains:%s" % (cnt*tres, data, self.buf))
-					return data.decode('ascii')
+				else:
+					data=None
+				return data
 		return None
+	
+	def readText(self, timeout=1, minlen=1, termin='\r\n', decod='ascii'):
+		data = self.read(timeout, minlen, bytes(termin,'ascii'))
+		if data and decod:
+			return data.decode(decod)
+		return data
 		
-	async def asyRead(self, timeout=1.0, minlen=1, termin=b''):
+		
+	async def asyRead(self, timeout=1.0, minlen=1, termin=b'', decod='ascii'):
 		''' tries to read a string from self.ser till either termin is found, or timeout occurs.
 			asynchronously i.e. uses await to allow cpu to other tasks
 		'''
@@ -89,14 +101,16 @@ class serComm(object):
 			except Exception as e:
 				logger.exception("unknown serial!!! :%s" % e)
 			if len(self.buf)>minlen:
-				if termin in self.buf:
+				if termin and termin in self.buf:
 					(data,sep,rema) = self.buf.partition(termin)  # split bytearray
 					#idx = self.buf.find(termin)
 					#data= self.buf[:idx]
 					#rema= self.buf[idx:]
 					self.buf = rema
 					#logger.debug("interv:%.2f read:%s remains:%d" % (cnt*tres, len(data), len(self.buf)))
-					return data.decode('ascii')
+					if decod:
+						return data.decode(decod)
+					return data
 				elif cnt>0:
 					logger.debug('serdata without termin :%s' % self.buf)
 			self.reading=False
@@ -127,7 +141,9 @@ class serComm(object):
 	
 	def send_message(self, msg, termin='\r\n'):
 		""" sends a terminated string to the device """
-		data = bytes(msg+termin, 'ascii')
+		if termin and len(termin)>0:
+			msg += termin
+		data = bytes(msg, 'ascii')
 		logger.debug("cmd:%s" % data)
 		self.write(data)
 	

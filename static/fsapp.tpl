@@ -63,7 +63,7 @@
   
   %menu = include("static/menu.tpl")
 
- <svg class="graph" xmlns="http://www.w3.org/2000/svg" height="calc( 94vh - 16em )" width="98%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    
+ <svg class="graph" xmlns="http://www.w3.org/2000/svg" height="calc( 94vh - 16em )" width="99%" viewBox="0 0 1000 500" preserveAspectRatio="none" >    
   
   <defs>
       <clipPath id="clpPth">
@@ -73,7 +73,7 @@
   <rect id="plotarea" class="grid" x="100" y="50" width="800" height="400"> </rect>
   <line id="xcursor" class="cursor" x1="900" y1="42" x2="900" y2="458"> </line>
 
-  %for curve,side,xleg in zip(curves,[98,906,44,956],[300,500,100,700]):
+  %for curve,side,xleg in zip(curves,[98,906,45,956],[300,500,100,700]):
      <g class="surfaces" clip-path="url(#clpPth)">
       %if curve['qtyp']==1:
        <path  fill="none" stroke={{curve['stroke']}} stroke-opacity="0.7" stroke-width="2.8" d="{{curve['crv']}}" />

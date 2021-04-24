@@ -12,7 +12,7 @@ The project may connect to a bluetooth low energy device (see my BLE-automation 
 
 The results will be stored in a sqlite database. The quantities recorded will have to be assigned to a source / room in a fs20.json / hue.json / p1DSMR.json / aios.json / WNDR.json / deCONZ.json file.
 
-The measured temeratures and humidities and other recorded events can be displayed in a svg chart in a browser, with selectable quantities and sources. For this a web server is available using the bottle web-framework cloned from <https://github.com/bottlepy/bottle> by Marcel Hellkamp.
+The measured temeratures and humidities and other recorded events can be displayed in a svg chart in a browser, with selectable quantities and sources. For this a web server is available using the bottle web-framework cloned from [bottle](https://github.com/bottlepy/bottle) by Marcel Hellkamp.
 
 ## Table of Contents
 1. [Features](#Features)
@@ -37,6 +37,7 @@ The following sensors/actuators are supported:
 - AIOS GATT Bluetooth Low Energy Automation-IO client
 - WNDR4300 router reporting LAN traffic  
 - IKEA Tradfri switch|light via deCONZ zigbee gateway
+- Inkplate 6" electronic paper screen
 
 ### fs20
 
@@ -49,8 +50,10 @@ Signify-Philips-Hue devices represent the Hue ecosystem which control your light
 ### deCONZ
 
 Alternative or supplemental bridge for Hue lights or other Zigbee devices.  
-The raspberry server has been provided with a <https://phoscon.de/en/raspbee2> Zigbee gateway.  
+The raspberry server has been provided with a [raspbee](https://phoscon.de/en/raspbee2) Zigbee gateway.  
 The deCONZ api is similar to the HUE api, however deCONZ allows real time event handling through webSockets. So pressing a button will immediately be handled by the signaller class of fshome.
+
+Use the [phoscon](http://phoscon.de/app) app to setup the apparatuses connected.
 
 ### DSMR
 
@@ -65,6 +68,9 @@ e.g. a PIR motion detector connected to digin pin 16, and a photocell connected 
 
 WNDR (netgear WNDR4300 router) reporting LAN traffic. Either "rxToday" or "rxYestday" items can be requested as devadr in WNDR.json
 
+### Inkplate
+For the moment the inkplate is connected to a stand alone raspberry, and the inkplate operates in peripheral mode. this means the raspberry is querying the fshome database (using a rest api over the network) and builds an inkplate screen by sending some serial commands to the inkplate.
+
 ## Installation <a name="Installation"></a>
 
 Starting on a standard Raspberry pi on Raspbian (a debian clone, but almost any linux computer probably will be ok) fist make sure you have Python 3.5 or later installed. Also install git and pip3 (e.g. using  
@@ -73,18 +79,80 @@ apt-get install <package>
 ```  ). Then download the fshome project  
  
 ```bash
-git clone --recursive  git://github.com/HJvA/fshome
-cd fshome
-git submodule init
-git submodule update --depth=1
+git clone --recursive  git://github.com/HJvA/fshome  
+cd fshome  
+git submodule init  
+git submodule update --depth=1  
+pip3 install aiohttp  
 ```  
+
+### fs20
 When using the fs20 devices, connect the CUL transceiver to a USB port of your Raspberry. Have the CUL transceiver flashed with the latest firmware from <http://culfw.de>. Assure that ```/dev/ttyACM0``` appears on your system (it represents a serial port used for the CUL). Maybe you should enable it using raspi-config.
+```bash
+lsof /dev
+cat /proc/tty/driver/serial
+find . -type l ./by-path/usb-0:1.1:1.0-port0 ./by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0
+```
+
+### deCONZ
+To install type:  
+```bash  
+sudo apt install i2c-tools build-essential raspberrypi-kernel-headers  
+cd raspbee2-rtc-master  
+make  
+sudo make install  
+sudo reboot  
+wget -O - http://phoscon.de/apt/deconz.pub.key | \
+sudo apt-key add -  
+sudo sh -c "echo 'deb http://phoscon.de/apt/deconz \
+            $(lsb_release -cs) main' > \
+            /etc/apt/sources.list.d/deconz.list"  
+sudo systemctl enable deconz
+```  
+To create credentials on the deCONZ bridge:  
+```bash
+cd ~/fshome
+# edit hueAPI.py to have correct IP of deCONZ 'bridge'
+# run it to create user on the bridge:
+python3 accessories/hue/hueAPI.py  
+# enter user in deCONZ.json
+```
+#### to update deCONZ
+Depending on the exact type of zigbee controller, also look at the latest available version on the [deconz](https://deconz.dresden-elektronik.de/deconz-firmware) site.
+```bash
+sudo systemctl stop deconz-gui
+sudo systemctl stop deconz
+wget https://deconz.dresden-elektronik.de/deconz-firmware/deCONZ_RaspBeeII_0x26690700.bin.GCF
+sudo GCFFlasher_internal -t 60 -f deCONZ_RaspBeeII_0x26690700.bin.GCF
+wget -O deconz-latest-beta.deb https://deconz.dresden-elektronik.de/raspbian/beta/deconz-latest-beta.deb
+sudo dpkg -i deconz-latest-beta.deb
+sudo systemctl start deconz
+```
+
+### homekit
+based on HAP-python  
+```bash
+#symlink to pyhap as HAP-python modules refer to pyhap directly
+ln -s ./submod/HAP-python/pyhap ./pyhap  
+#git submodule update --force --checkout submod/HAP-python  
+cd ./submod/HAP-python  
+git checkout master  
+git pull  
+pip3 install .  
+```
+### bluetooth  
+based on bluepy
+```bash
+cd ./submod/bluepy  
+sudo apt install libglib2.0-dev  
+pip3 install .  
+```
 
 ### Tailscale
 
 Tailscale is a service that makes it easy to access your fshome site securely from the internet when you are not at home e.g. from your phone.
 
-- go to  <https://tailscale.com>
+- go to  [tailscale](https://tailscale.com)
 - create an account
 - install the tailscale client on your devices (both on the server, as on the clients)
 - tailscale will provide you with an ip adres for each device in your network of servers and clients
@@ -159,4 +227,5 @@ The BLE AIOS server project : <https://github.com/HJvA/BLE-automation>
 The deCONZ API for the Zigbee gateway: <https://dresden-elektronik.github.io/deconz-rest-doc>
 The adafruit CircuitPython tools <https://learn.adafruit.com/circuitpython-on-raspberrypi-linux/installing-circuitpython-on-raspberry-pi>
 The soundcard driver for the waveshare wm8960 <https://github.com/pguyot/wm8960>  
+An electronic paper screen from e-radionica <https://inkplate.io/getting-started/>  
 

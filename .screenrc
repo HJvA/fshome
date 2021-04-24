@@ -1,0 +1,17 @@
+# settings for screen terminal multiplexer
+# don't display the copyright page
+startup_message off
+
+# increase scrollback buffer size
+defscrollback 10000
+
+# create windows
+chdir ~
+caption always "%{= kw} %-w%{= gW} %n %t %{-}%+w %-="
+chdir /home/pi/fshome
+screen -t fsm
+screen -p fsm -X stuff $'python3 fsmain.py\n'
+screen -t fss  
+screen -p fss -X stuff $'python3 fssite.py\n'
+#screen -t ink /dev/ttyUSB0 115200 -Logfile ink.log
+#screen -t nano /dev/ttyACM0 9600 -Logfile nano.log 

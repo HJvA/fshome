@@ -19,7 +19,7 @@ import logging
 RESOURCES = ['lights','sensors','whitelist','groups','locations','config', 'scenes','schedules','resourcelinks','rules']
 # mapping hue quantity to DEVT 
 SENSTYPES = {'temperature':0,'lightlevel':5,'buttonevent':12,'presence':11}
-LIGHTTYPES = ['On/off light','Dimmable light','Extended color light','Color temperature light']
+LIGHTTYPES = ['On/off light','Dimmable light','Extended color light','Color temperature light', 'On/Off plug-in unit']
 
 UPDATEINTERVAL=300
 
@@ -97,17 +97,21 @@ async def hueSET(ipadr,user,prop,val,hueId,resource,reskey='/state',semaphore=No
 		async with semaphore, session.put(url, data='{"%s":%s}' % (prop,val), ssl=False) as resp:
 			logger.info('hueSet resp:%s' % resp.status)
 
-async def createUser(devname,appname,ipadr=None):
+async def createUser(devname,appname,ipadr=None,deCONZ=False):
 	''' create user on hue bridge '''
 	if ipadr is None:
 		#_loop = asyncio.get_event_loop()
 		ipadr = await ipadrGET()
 	logger.critical('please press button on hue bridge within 30s')
 	time.sleep(30)
-	data = aiohttp.FormData()
-	data.add_field('devicetype', "%s#%s" % (appname,devname))
+	if deCONZ:
+		data = '{ "devicetype": "%s-%s" }' % (appname,devname)
+		#data.add_field('username',"fsHenkJan120361")
+	else:
+		data = aiohttp.FormData()
+		data.add_field('devicetype', "%s#%s" % (appname,devname))
 	async with aiohttp.ClientSession() as session:
-		async with session.post(url='https://'+ipadr+'/api/', data=data, ssl=True) as response:
+		async with session.post(url=('http://' if deCONZ else 'https://') +ipadr+'/api/', data=data, ssl=not deCONZ) as response:
 			pst = await response.json()
 	#pst = requests.post('https://'+ipadr+'/api/', data='{"%s":"%s#%s"}' % ('devicetype',appname,devname), verify=False)
 	logger.warning('newuser:%s' % (pst))
@@ -136,8 +140,8 @@ async def ipadrGET(bridgeName=None, portal='https://discovery.meethue.com/'):
 	return None
 
 async def webSocket(ipadr,user,port=443,reskey='state'):
-	''' waits for deCONZ to emit event data
-		https://dresden-elektronik.github.io/deconz-rest-doc/websocket/
+	''' waits for deCONZ to emit event 
+		https://dresden-elektronik.github.io/deconz-rest-doc/endpoints/websocket/#websocket-configuration
 	'''
 	url='ws://'+ipadr + ':%d' % port
 	if reskey:
@@ -164,6 +168,22 @@ async def webSocket(ipadr,user,port=443,reskey='state'):
 		return jsdat
 	except Exception as ex:
 		logger.warning('error websocket %s' % ex)
+		
+def getProp(state):
+	""" get property value """
+	typ = getTyp(state)
+	if typ:
+		prop=next(prp for prp in SENSTYPES if prp in state)
+		if prop in state:
+			return state[prop]
+	return None
+	
+def getTyp(state):
+	if state and set(state) & set(SENSTYPES):
+		prop = next(prp for prp in SENSTYPES if prp in state)
+		#name = HueSensor._sensors[self.ipadr][self.hueId]['name'] 
+		typ = SENSTYPES[prop] if prop in SENSTYPES else None
+		return typ
 
 class HueBaseDev (object):
 	''' base class for a hue bridge characteristic '''
@@ -205,8 +225,9 @@ class HueBaseDev (object):
 		return r
 	
 	async def eventListener(self):
-		msg = await webSocket(self.ipadr, self.user, reskey=None ) #'state/%s' % self.hueId)
-		#logger.info('event from webSocket:%s' % msg)
+		''' raw event listener '''
+		msg = await webSocket(self.ipadr, self.user, reskey=None ) 
+		logger.debug('event from webSocket:%s' % msg)
 		return msg
 		
 	async def refresh(self):
@@ -303,7 +324,7 @@ class HueSensor (HueBaseDev):
 		self.prop=None  # unknown type yet
 		if HueSensor._sensors:
 			name = HueSensor._sensors[self.ipadr][self.hueId]['name'] 
-			logger.info('HueSensor %s %s for %s' % (hueId,name,userid))
+			logger.info('%s Sensor %s %s for %s' % (self.devDescr,hueId,name,userid))
 			
 	async def name(self):
 		''' get name from actual cache '''
@@ -323,9 +344,11 @@ class HueSensor (HueBaseDev):
 					if not self.prop:
 						state = await self.state()
 						if state and 'status' not in state:
-							self.prop = next(typ for typ in SENSTYPES if typ in state)
+							#typ = getTyp(state)
+							self.prop = next(prp for prp in SENSTYPES if prp in state)
 							name = HueSensor._sensors[self.ipadr][self.hueId]['name'] 
-							logger.info('new sensor %s:prop=%s:name=%s:tpast=%s' % (self.hueId,self.prop,name,tpast))
+							typ = SENSTYPES[self.prop] if self.prop in SENSTYPES else None
+							logger.info('new sensor %s:prop=%s:name=%s:typ=%s:tpast=%s' % (self.hueId,self.prop,name,typ,tpast))
 						else:
 							logger.warning('no state for sensor %s : %s' % (self.hueId,state))
 					logger.debug('sensorCache: %s last:%s len:%d, prop:%s' % (self.resource,HueSensor._lastread,len(HueSensor._sensors[self.ipadr]),self.prop))
@@ -364,7 +387,7 @@ class HueSensor (HueBaseDev):
 				self.prop = next(typ for typ in SENSTYPES if typ in val)
 				val1 = await self.state(prop=self.prop)
 				if val1 is None:
-					logger.warning('no event val for %s at %s val:%s' % (self.hueId,self.prop,val))
+					logger.warning('no event val for hueid:%s at prop:%s dev:%s val:%s' % (self.hueId,self.prop,self.devDescr,val))
 					return None
 				else:
 					val=val1
@@ -391,8 +414,9 @@ class HueSensor (HueBaseDev):
 		''' get  list of available sensor types from HUE or deCONZ bridge '''
 		if HueSensor._sensors is None or ipadr not in HueSensor._sensors:
 			HueSensor._sensors[ipadr] =st_hueGET(ipadr,user,'sensors')  # .json()
+			logger.info('HueSensor_@:%s: %s' % (ipadr,HueSensor._sensors[ipadr]))
 			HueSensor._lastread[ipadr] = datetime.now(timezone.utc)
-		if len(HueSensor._sensors)>0:
+		if len(HueSensor._sensors)>0:  # build dict of hueid:dat with type in dat
 			lst = {hueid:set(dat['state'].keys()) & set(types) for hueid,dat in HueSensor._sensors[ipadr].items() if 'CLIP' not in dat['type']}
 			logger.info('list of sensor types in hue bridge=%s, possible=%s' % (lst,set(types)))
 			return {hueid:{**(HueSensor._sensors[ipadr][hueid]['state']), 'typ':next(tpid for tpnm,tpid in types.items() if tpnm in typ), 'name':HueSensor._sensors[ipadr][hueid]['name']} for hueid,typ in lst.items() if len(typ)>0}
@@ -511,7 +535,9 @@ class HueLight(HueBaseDev):
 		if HueLight._lights is None or ipadr not in HueLight._lights:
 			HueLight._lastread[ipadr] = datetime.now(timezone.utc)
 			HueLight._lights[ipadr] =st_hueGET(ipadr,user,'lights')   #.json()
+			logger.info('HueLight_@ %s : %s' % (ipadr,HueLight._lights[ipadr]))
 		return HueLight._lights[ipadr]
+		
 		lst = {hueid:{'typ':types.index(dev['type']),'name':dev['name'],**dev['state']} for hueid,dev in HueLight._lights[ipadr].items() if 'CLIP' not in dev['type']}
 		logger.info("list of hue lights:%s" % lst)
 		return lst
@@ -584,10 +610,10 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	#HueBaseDev.semaphore = hueSemaphore
 
 	CONF={	# defaults when not in config file
-		#"hueuser": "RnJforsLMZqsCbQgl5Dryk9LaFvHjEGtXqc=Rwsel",
-		"hueuser":"B1565D=F16E",
+		#"hueuser": "",
+		"hueuser":  ""
 		#"huebridge": "192.168.1.21"
-		"huebridge": "192.168.1.24"
+		"huebridge": "192.168.1.20"
 	}
 	#CONF['huebridge'] =ipadrGET()
 	
@@ -611,7 +637,8 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	if not sns:  # or sns.status != 200:
 		logger.info('could not get sensors from %s (%s) with user %s' % (ipadr,sns,user))
 		input("creating user?")
-		user = asyncio.create_task(createUser('homekit','fshome',ipadr=ipadr))
+		#user = asyncio.create_task(createUser('homekit','fshome',ipadr=ipadr))
+		user =  _loop.run_until_complete(createUser('homekit','fshome',ipadr=ipadr,deCONZ=True))
 		print('put hueuser in the config file:\n%s' % user.result())
 	else:
 		for adr,rec in sns.items():

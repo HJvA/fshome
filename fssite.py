@@ -16,11 +16,12 @@ except ImportError:
 	import bottle
 	
 from lib.devConfig import devConfig
-from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate,SiNumForm
+from lib.dbLogger import sqlLogger
 from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb
 from lib.tls import get_logger
+from lib.grtls import julianday,unixsecond,prettydate,SiNumForm
 
-__copyright__="<p>Copyright &copy; 2019,2020, hjva</p>"
+__copyright__="<p>Copyright &copy; 2019,2021, hjva</p>"
 TITLE=r"fshome quantity viewer"
 CONFFILE = "./fs20.json"
 dbfile = None # '~/fs20store.sqlite'
@@ -46,7 +47,7 @@ tmBACKs={0.2:(u'5hr',5,0.0417,'%H'),
 	182.6:(u'6mnth',24*60,30.44,'%b'), 
 	365.25:(u'1yr',2*24*60,30.44,'%b') }
 app =bottle.Bottle()
-bottle.debug(True)
+bottle.debug(False)
 dbStore=None
 
 def typnames(devTyps):
@@ -125,6 +126,25 @@ def cursorhandler():
 	#logger.info("curs post:%s" % bottle.request.body.read()) 
 	return dict(dd=prettydate(jd),jdtill=jd,evtDescr='curs')
 
+@app.get('/quantity')
+def quantity_value():
+	''' rest api for getting averaged quantity values from database
+	e.g. http://192.168.1.20:8080/quantity?qkey=401&ndays=0.2 
+	will return last results of quantity 401 from database '''
+	qkey =  int(bottle.request.query.qkey)
+	ndays = float(bottle.request.query.ndays or '0.2')
+	avginterval = float(bottle.request.query.interval or '5') # averaging interval in minutes
+	bottle.response.headers['Content-Type'] = 'application/json'
+	bottle.response.headers['Cache-Control'] = 'no-cache'
+	recs = dbStore.fetchiavg(qkey,tstep=avginterval,daysback=ndays,jdend=None)
+	if recs:
+		jdlast = recs[-1][0]
+		#logger.info('quantity request:%s' % bottle.request.params.items())
+		return json.dumps({'qval': [rec[1] for rec in recs], 'jdlast':jdlast})
+	else:
+		logger.warning('no quantity results for %s' % bottle.request.body)
+		return '{}'
+
 @app.post('/menu', method="POST")
 def formhandler():
 	''' Handle form submission '''
@@ -142,7 +162,6 @@ def formhandler():
 	jdtill=bottle.request.forms.get('jdtill')
 	evtDescr=bottle.request.forms.get('evtDescr')
 	evtData=bottle.request.forms.get('evtData')
-	
 	try:
 		ndays=next(tb for tb,tup in tmBACKs.items() if tbcknm in tup[0])
 	except StopIteration:
@@ -386,7 +405,7 @@ if __name__ == '__main__':
 			ip=socket.gethostbyname(socket.gethostname())
 			ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
 		port = int(os.environ.get('PORT', 8080))
-		app.run(host=ip, port=port, debug=True, reloader=False)
+		app.run(host=ip, port=port, debug=False, reloader=False)
 	finally:
 		dbStore.close()
 else:	# this is running as a module

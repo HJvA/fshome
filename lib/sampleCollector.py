@@ -5,7 +5,8 @@
 import logging,time,json,enum,re,datetime
 import collections
 import asyncio
-from lib.dbLogger import julianday,prettydate,sqlLogger
+from lib.grtls import julianday,prettydate
+from lib.dbLogger import sqlLogger
 from lib.devConst import qCOUNTING,DEVT,DVrng
 logger = logging.getLogger(__name__)	# get logger from main program
 
@@ -37,34 +38,39 @@ class signaller(object):
 	#reSIGDEF = r"^(\d+)\=(\d+\.*\d*)"   # qid=qval,bitnr    fs20qid=cmd
 	#reSIGPTRN = r"(?:[^|=|,])(\d+\.*\d*)"
 	reSIGPTRN = r'(“(?:[^"]*)"|[^,=]*)(,|=|$)'  #r"(?:[=|\,])*(\d+\.*\d*)"  # numbers csv
-	minEventInterval = 120
+	minEventInterval = 120	# only allow trigger of same event once every x s
 	
 	def __init__(self):
 		self._eventDetect={}
-		self._signalDef={}
-		self._handlers={}
-		self._occurances={}
-		logger.info('settings signaller for %s' % self)
+		self._signalDef={}	# from config
+		self._handlers={}		# callback functions for handling event
+		self._occurances={}  # last occurance time for qid event
+		logger.info('creating signaller for %s' % self)
 	
 	def __repr__(self):
 		return '%s with %s' % (type(self).__name__,['%s' % hnd for hnd in self._handlers])
 
 	def setSignalDef(self, requester, qid, defstr):
-		''' if qid occurs then signal will be called to do defstr '''
-		sdef=defstr.split('->')
-		if len(sdef)>1:
-			self._eventDetect[qid]=sdef[0]
-		self._signalDef[qid] = sdef[-1]
-		logger.info('signal %s on detection ch:%s of %s' % (defstr,qid,requester))
+		''' if qid occurs then signal will be called to do defstr =
+			 trgqid=trgval,trgprop,trgdur e.g.  "600=0.2,zounds/37.wav" or "410=1,5,0.8" '''
+		#sdef=defstr.split('->')
+		#if len(sdef)>1:
+		#	self._eventDetect[qid]=sdef[0]
+		self._signalDef[qid] = defstr # sdef[-1]
+		logger.info('do "%s" on detection ch:%s of %s' % (defstr,qid,requester))
 		
 	def checkEvent(self, qid, qval):
 		''' check loaded qid whether it arms an event. todo check qval for something in def '''
+		active = False
 		if qid in self._eventDetect:
 			logger.warning('TODO: checking qid:%s with %s for having %s' % (qid,qval,self._eventDetect[qid]))
+			active=True
+		if qid in self._signalDef:
+			active=True
 		if type(qval) is bool:
 			logger.info('bool event:%d = %s' % (qid,qval))
 			return qval  # only trigger once on motion detect
-		return True
+		return active
 		
 	def signal(self, qid, qval=None):
 		''' qid has occured, now look if a signaldef is attached, then execute it '''
@@ -79,10 +85,10 @@ class signaller(object):
 				logger.warning('event on %s occuring to soon:%s' % (qid,tsince))
 			else:
 				mch = re.compile(signaller.reSIGPTRN).finditer(sdef)
-				if mch :
-					lst =[x.group(1) for x in mch] 
+				if mch:
+					lst =[x.group(1) for x in mch] # all numbers
 					#lst =[float(x) if x.isnumeric() else x for x in lst]
-					lst += [None]*(4-len(lst))
+					lst += [None]*(4-len(lst))  # expand to len 4
 					trgqid,trgval,trgprop,trgdur = lst[:4]
 					trgqid=int(trgqid)
 					#else:
@@ -91,9 +97,12 @@ class signaller(object):
 					for hnd,cb in self._handlers.items():  # check all handlers till acq
 						if cb(trgqid, trgval, trgprop, trgdur):  # set_state
 							self._occurances[qid] = datetime.datetime.now()
+							logger.info('event with:%s handled by %s' % (qid,hnd))
 							break
 					else:
 						logger.warning('qid -> trg not handled:%s -> %s' % (qid,sdef))
+				else:
+					logger.info('qid:%s no match in %s' % (qid,sdef))
 		else:
 			#logger.warning('qid %s has no event handler' % qid)
 			pass
@@ -109,11 +118,12 @@ class signaller(object):
 		loop =asyncio.get_event_loop()
 		task=loop.create_task(eventListenerCoro)
 		logger.info('created events task from %s task:%s on:%s' % (handler,task,loop))
-		time.sleep(5)
+		time.sleep(1)
 
 class sampleCollector(object):
-	""" base class for collection of sampling quantities """
-	signaller = None # each sampler will have its own signaller set by childs
+	""" base class for collection of sampling quantities; 
+	    typically a device collecting multiple samples is a derived sampleCollector """
+	signaller = None # each sampler will have its own statesetter in the signaller set by childs
 	objCount=0
 	dtStart = datetime.datetime.now()
 	@property
@@ -157,6 +167,8 @@ class sampleCollector(object):
 		if hasattr(self, 'eventListener'):  # may be defined in ancester
 			sampleCollector.signaller.registerEventSource(forName, self.eventListener(signaller=sampleCollector.signaller))
 			logger.info('registered eventListener for %s on %s' % (forName,sampleCollector.signaller))
+		else:
+			logger.info('no eventListener for %s' % forName)
 	
 	def defServices(self,quantitiesConfig):
 		''' compute dict of recognised services from quantities config => self._servmap '''
@@ -247,7 +259,7 @@ class sampleCollector(object):
 		return self.serving(qid, sm.ADR)
 
 	def qIsCounting(self, qid):
-		''' is not analog but just counter '''
+		''' is not analog but just an incrementing counter '''
 		return self.qtype(qid) in qCOUNTING
 	def qid(self,devadr,typ=None):
 		''' search for qkey of quantity having devadr and or typ '''
@@ -408,7 +420,7 @@ class sampleCollector(object):
 	async def eventListener(self, signaller):
 		""" virtual: to be overriden; should wait indefinitely for events e.g. on webSocket
 		"""
-		logger.info('%s waiting for events in eventListener' % self.name)
+		logger.info('%s waiting for events in eventListener to:%s' % (self.name, signaller))
 		#signaller.signal(qid, val)
 		
 		
