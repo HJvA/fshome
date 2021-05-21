@@ -3,6 +3,7 @@
 *.out
 *.state
 fs200.json
+secret.py
 obsolete/
 /log/*
 /accessories/ifttt/*
@@ -13,3 +14,4 @@ obsolete/
 /accessories/netgear/wndr.py
 /setup/rclone.txt
 /config/*
+/inkplate/test/*

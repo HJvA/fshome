@@ -397,7 +397,7 @@ class sampleCollector(object):
 		else:
 			rec = self.dbStore.fetchlast(quantity)
 			if rec:
-				qval = rec[qCNT]
+				qval = rec['numval']  #[qCNT]
 		return qval
 		
 	def isUpdated(self, quantity):

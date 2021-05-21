@@ -15,6 +15,15 @@ Sections
 ### Developers
 ### Confinement
 -->
+## [1.4.5] - 2021-05-16
+### Added
+- inkplate display now using micropython in native mode using restfull fshome api
+- inkplate displays actual graph of data retrieved over network from fshome server
+- micropython on inkplate measuring temperature using onewire sensor
+- restfull api extended to PUT quantity value in fshome database
+- grtls.py modified/added to support micropython time related functions 
+- secret.py (to be created yourself) containing password definitions etc  
+
 ## [1.4.4] - 2021-04-11
 ### Added
 - inkplate peripheral test (e-paper display handled on seperate raspberry)

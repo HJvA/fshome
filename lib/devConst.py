@@ -49,7 +49,7 @@ DEVT ={
 qCOUNTING = [10,11,12,15,44]  # quantity counting types
 #colour for a quantity in graphs etc
 strokes={0:"#1084e9",1:"#a430e9",5:"#90e090",10:"#c060d0",20:"#c080f0",21:"#a0d0f0", 22:"#f06040",11:"#f080d0",12:"#f0a0d0",13:"#f0c0d0",14:"#f0e0d0",15:"#d0e0d0",
-   40:"#10b4fa",41:"#10f4e9",44:"#20a4e9"}
+   40:"#10d4fa",41:"#10f4f9",44:"#20a4e9"}
 
 SIsymb = {  # symbols and units
 	0:("T","°C"),

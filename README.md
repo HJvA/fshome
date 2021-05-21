@@ -70,6 +70,7 @@ WNDR (netgear WNDR4300 router) reporting LAN traffic. Either "rxToday" or "rxYes
 
 ### Inkplate
 For the moment the inkplate is connected to a stand alone raspberry, and the inkplate operates in peripheral mode. this means the raspberry is querying the fshome database (using a rest api over the network) and builds an inkplate screen by sending some serial commands to the inkplate.
+Now the inkplate is running micropython, on its esp32 microcontroler, and builds the display itself, getting data from the fshome restfull api. The inkplate also captures a onewire temperature sensor, and sends the results to the fshome server.
 
 ## Installation <a name="Installation"></a>
 
@@ -85,6 +86,14 @@ git submodule init
 git submodule update --depth=1  
 pip3 install aiohttp  
 ```  
+
+create a script 'secret.py' having the following definitions:
+```python
+SSID = 'your wifi ssid'  
+PASSWORD = 'your wifi password'  
+IP = '192.168.1.20'  
+ROUTPWD = "your router admin password"  
+```
 
 ### fs20
 When using the fs20 devices, connect the CUL transceiver to a USB port of your Raspberry. Have the CUL transceiver flashed with the latest firmware from <http://culfw.de>. Assure that ```/dev/ttyACM0``` appears on your system (it represents a serial port used for the CUL). Maybe you should enable it using raspi-config.
@@ -227,5 +236,6 @@ The BLE AIOS server project : <https://github.com/HJvA/BLE-automation>
 The deCONZ API for the Zigbee gateway: <https://dresden-elektronik.github.io/deconz-rest-doc>
 The adafruit CircuitPython tools <https://learn.adafruit.com/circuitpython-on-raspberrypi-linux/installing-circuitpython-on-raspberry-pi>
 The soundcard driver for the waveshare wm8960 <https://github.com/pguyot/wm8960>  
-An electronic paper screen from e-radionica <https://inkplate.io/getting-started/>  
+An electronic paper screen from e-radionica <https://inkplate.io/getting-started/> 
+
 

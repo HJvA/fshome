@@ -81,6 +81,7 @@ def add_WNDR_to_bridge(bridge, config=cnfFile):
 	bridge.add_sampler(sampler, conf.itstore)
 
 if __name__ == "__main__":
+	import secret
 	logger = logging.getLogger()
 	hand=logging.StreamHandler()
 	hand.setLevel(logging.DEBUG)
@@ -109,7 +110,7 @@ if __name__ == "__main__":
    #"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 	"dbFile": '~/fs20store.sqlite',
 	"host": '192.168.1.1',
-	"pwd": 'har'
+	"pwd": secret.ROUTPWD
    }
 	conf = devConfig(cnfFile)
 	conf.itstore = QCONF

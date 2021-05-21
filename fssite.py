@@ -23,7 +23,7 @@ from lib.grtls import julianday,unixsecond,prettydate,SiNumForm
 
 __copyright__="<p>Copyright &copy; 2019,2021, hjva</p>"
 TITLE=r"fshome quantity viewer"
-CONFFILE = "./fs20.json"
+CONFFILE = "./config/fs20.json"
 dbfile = None # '~/fs20store.sqlite'
 TPL='static/fsapp.tpl'
 COOKIE="FSSITE_" + socket.gethostname()
@@ -36,19 +36,23 @@ plXMARG=100
 # definition of x time axis in svg graph
 # ndays:(label, bar minutes, grid step days, time ax lbl format)
 # problem having these unicode chars recognizing choice response
-tmBACKs={ 5:(u'\u251C 5days \u2524',20,1,'%a'), 
-	30.44:(u'\u251C 1mnth \u2524',6*60,7,'%V'), 
-	182.6:(u'\u251C 6mnth \u2524',24*60,30.44,'%b'), 
-	365.25:(u'\u251C 1yr \u2524',2*24*60,30.44,'%b') }
-tmBACKs={0.2:(u'5hr',5,0.0417,'%H'),
+tmBACKs={ 5:(u'\u251C 5days \u2524',20,1,'{:%d}'), 
+	30.44:(u'\u251C 1mnth \u2524',6*60,7,'{:%V}'), 
+	182.6:(u'\u251C 6mnth \u2524',24*60,30.44,'{:%b}'), 
+	365.25:(u'\u251C 1yr \u2524',2*24*60,30.44,'{:%b}') }
+tmBACKs={0.2:(u'5hr',5,0.0417,'{:%H}'),
    1.0:(u'1day',15,0.25,'#j4'),  #'%H:%M'), 
-	5.0:(u'5days',20,1,'%a'),
-	30.44:(u'1mnth',6*60,7,'wk%V'), 
-	182.6:(u'6mnth',24*60,30.44,'%b'), 
-	365.25:(u'1yr',2*24*60,30.44,'%b') }
+	5.0:(u'5days',20,1,'{:%d}'),
+	30.44:(u'1mnth',6*60,7,'wk{:%V}'), 
+	182.6:(u'6mnth',24*60,30.44,'{:%b}'), 
+	365.25:(u'1yr',2*24*60,30.44,'{:%b}') }
 app =bottle.Bottle()
 bottle.debug(False)
 dbStore=None
+
+bottle.response.headers['Content-Type'] = 'application/json'
+bottle.response.headers['Cache-Control'] = 'no-cache'
+
 
 def typnames(devTyps):
 	''' convert DEVT id numbers to their name '''
@@ -125,26 +129,70 @@ def cursorhandler():
 	logger.info("cursor %s at %s " % (rec,prettydate(jd)))
 	#logger.info("curs post:%s" % bottle.request.body.read()) 
 	return dict(dd=prettydate(jd),jdtill=jd,evtDescr='curs')
-
-@app.get('/quantity')
-def quantity_value():
+	
+	
+@app.get('/lastval')
+def quantity_lastval():
 	''' rest api for getting averaged quantity values from database
-	e.g. http://192.168.1.20:8080/quantity?qkey=401&ndays=0.2 
+	e.g. http://192.168.1.20:8080/quantityact?qkeys=[401]
 	will return last results of quantity 401 from database '''
-	qkey =  int(bottle.request.query.qkey)
-	ndays = float(bottle.request.query.ndays or '0.2')
-	avginterval = float(bottle.request.query.interval or '5') # averaging interval in minutes
-	bottle.response.headers['Content-Type'] = 'application/json'
-	bottle.response.headers['Cache-Control'] = 'no-cache'
-	recs = dbStore.fetchiavg(qkey,tstep=avginterval,daysback=ndays,jdend=None)
-	if recs:
-		jdlast = recs[-1][0]
-		#logger.info('quantity request:%s' % bottle.request.params.items())
-		return json.dumps({'qval': [rec[1] for rec in recs], 'jdlast':jdlast})
-	else:
-		logger.warning('no quantity results for %s' % bottle.request.body)
-		return '{}'
+	recs={}
+	qkeys = bottle.request.query.qkeys
+	logger.info('lastval get qkeys={}='.format(qkeys))
+	if qkeys:
+		qkeys = json.loads(qkeys)
+		for qk in qkeys:
+			dbres = dbStore.fetchlast(qk)
+			if dbres:
+				logger.info("db:qk:{} last:{}".format(qk,dbres))
+				recs[qk] = dbres['numval']  # json.dumps(dbres)
+	return '{}'.format(recs)
 
+@app.get('/somevals')
+def quantity_somevals():
+	''' rest api for getting averaged quantity values from database
+	e.g. http://192.168.1.20:8080/quantity?qkeys=[401,403]&ndays=0.2 
+	will return last results of quantity 401 from database '''
+	recs={}
+	qkeys = bottle.request.query.qkeys
+	logger.info('somevals get qkeys={}='.format(qkeys))
+	if qkeys:
+		qkeys = json.loads(qkeys)
+		ndays = float(bottle.request.query.ndays or '0.2')
+		avginterval = float(bottle.request.query.interval or '5') # averaging interval in minutes
+		#bottle.response.headers['Content-Type'] = 'application/json'
+		#bottle.response.headers['Cache-Control'] = 'no-cache'
+		
+		for qk in qkeys:
+			dbres = dbStore.fetchiavg(qk,tstep=avginterval,daysback=ndays,jdend=None)
+			if dbres:
+				recs[qk] = [rec[1] for rec in dbres]
+				recs[qk*10] = [rec[0]-2400000.5 for rec in dbres]  # MJD
+				jdlast = dbres[-1][0]
+				logger.info('somevals request:{}={}, {}'.format(qk,recs[qk*10],recs[qk]))
+				#logger.info('quantity request:%s' % bottle.request.params.items())
+				#return json.dumps({'qval': [rec[1] for rec in recs], 'jdlast':jdlast})
+			else:
+				logger.warning('no quantity results for %s' % bottle.request.body)
+				#return '{}'
+	return '{}'.format(recs)
+	return '{'+'"qvals":{}'.format(recs)+'}'
+
+@app.put('/qsave')
+def quantity_put():
+	try:
+		#qkey = bottle.request.params.get('qkey')
+		qkey=int(bottle.request.query.qkey)
+		if qkey:
+			dbStore.additem(qkey,'Tpin','fsRest',0)
+		qval=float(bottle.request.query.qval)
+		#data = json.load(utf8reader(bottle.request.body))
+		logger.info('qval put:{}={}'.format(qkey,qval))
+		dbStore.logi(qkey,qval)
+	except:
+		raise ValueError
+				
+	
 @app.post('/menu', method="POST")
 def formhandler():
 	''' Handle form submission '''
@@ -233,7 +281,7 @@ def buildLbls(vmin,vmax, nr):
 		return [SiNumForm(x) for x in lst]  #   ["{:5.2g}".format(lbl) for lbl in lst]
 	return []
 
-def bld_dy_lbls(jdats, form="%a"):
+def bld_dy_lbls(jdats, form="{}"):
 	''' date interval labels '''
 	if len(jdats)==0:
 		return [""]
@@ -399,11 +447,15 @@ if __name__ == '__main__':
 		dbStore.sources(minDaysBack=5)
 		#logger.info("statistics:%s" %  dbStore.statistics(5)) # will get list of quantities and sources
 		logger.info('quantities:%s' % dbStore.items)
+		for qk in dbStore.items:
+			rec = dbStore.fetchlast(qk)
+			logger.info("qkey:{}={}".format(qk,rec))
 		if config.hasItem('tailScale'):
 			ip = config.getItem('tailScale')  # ip accessible by world, issued by tailScale
-		else: # ip of localhost
+		else: # ip of listening host
 			ip=socket.gethostbyname(socket.gethostname())
 			ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
+		ip = '0.0.0.0'  # Pass 0.0.0.0 to listens on all interfaces including the external one
 		port = int(os.environ.get('PORT', 8080))
 		app.run(host=ip, port=port, debug=False, reloader=False)
 	finally:

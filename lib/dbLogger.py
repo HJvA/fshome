@@ -213,12 +213,20 @@ class sqlLogger(txtLogger):
 		 
 	
 	def fetchlast(self, ikey):
-		''' '''
-		sql = "SELECT ddJulian AS dd,numval,source,type " \
-			"FROM logdat,quantities " \
-			"WHERE ID=quantity AND quantity=? AND " \
-			"ddJulian=(SELECT MAX(ddJulian) FROM logdat WHERE quantity=?) LIMIT 1;"
-		return self.execute(sql, (ikey,ikey))[0]
+		''' 
+		sql = "SELECT ddJulian AS dd,numval,source,type,qu.name,qt.unit " \
+			"FROM logdat AS ld,quantities AS qu,quantitytypes AS qt " \
+			"WHERE qu.ID=ld.quantity AND ld.quantity=? AND qt.ID=qu.type " \
+			"AND ddJulian=(SELECT MAX(ddJulian) FROM logdat WHERE quantity=?) LIMIT 1;"
+		'''
+		sql = "select ddJulian,numval,vq.name,source,vq.type,vq.unit " \
+				"from logdat as ld inner join vwQuantities as vq on vq.ID=quantity " \
+				"where quantity=? AND ddJulian in (select MAX(ddJulian) from logdat WHERE quantity=?)"
+		recs = self.execute(sql, (ikey,ikey))
+		if recs:
+			rec = recs[0]
+			return {'ddJulian':rec[0],'name':rec[2],'numval':rec[1], 'source':rec[3],'type':rec[4],'unit':rec[5]}
+		return None
 	
 	def fetchavg(self, name, tstep=30, daysback=100, jdend=None, source=None):
 		''' fetch logged messages from the log store 
@@ -240,8 +248,8 @@ class sqlLogger(txtLogger):
 		if jdend is None:
 			jdend=julianday()
 		sql = "SELECT ROUND(ddJulian*?)/? AS dd,AVG(numval) AS nval,COUNT(*) AS cnt,source,type " \
-			"FROM logdat,quantities " \
-			"WHERE active AND ID=quantity AND ddJulian>? AND ddJulian<? %s " \
+			"FROM logdat AS ld,quantities AS qu " \
+			"WHERE active AND qu.ID=ld.quantity AND ddJulian>? AND ddJulian<? %s " \
 			"GROUP BY quantity,source,dd " \
 			"ORDER BY ddJulian;" % (where,)
 		try:
@@ -289,7 +297,9 @@ class sqlLogger(txtLogger):
 
 	def statistics(self, ndays=10, flds="source,quantity,name,type"):
 		''' queries database for quantity prevalence. keeps list of them internaly '''
-		sql = "SELECT %s,COUNT(*) as cnt,AVG(numval) as avgval,MIN(ddJulian) jdFirst FROM logdat,quantities WHERE ID=quantity AND ddJulian>julianday('now')-%d GROUP BY %s ORDER BY ID;" % (flds,ndays,flds)
+		sql = "SELECT %s,COUNT(*) as cnt,AVG(numval) as avgval,MIN(ddJulian) jdFirst " \
+			"FROM logdat,quantities WHERE ID=quantity AND ddJulian>julianday('now')-%d " \
+			"GROUP BY %s ORDER BY ID;" % (flds,ndays,flds)
 		recs= self.execute(sql)
 		for rec in recs:
 			if 'name' in rec and 'source' in rec:
