@@ -7,3 +7,9 @@
 [submodule "bluepy"]
 	path = submod/bluepy
 	url = https://github.com/IanHarvey/bluepy
+[submodule "submod/eufy/"]
+	path = submod/eufy/
+	url = https://HJvA@github.com/FuzzyMistborn/python-eufy-security
+[submodule "submod/eufy"]
+	path = submod/eufy
+	url = https://HJvA@github.com/FuzzyMistborn/python-eufy-security
