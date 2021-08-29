@@ -15,6 +15,13 @@ Sections
 ### Developers
 ### Confinement
 -->
+## [1.4.6] - 2021-08-26
+### Added
+- inkplate display updated sync time & timezone
+- openweather reading o3 pm2_5 pm10 aqi ... for location..
+### Changed 
+- grtls.py having micropython tools derived from tls.py
+
 ## [1.4.5] - 2021-05-16
 ### Added
 - inkplate display now using micropython in native mode using restfull fshome api

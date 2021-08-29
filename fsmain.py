@@ -17,6 +17,7 @@ from accessories.fs20.fs20_hap import add_fs20_to_bridge
 from accessories.BLEAIOS.aiosHap import add_AIOS_to_bridge
 from accessories.netgear.netgear_HAP import add_WNDR_to_bridge
 from accessories.sounder.sounds import add_SND_to_bridge
+from accessories.openweather.openweather_HAP import add_WeaMap_to_bridge
 from lib.tls import get_logger
 
 __maintainer__ = "Henk Jan van Aalderen"
@@ -28,7 +29,7 @@ logger = get_logger(__file__, levelConsole=logging.INFO, levelLogfile=logging.IN
 logger.info('with HAP-python %s' % pyHAP_version)
 
 loop = asyncio.get_event_loop()  # unique loop for application
-driver = AccessoryDriver(port=51826,loop=loop) # prevent renewing loop 
+driver = AccessoryDriver(port=51826, loop=loop) # prevent renewing loop 
 bridge= fsBridge(driver, 'fsBridge')
 
 add_SND_to_bridge(bridge,config=None)
@@ -44,6 +45,8 @@ if os.path.isfile("config/p1DSMR.json"):
 	add_p1DSMR_to_bridge(bridge, config="./config/p1DSMR.json")
 if os.path.isfile("config/WNDR.json"):
 	add_WNDR_to_bridge(bridge, config="./config/WNDR.json")
+if os.path.isfile("config/openweather.json"):
+	add_WeaMap_to_bridge(bridge, config="./config/openweather.json")
 
 driver.add_accessory(accessory=bridge)
 

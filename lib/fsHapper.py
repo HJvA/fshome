@@ -39,10 +39,11 @@ class fsBridge(Bridge):
 			logger.warning('sampler %s allready in fsBridge' % sampler.name)
 		fsBridge._samplers[sampler.name] = sampler
 		for quantity,rec in quantities.items():
-			if 'typ' in rec:
-				typ=rec['typ']
-			else:
+			if not isinstance(rec,dict):
 				typ=DEVT['unknown']
+			else:
+				if 'typ' in rec:
+					typ=rec['typ']
 			if type(quantity) is str and quantity.isnumeric():
 				quantity = int(quantity)
 			if typ<90:

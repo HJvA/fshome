@@ -132,10 +132,11 @@ class hueSampler(DBsampleCollector):
 
 if __name__ == "__main__":
 	import asyncio
+	import secret
 	logger = get_logger(__file__,logging.INFO,logging.DEBUG) 
 	conf={	# to be loaded from json file
-		"hueuser":"",
-		"huebridge": "192.168.1.24",	
+		"hueuser":secret.keyDECONZ,
+		"huebridge": "192.168.1.20",	
 		#"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 		"dbFile": '~/fs20store.sqlite'
 	}

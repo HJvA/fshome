@@ -130,13 +130,13 @@ class sampleCollector(object):
 	def manufacturer(self):
 		return self.name
 
-	def __init__(self, maxNr=120,minNr=2,minDevPerc=5.0,name=None):
+	def __init__(self, maxNr=120,minNr=2, minDevPerc=5.0, name=None):
 		self.maxNr = maxNr
 		self.minDevPerc = minDevPerc
 		self.minNr = minNr
 		self.average={}
-		self.lastval={}
-		self.actual={}
+		self._lastval={}
+		self._actual={}
 		self.minqid=None	# allow unknown quantities to be created if not None
 		self._servmap={}
 		sampleCollector.objCount+=1
@@ -145,8 +145,8 @@ class sampleCollector(object):
 		else:
 			self.name=name
 		logger.info('%s sampler minNr=%d maxNr=%d minDevPerc=%.5g' % (self.name,minNr,maxNr,minDevPerc))
-		self.updated=set() # quantities that have been updated and not accepted yet
-		self.tAccept = {}
+		self._updated=set() # quantities that have been updated and not accepted yet
+		self._tAccept = {}
 		#self.dtStart = datetime.datetime.now()
 		#self.defSignaller()
 
@@ -277,13 +277,13 @@ class sampleCollector(object):
 		return None
 
 	def sinceAccept(self,qid=None):
-		''' time since qid was last accepted or least from all qs
+		''' time diff [s] since qid was last accepted or least from all qs
 		'''
-		if qid in self.tAccept:
-			return time.time()-self.tAccept[qid]
-		if len(self.tAccept)>0:
+		if qid in self._tAccept:
+			return time.time()-self._tAccept[qid]
+		if len(self._tAccept)>0:
 			tmn = 0.0
-			for qid,t in self.tAccept.items():
+			for qid,t in self._tAccept.items():
 				if t<tmn:
 					tmn=t
 			return time.time()-tmn
@@ -291,13 +291,13 @@ class sampleCollector(object):
 			return 999
 	
 	def sinceStamp(self,qid=None):
-		''' time since previous sample of qid '''
-		if qid and qid in self.actual:
-			trun = time.time() - self.actual[qid][qSTMP]
+		''' time diff [s] since previous sample of qid '''
+		if qid and qid in self._actual:
+			trun = time.time() - self._actual[qid][qSTMP]
 		elif qid and qid in self.average:
 			trun = time.time() - self.average[qid][qSTMP]
-		elif self.actual and qid is None:
-			trun = time.time() - min([qv[qSTMP] for q,qv in self.actual.items()])
+		elif self._actual and qid is None:
+			trun = time.time() - max([qv[qSTMP] for q,qv in self._actual.items()])
 		else:
 			trun =None
 		return trun
@@ -325,7 +325,7 @@ class sampleCollector(object):
 			logger.warning("quantity out of range %s" % quantity)
 			return
 		else:
-			self.actual[quantity] = {qVAL:val, qSTMP:tstamp}
+			self._actual[quantity] = {qVAL:val, qSTMP:tstamp}
 
 		if sampleCollector.signaller:
 			if sampleCollector.signaller.checkEvent(quantity, val):  # handle event by polling
@@ -343,7 +343,8 @@ class sampleCollector(object):
 			avg = self.average[quantity][qVAL] / n
 			if (n>=self.minNr and abs(val-avg)>abs(avg*self.minDevPerc/100)) or n>=self.maxNr:
 				logger.info('(%s) n=%d avg=%g val=%s quantity=%s devPrc=%g>%g tm=%s since=%.6g' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, self.minDevPerc, prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
-				self.accept_result((tstamp+self.average[quantity][qSTMP])/2, quantity)
+				tm = (tstamp+self.average[quantity][qSTMP])/2
+				self.accept_result(tm, quantity)
 				self.average[quantity] = [val,1,tstamp]
 			else:
 				self.average[quantity][qVAL] += val
@@ -366,9 +367,9 @@ class sampleCollector(object):
 			rec=self.average.pop(quantity)
 			qval = rec[qVAL]/rec[qCNT]
 		if qval:
-			self.lastval[quantity] = qval
-			self.updated.add(quantity)
-			self.tAccept[quantity] = time.time()
+			self._lastval[quantity] = qval
+			self._updated.add(quantity)
+			self._tAccept[quantity] = time.time()
 		#logger.debug("accepted %s=%s tm=%s n=%d" % (quantity, qval, prettydate(julianday(tstamp)), rec[1]))
 		return qval
 		
@@ -390,8 +391,8 @@ class sampleCollector(object):
 			else:
 				qval = rec[qVAL]/rec[qCNT]
 			#self.updated.discard(quantity)
-		elif quantity in self.actual:
-			qval = self.actual[quantity][qVAL]
+		elif quantity in self._actual:
+			qval = self._actual[quantity][qVAL]
 		elif self.qIsCounting(quantity):
 			qval=0	# initial val for HAP
 		else:
@@ -407,15 +408,15 @@ class sampleCollector(object):
 			#logger.debug("qcnt:%s trun=%s" % (quantity,trun))
 			if trun > 60:  # assume counting quantity updated
 				rec =self.average.pop(quantity)
-				self.lastval[quantity] = 0
-				self.updated.add(quantity)
+				self._lastval[quantity] = 0
+				self._updated.add(quantity)
 				logger.debug('assume counting qid=%s rec=%s' % (quantity,rec))
-		return quantity in self.updated
+		return quantity in self._updated
 		
 	def get_last(self, quantity):
 		''' last accepted and averaged result '''
-		self.updated.discard(quantity)
-		return self.lastval[quantity]	
+		self._updated.discard(quantity)
+		return self._lastval[quantity]	
 		
 	async def eventListener(self, signaller):
 		""" virtual: to be overriden; should wait indefinitely for events e.g. on webSocket

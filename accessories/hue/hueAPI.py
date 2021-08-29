@@ -600,6 +600,7 @@ async def main(ipadr,user,sensors,lmp):
 	
 if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	#from lib import tls
+	import secret
 	logger = logging.getLogger()
 	[logger.removeHandler(h) for h in logger.handlers[::-1]] # handlers persist between calls
 	logger.addHandler(logging.StreamHandler())	# use console
@@ -611,7 +612,7 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 
 	CONF={	# defaults when not in config file
 		#"hueuser": "",
-		"hueuser":  ""
+		"hueuser":  secret.keySIGNIFY,
 		#"huebridge": "192.168.1.21"
 		"huebridge": "192.168.1.20"
 	}

@@ -1,8 +1,9 @@
 """ small general purpose helpers """
 
-import sys,os
+import sys,os,math
 #import logging
 import re
+
 if sys.implementation.name == "micropython":
 	import utime as time
 	import machine
@@ -16,6 +17,8 @@ else:
 		''' time in s since 1970-1-1 midnight utc'''
 		return (utcnow - epoch).total_seconds()
 
+_MJD = float(2400000.5)
+
 def localtime(julianday):
 	""" time struct incl DST and TZ """
 	return time.localtime(unixsecond(julianday))
@@ -23,40 +26,94 @@ def localtime(julianday):
 def unixsecond(julianday):
 	''' convert julianday (UTC) to seconds since actual unix epoch '''
 	if sys.implementation.name == "micropython":
-		return int((julianday - 2440587.5 - 10957) * 86400.0)
+		return int((julianday - 2440587.5 - 10957.5) * 86400.0)  #  (2000-1970)*365.25
 	else: 
 		return (julianday - 2440587.5) * 86400.0
 
-def julianday(tunix = None, MJD=False):
-	''' convert unix time i.e.  to julianday i.e. days since noon on Monday, January 1 4713 BC '''
+def julianday(tunix = None, isMJD=False):
+	''' convert unix time i.e.  to julianday i.e. days since noon on Monday, January 1 4713 BC
+		tunix can be either a float as returned by time.time() or a tuple as returned by 	'''
 	if tunix is None:
 		if sys.implementation.name == "micropython":
-			tunix = machine.RTC().datetime() # tuple (Y,M,D,H,M,S,,,)
+			tunix = list(machine.RTC().datetime()) # tuple (Y,M,D,H,M,S,,,)
+			del tunix[3]
 		else:
 			tunix = time.time()   # float seconds since 00:00:00 Thursday, 1 January 1970
-		return julianday(tunix)
-	elif isinstance(tunix ,(tuple,list)):
-		_io=1 if sys.implementation.name == "micropython" else 0
-		print("tupnow={}".format(tunix))
-		Y=tunix[0]
-		M=tunix[1]
-		D=tunix[2]
-		JDN = float(0)
-		if MJD:
-			JDN -= 2400000.5
-		JDN += (1461 * (Y + 4800 + (M -14)//12))//4 
-		JDN += (367 *(M - 2 - 12 * ((M - 14)//12)))//12 
-		JDN -= (3 * ((Y + 4900 + (M - 14)//12)//100))//4 
+		#return julianday(tunix, isMJD)
+	if isinstance(tunix ,(tuple,list)):
+		#_io=1 if sys.implementation.name == "micropython" else 0
+		#print("tupjd={}".format(tunix))
+		Y,M,D = tunix[0:3]
+		JDN = -_MJD if isMJD else 0.0
+		mm = -1 if M<=2 else 0  #  math.trunc((M-14)/12)  # 0 or -1
+		JDN += (1461 * (Y + 4800 + mm))//4 
+		#if isMJD:
+		#	JDN -= _MJD
+		JDN += (367 *(M - 2 - 12 * mm)) //12 
+		JDN -= (3 * ((Y + 4900 + mm)//100))//4 
 		JDN += D - 32075
-		# tunix[3] is wday
-		JDN += (tunix[3+_io]-12)/24
-		JDN += tunix[4+_io]/1440
-		JDN += tunix[5+_io]/86400
+		#H,MM,S=tunix[4:7] if sys.implementation.name == "micropython" else tunix[3:6]
+		H,MM,S=tunix[3:6]
+		#if isMJD:
+		#	JDN += (H)/24
+		#else:
+		JDN += (H-12)/24
+		JDN += MM/1440
+		JDN += S/86400
+		print('Y-M-D H:M:S {}-{}-{} {}:{}:{}'.format(Y,M,D,H,MM,S))
 		return JDN 
-	if MJD:
-		return (tunix / 86400.0) + 40587.0
-	return (tunix / 86400.0 ) + 2440587.5  # epoch 1-1-1970 float
+	elif _S_DELTA:
+		tunix += _S_DELTA
+	if isMJD:
+		return (tunix / 86400.0) + 40587.0  # epoch midnight on November 17, 1858.
+	return (tunix / 86400.0 ) + 2440587.5  # epoch noon on Monday, January 1 4713 BC
 
+"""
+
+"""
+	
+def JulianTime(jdn, isMJD=False):
+	""" get (Y M D H M S) from julianday number see https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html """
+	if isMJD:
+		F, I = math.modf(jdn)
+		A = math.trunc((I + 532784.25)/36524.25)  # 2400000.5 - 1867216.25 = 532784.25
+		I += 2400001
+		#if F>0.5:
+		#	I+=1
+	else:
+		jdn+=0.5 # => midnight
+		F, I = math.modf(jdn)
+		A = math.trunc((I - 1867216.25)/36524.25)
+	if I > 2299160:
+		B = I + 1 + A - math.trunc(A / 4.)
+	else:
+		B = I
+	C = B + 1524
+	D = math.trunc((C - 122.1) / 365.25)
+	E = math.trunc(365.25 * D)
+	G = math.trunc((C - E) / 30.6001)
+	day = C - E + F - math.trunc(30.6001 * G)
+	if G < 13.5:
+		month = G - 1
+	else:
+		month = G - 13
+	if month > 2.5:
+		year = D - 4716
+	else:
+		year = D - 4715	
+	hour = F % 1 *24
+	minute = hour % 1 * 60
+	second = minute % 1 * 60	
+	return year,month,int(day),int(hour),int(minute),second
+	
+	
+	
+def weekday(jd, isMJD=False):
+	""" 0=Sunday """
+	if isMJD:
+		return (jd+3) % 7
+	return (jd+1.5) % 7
+	
 def prettydate(JulianDay, format="{:%d %H:%M:%S}"):
 	''' generates string representation of julianday '''
 	if not JulianDay:
@@ -76,7 +133,7 @@ def prettydate(JulianDay, format="{:%d %H:%M:%S}"):
 		return ('after noon','evening','night','morning')[fd]	
 	#print("tobj:{}".format(tobj))
 	if sys.implementation.name == "micropython":
-		return("{} {}:{}:{}").format(tobj[2],tobj[4],tobj[5],tobj[6])
+		return("{} {:02d}:{:02d}:{:02d}").format(tobj[2],tobj[4],tobj[5],tobj[6])
 	return format.format(tobj)
 	return ("{} {}:{}:{}").format(tobj.tm_mday,tobj.tm_hour,tobj.tm_min,tobj.tm_sec)
 	return time.strftime(format, tobj)
@@ -152,18 +209,21 @@ def printCurve(data, height=10, vmax=None, vmin=None, backgndchar=0x2581):
 		print("|%4.3g" % (vmin + (ln)/sf,))
 
 if __name__ == "__main__":
-	#logger = logging.getLogger()
-	#hand=logging.StreamHandler()
-	#hand.setLevel(logging.DEBUG)
-	#logger.addHandler(hand)	
-	# logger = tls.get_logger(__file__,logging.DEBUG,logging.DEBUG)
-	#print('seconds since epoch : %s' % seconds_since_epoch())
-	nw = time.time() + _S_DELTA
+	NAIS = (1961,3,12, 15,10,0,0)
+	jdhj = julianday(NAIS)
+	print(' JD: hj={} = jt:{} on wd:{}'.format(jdhj,JulianTime(jdhj),weekday(jdhj)))
+	jdhj = julianday(NAIS,isMJD=True)
+	print('MJD: hj={} = jt:{} on wd:{}'.format(jdhj,JulianTime(jdhj,isMJD=True),weekday(jdhj,True)))
+	
+	nw = time.time() 
 	jdnow = julianday(nw)
-	jdhj = julianday((1961,3,12,15,15,0))
-	jdt= julianday()
-	print('hj={} now={} jdnow={} jdt={} date={}'.format(jdhj,nw,jdnow,jdt,prettydate(None)))
-	pass
+	jdt = julianday()
+	print('unixnow={} jdnow={} jdt={} wd={} prdate={}'.format(nw,jdnow,jdt,weekday(jdt),prettydate(None)))
+	
+	jdnow = julianday(nw,True)
+	jdt = julianday(isMJD=True)
+	print('MJDnow= jdnow={} jdt={} wd={} jt={}'.format(jdnow,jdt,weekday(jdt,True),JulianTime(jdt,True)))
+	
 else:
 	pass
 	#logger = logging.getLogger(__name__)	# get logger from main program

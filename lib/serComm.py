@@ -109,7 +109,10 @@ class serComm(object):
 					self.buf = rema
 					#logger.debug("interv:%.2f read:%s remains:%d" % (cnt*tres, len(data), len(self.buf)))
 					if decod:
-						return data.decode(decod)
+						try:
+							return data.decode(decod)
+						except UnicodeDecodeError as ex:
+							pass
 					return data
 				elif cnt>0:
 					logger.debug('serdata without termin :%s' % self.buf)

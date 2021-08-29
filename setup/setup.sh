@@ -17,15 +17,15 @@ echo bottle.py >> ./bottle/.git/info/sparse-checkout
 git submodule update --force --checkout bottle
 
 # get HAP-python as submodule
-git clone --depth=1 --no-checkout https://github.com/ikalchev/HAP-python ./HAP-python
+git clone --depth=1 --no-checkout https://github.com/ikalchev/HAP-python ./submod/HAP-python
 git submodule add https://github.com/ikalchev/HAP-python
-git -C ./HAP-python config core.sparsecheckout true
-echo !tests/* >> ./HAP-python/.git/info/sparse-checkout
-echo !docs/* >> ./HAP-python/.git/info/sparse-checkout
-echo !accessories/* >> ./HAP-python/.git/info/sparse-checkout
+git -C ./submod/HAP-python config core.sparsecheckout true
+echo !tests/* >> ./submod/HAP-python/.git/info/sparse-checkout
+echo !docs/* >> ./submod/HAP-python/.git/info/sparse-checkout
+echo !accessories/* >> ./submod/HAP-python/.git/info/sparse-checkout
 #echo "pyhap/">> ./HAP-python/.git/info/sparse-checkout
-echo "/*">> ./HAP-python/.git/info/sparse-checkout
-git submodule update --force --checkout HAP-python
+echo "/*">> ./submod/HAP-python/.git/info/sparse-checkout
+git submodule update --force --checkout submod/HAP-python
 
 # get bluepy as submodule
 git clone --depth=1 --no-checkout https://github.com/IanHarvey/bluepy ./bluepy
@@ -41,6 +41,7 @@ pip3 install .
 
 #symlink to pyhap as HAP-python modules refer to pyhap directly
 ln -s ./HAP-python/pyhap ./pyhap
+ln -s ./submod/eufy/eufy_security ./eufy
 
 # maybe still required for zeroconf package:
 #sudo apt-get install libavahi-compat-libdnssd-dev avahi-utils

@@ -95,7 +95,7 @@ def index(name=TITLE):
 		bottle.redirect('/menu')
 	
 	srcs=list(dbStore.sources())
-	src=srcs[0]
+	src=srcs[0] # default
 	quantIds=[]
 	cookie = bottle.request.get_cookie(COOKIE)
 	if cookie:
@@ -155,7 +155,7 @@ def quantity_somevals():
 	will return last results of quantity 401 from database '''
 	recs={}
 	qkeys = bottle.request.query.qkeys
-	logger.info('somevals get qkeys={}='.format(qkeys))
+	#logger.info('somevals get qkeys={}='.format(qkeys))
 	if qkeys:
 		qkeys = json.loads(qkeys)
 		ndays = float(bottle.request.query.ndays or '0.2')
@@ -166,10 +166,11 @@ def quantity_somevals():
 		for qk in qkeys:
 			dbres = dbStore.fetchiavg(qk,tstep=avginterval,daysback=ndays,jdend=None)
 			if dbres:
+				#recs['nm{}'.format(qk)] = dbStore.qname(qk)
 				recs[qk] = [rec[1] for rec in dbres]
-				recs[qk*10] = [rec[0]-2400000.5 for rec in dbres]  # MJD
+				recs[qk*10] = [round(rec[0]-2400000.5,3) for rec in dbres]  # MJD
 				jdlast = dbres[-1][0]
-				logger.info('somevals request:{}={}, {}'.format(qk,recs[qk*10],recs[qk]))
+				logger.info('somevals request:{},step:{}[min],name:{} ={}, {}'.format(qk, avginterval, dbStore.qname(qk), recs[qk*10],recs[qk]))
 				#logger.info('quantity request:%s' % bottle.request.params.items())
 				#return json.dumps({'qval': [rec[1] for rec in recs], 'jdlast':jdlast})
 			else:
@@ -191,7 +192,7 @@ def quantity_put():
 		dbStore.logi(qkey,qval)
 	except:
 		raise ValueError
-				
+
 	
 @app.post('/menu', method="POST")
 def formhandler():
@@ -202,12 +203,12 @@ def formhandler():
 	else:
 		ip = None
 		
-	logger.info("==== menu handler from %s =====:\n%s" % (ip,bottle.request.body.read())) 
-	selqs = bottle.request.forms.getall('quantities')
-	src=bottle.request.forms.get('source')
-	tbcknm=bottle.request.forms.get('tmback')
+	logger.info("==== form handler menu main %s =====:\n%s" % (ip,bottle.request.body.read())) 
+	selqs = bottle.request.forms.getall('quantities')	# selected quantities
+	src=bottle.request.forms.get('source')					# actual source
+	tbcknm=bottle.request.forms.get('tmback')				# time span # days
 	cursXpos=bottle.request.forms.get('cursorPos')
-	jdtill=bottle.request.forms.get('jdtill')
+	jdtill=bottle.request.forms.get('jdtill')				# time at right axis
 	evtDescr=bottle.request.forms.get('evtDescr')
 	evtData=bottle.request.forms.get('evtData')
 	try:
@@ -274,14 +275,14 @@ def buildHistogram(xdat, ydat, xsize, ysize, xstart,ystart):
 		crv += " Z"
 	return crv
 	
-def buildLbls(vmin,vmax, nr):
-	''' axis labels '''
+def SiNumLbls(vmin,vmax, nr):
+	''' numeric axis labels using Si abreviations '''
 	if nr:
 		lst = [vmin+i*(vmax-vmin)/(nr-1) for i in range(nr)]
 		return [SiNumForm(x) for x in lst]  #   ["{:5.2g}".format(lbl) for lbl in lst]
 	return []
 
-def bld_dy_lbls(jdats, form="{}"):
+def TimeLbls(jdats, form="{}"):
 	''' date interval labels '''
 	if len(jdats)==0:
 		return [""]
@@ -349,7 +350,7 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 			else:
 				crv = buildCurve(jdat,ydat, ndays,vmax-vmin, jdtill-ndays,vmin)
 				qtyp=0
-			ylbls=buildLbls(vmin,vmax,4)
+			ylbls=SiNumLbls(vmin,vmax,4)
 			logger.debug("selq:%s,len:%d,col:%s,ylbls:%s" % (selq,len(jdat),stroke,ylbls))
 			curve=dict(crv=crv, stroke=stroke, ylbls=ylbls, selq=selq, qtyp=qtyp, legend=selq)
 			data.append(curve)
@@ -368,7 +369,7 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 
 	gridlocs= tax_grid(jdtill,ndays,gridstep)
 	xgrid = [round(plXMARG+plWIDTH-(jdtill-jd)*xscl,1) for jd in gridlocs]
-	xlbls=bld_dy_lbls([jd+gridstep/2 for jd in gridlocs[:-1]],lblformat)
+	xlbls=TimeLbls([jd+gridstep/2 for jd in gridlocs[:-1]],lblformat)
 
 	logger.info("chart upd: ndays=%.4g xlbls=%s xgrid=%s" % (ndays,xlbls,xgrid))
 	ret.update(dict(title=TITLE, curves=data, xgrid=xgrid, xlbls=xlbls))
@@ -408,7 +409,7 @@ def redraw(src, selqs, jdtill, ndays=7):
 	for qs in sorted(selqs):
 		if qs in DEVT:
 			typ=DEVT[qs]
-			qkey = dbStore.quantity(src,typ)
+			qkey = dbStore.quantity(src,typ) # might have multiple?
 			if qkey is not None:
 				grQuantIds.add(qkey)
 				if qs=='energy':

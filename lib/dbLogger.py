@@ -341,10 +341,19 @@ class sqlLogger(txtLogger):
 		else:
 			logger.error("unknown quantity :%s at %s" % (iname,source))
 		
-	def additem(self, ikey, iname, isource, itype=None):
+	def additem(self, ikey, iname, isource, itype=None, tname=None, tunit=None):
 		''' add or update a quantity descriptor (will be called automatic for unknown quantities) '''
 		isnew = super().additem(ikey,iname,isource,itype)
-		recs = self.execute('SELECT name FROM quantities WHERE ID=?' ,(ikey,))
+		recs = self.execute('SELECT name FROM quantities WHERE ID=?;' ,(ikey,))
+		if itype:
+			rtyp = self.execute('SELECT name,unit FROM quantitytypes WHERE ID=?;' ,(itype,))
+			if rtyp:
+				if tname and tunit:
+					self.execute('UPDATE quantitytypes SET name=?,unit=? WHERE ID=?;',(tname,tunit,itype))
+				tname = rtyp[0]
+				tunit = rtyp[1]
+			elif tname and tunit:
+				self.execute('INSERT INTO quantitytypes (ID,name,unit) VALUES (%d,"%s","%s");' % (itype,tname,tunit))
 		if recs is None or len(recs)==0:
 			isnew = True
 			if isource is None:
@@ -366,7 +375,6 @@ class sqlLogger(txtLogger):
 			self.execute('UPDATE quantities SET source=? WHERE ID=?', (isource,ikey))
 		if itype:
 			self.execute('UPDATE quantities SET type=? WHERE ID=?', (itype,ikey))
-
 				
 if __name__ == "__main__":		# for testing
 	import random
