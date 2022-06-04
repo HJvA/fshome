@@ -15,7 +15,7 @@ BAS_SVR   = "180f"  #"0000180f-0000-1000-8000-00805f9b34fb"  # battery level
 
 def showChars(svr):
 	''' lists all characteristics from a service '''
-	logger.info('svr %s uuid %s' % (svr,svr.uuid))
+	logger.info('chars from svr %s uuid %s' % (svr,svr.uuid))
 	for ch in svr.getCharacteristics():
 		logger.info("ch %s %s %s" % (str(ch),ch.propertiesToString(),ch.uuid))
 		if ch.supportsRead():

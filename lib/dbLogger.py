@@ -37,6 +37,7 @@ class txtLogger(object):
 		pass
 	
 	def logi(self, ikey, numval, strval=None, tstamp=None):
+		""" store a value of quantity with identifier ikey """
 		if tstamp is None:
 			tstamp=time.time()
 		iname = self.qname(ikey)
@@ -58,6 +59,8 @@ class txtLogger(object):
 	def additem(self, ikey, iname, isource, itype=None):
 		''' adds item type i.e. quantity descriptor '''
 		isnew = ikey not in self.items
+		if isnew:
+			logger.info("new qkey:{}=nm:{},src:{},typ:{}".format(ikey,iname,isource,itype))
 		self.items.update({ikey:(iname,isource,itype)})
 		logger.debug('%slogitem %s,%s,%s with ikey=%s' % ("new " if isnew else "",iname,isource,itype,ikey))
 		return isnew
@@ -295,7 +298,7 @@ class sqlLogger(txtLogger):
 			sql = "INSERT INTO eventsLog (ddJulian,descr) VALUES (?,?);"
 			self.execute(sql, (julDay,evtDescr + " ::%s" % root if root else ""))
 
-	def statistics(self, ndays=10, flds="source,quantity,name,type"):
+	def statistics(self, ndays=10, flds="source,quantity,name,type"):  # its order
 		''' queries database for quantity prevalence. keeps list of them internaly '''
 		sql = "SELECT %s,COUNT(*) as cnt,AVG(numval) as avgval,MIN(ddJulian) jdFirst " \
 			"FROM logdat,quantities WHERE ID=quantity AND ddJulian>julianday('now')-%d " \
@@ -361,7 +364,7 @@ class sqlLogger(txtLogger):
 			else:
 				isource='"%s"' % isource
 			logger.warning('quantities create: %s %s with %s typ %s' % (ikey,iname,isource,itype))
-			self.execute('INSERT INTO quantities (ID,name,source,type,firstseen) ' 
+			self.execute('INSERT INTO quantities (ID,name,source,type,firstseen) ' \
 				'VALUES (%d,"%s",%s,%s,julianday("now"))' % (ikey,iname,isource,'NULL' if itype is None else itype))
 		elif isnew:
 			self.updateitem(ikey, iname, isource, itype)

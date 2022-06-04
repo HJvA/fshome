@@ -2,7 +2,7 @@
 """
 
 # base id numbers for a specific device
-QID={
+qSRC={  # was QID
 	"fs20" : 100,
 	"DSMR" : 300,
 	"AIOS" : 400,
@@ -11,11 +11,12 @@ QID={
 	"WNDR" : 700,
 	"EUFY" : 650,
 	"SND"  : 600,
-	"fsRest":800,
-	"WeaMap":900
+	"fsRest":800,  # inkplate injected with PUT
+	"WeaMap":900   # WeatherMap 
 }
 
 # known device types enumeration
+# type name, qtype
 DEVT ={
 	"temperature":0, # temperature sensor [°C]
 	"humidity":1,  # humidity sensor [%]
@@ -39,7 +40,7 @@ DEVT ={
 	"current":23,	# A
 	"gasFlow":30,	# m3/h
 	"gasVolume":31,# m3
-	"ECO2":40,
+	"ECO2":40,     # derived from TVOC
 	"TVOC":41,
 	"DIGI":44,     # aios digital IO
 	"bytesPs":50,  # bytes per sec
@@ -49,33 +50,71 @@ DEVT ={
 	"AirQualityIdx":70,
 	"Fine particles":71,
 	"Coarse particles":72,
-	"Carbon monoxide":73,
-	"Nitrogen monoxide":74,
-	"Nitrogen dioxide":75,
+	"Carbon monOxide":73,
+	"Nitrogen monOxide":74,
+	"Nitrogen diOxide":75,
 	"Ozone":76,
-	"Sulphur dioxide":77,
+	"Sulphur diOxide":77,
 	"Ammonia":78,
+	"Carbon diOxide":79,
 	"secluded":98, # known device but to be ignored
 	"unknown":99 } # unknown device
-	
+
+def qtName(qTyp):
+	for qnm,qt in DEVT.items():
+		if qTyp==qt:
+			return qnm
+
+#        qkey   qnam    typ   src
+qDEF = { 801 : ("Tpin",   0,  800),
+			803 : ("Tbme",   0,  800),
+			804 : ("CO2",   79,  800),
+			#805 : ("ECO2",  40,  800),
+			802 : ("Hum",    1,  800),
+			806 : ("Pres",   4,  800),
+			807 : ("VOC",   41,  800),
+			808 : ("T117",   0,  800)	}
+qCONF={	# to be loaded from json file
+		#"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
+		"dbFile": '~/fs20store.sqlite',
+		"801":{
+			"name":"Tpin",
+			"typ":0,
+			"devadr":"801",
+			"source":"fsRest",
+			#"aid":-1
+			},
+		"804":{
+			"name":"CO2",
+			"typ":79,
+			"devadr":"804",
+			"source":"fsRest",
+			#"aid":-1
+		}}
+def qSrc(qkey):
+	isrc = qDEF[qkey][2]
+	for src,skey in qSRC.items():
+		if isrc==skey:
+			return src
+
 qCOUNTING = [10,11,12,15,44]  # quantity counting types
 #colour for a quantity in graphs etc
-strokes={0:"#1084e9",1:"#a430e9",5:"#90e090",10:"#c060d0",20:"#c080f0",21:"#a0d0f0", 22:"#f06040",11:"#f080d0",12:"#f0a0d0",13:"#f0c0d0",14:"#f0e0d0",15:"#d0e0d0",
-   40:"#10d4fa",41:"#10f4f9",44:"#20a4e9",70:"#3094d9",71:"#40b469",72:"#50f429"}
+strokes={0:"#1084e9",1:"#a430e9",4:"#706060",5:"#90e090",10:"#c060d0",20:"#c080f0",21:"#a0d0f0", 22:"#f06040",11:"#f080d0",12:"#f0a0d0",13:"#f0c0d0",14:"#f0e0d0",15:"#d0e0d0",
+   40:"#10d4fa",41:"#10f4f9",44:"#20a4e9",70:"#3094d9",71:"#40b469",72:"#50f429",76:"60b419",79:"#80d039"}
 
 SIsymb = {  # symbols and units
 	0:("T","°C"),
 	1:("Hum","%"),
 	2:("Precip","mm"),
 	3:("V","m/s"),
-	4:("P","bar"),
+	4:("P","kPa"),
 	5:("E","lux"),
 	6:("pyro",""),
 	10:("bell",""),
 	11:("motion",""),
 	12:("press",""),
 	13:("lmp","%"),
-	14:("dim","%"),
+	14:("dim","%"),  # dimunuation
 	15:("mains",""),
 	16:("on",""),
 	17:("off",""),
@@ -91,7 +130,7 @@ SIsymb = {  # symbols and units
 	51:("MB","1024"),
 	60:("t","s"),
 	61:("date","days"),
-	70:("AQI","1..5"),
+	70:("AQI","1..5"),   # air quality index
 	71:("pm2_5","μg/m3"),
 	72:("pm10","μg/m3"),
 	73:("CO","μg/m3"),
@@ -99,38 +138,40 @@ SIsymb = {  # symbols and units
 	75:("NO2","μg/m3"),
 	76:("O3","μg/m3"),
 	77:("SO2","μg/m3"),
-	78:("NH3","μg/m3")
+	78:("NH3","μg/m3"),
+	79:("CO2","ppm")
 	}
 	
-DVrng = {  # quantity normal range
+DVrng = {  # qtype normal range
 	0:(-273,99), # temperature
 	1:(0,100),   # hum
 	2:(0,999),   # rain
 	3:(-999,999),  # speed
-	4:(-999,999), # pressure
-	5:(-999,999), # illum
+	4:(-999,99999), # pressure
+	5:(-999,999999), # illum
 	6:(-999,999), # fire
 	10:(-999,999),  # door bell
 	11:(-999,999), # motion
 	12:(-999,999),  # pressed
-	13:(-999,999),   # light
+	13:(-999,99999),   # light
 	14:(-999,999),   # dimming
 	15:(-999,999),  # mains
 	16:(-999,999),    # switch
 	17:(-999,999),
-	20:(-999,999),    # power
-	21:(-999,999),  # energy
+	20:(-1000,10000),    # power
+	21:(-999,9999999),  # energy
 	22:(-999,999),    # voltage
 	23:(-999,999),    # current
-	30:(-999,999),  # flow
-	31:(-999,999),     # volume abs
-	40:(-999,999),     # volume perc
-	41:(-999,999),     # density
+	30:(-999,999999),  # flow
+	31:(-999,999999),     # volume abs
+	40:(-999,999999),     # volume perc
+	41:(-999,999999),     # density
 	50:(-999,9999999), # bps
 	51:(-999,9999999), # n Mbytes
 	60:(0,9e9),   # s
 	61:(0,9e9),   # days
-	70:(1,5)
+	70:(1,5),
+	79:(0,8000)   # ppm
 	}
 
 	

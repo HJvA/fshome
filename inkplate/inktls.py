@@ -1,15 +1,23 @@
-from inkplate6 import Inkplate
+
+try:
+	from inkplate6 import Inkplate
+	scrWDTH = 800
+	scrHGTH = 600
+except ImportError:
+	from inkplate6_PLUS import Inkplate
+	scrWDTH = 1024
+	scrHGTH = 758
+	
 from grtls import julianday,prettydate,JulianTime
 
 grxPOS = 100
-gryPOS = 350
-grxWDTH= 500
 gryHGTH= 200
+gryPOS = scrHGTH-gryHGTH-50  #350
+grxWDTH= scrWDTH - 300  #500
 
-	
 # display text fields txtsize:(width,height)
 qFLDS = {	2 : (200, 16),
-				3 : (300, 24),  # dd, title
+				3 : (280, 24),  # dd, title
 				4 : (180, 32),  # lbl
 				5 : (180, 36),  # sideval
 				8 : (200, 36),
@@ -27,6 +35,8 @@ def inkInit():
 	print("ink display:{} x {} battery:{}".format(display.width(),display.height(),display.readBattery()) ) #, (esp32.raw_temperature()-32)/1.8))
 
 def showText(txt,x,y,size=None,frm='{:>4}'):
+	if display is None:
+		return
 	if size:
 		if size not in qFLDS:
 			size = next(sz for sz,tp in qFLDS.items() if sz<abs(size))
@@ -35,14 +45,16 @@ def showText(txt,x,y,size=None,frm='{:>4}'):
 		size=4
 	if frm:
 		txt = frm.format(txt.upper())
-	#wd = 20*size*len(txt)
-	wd = qFLDS[size][0] # 240
+	wd = qFLDS[size][0]  # 240
+	mxwd=size*len(txt)*7
+	if wd>mxwd:
+		print("trunc txt:{}:{}->{}".format(txt,wd,mxwd))
+		wd =mxwd
 	if x+wd>display.width():
 		wd = display.width()-x-1
-	#ht = size*6
 	ht = qFLDS[size][1] #100
 	
-	print("field.txt:{}:sz:{}@x,y:{},{} wd,ht:{},{}".format(txt,size,x,y,wd,ht))
+	#print("field.txt:{}:sz:{}@x,y:{},{} wd,ht:{},{}".format(txt,size,x,y,wd,ht))
 	display.drawRect(x,y,wd,ht,display.BLACK)	#fillRect(x, y, w, h, color)
 	display.fillRect(x,y,wd,ht,display.WHITE)  # clear area
 	#display.partialUpdate()
@@ -53,7 +65,7 @@ def showNumber(num,x=100,y=100, size=4, frmt='{:5.1f}', lbl=''):
 	cmd = frmt.format(num)
 	showText(lbl+cmd,x,y,size)
 	
-def showGraph(xdat,ydat,rad=3,clr=True,title=None):
+def showGraph(xdat,ydat,rad=5,clr=True,title=None):
 	""" draw chart to grxPOS,gryPOS with xdat,ydat data and rad marker at each data point 
 	 
 	"""

@@ -146,6 +146,8 @@ def SiNumForm(num):
 		if abs(num)/mul<999:
 			break
 		mul *= 1000
+	if pr=='k' and num<1900:
+		return "{:4.0f} ".format(num)
 	return "{:4.3g}{}".format(num/mul,pr)
 
 def prettyprint(fetchrecs):

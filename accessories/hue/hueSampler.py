@@ -8,7 +8,7 @@ if __name__ == "__main__":
 else:
 	from accessories.hue.hueAPI import HueSensor,HueLight,getTyp,getProp
 from lib.sampleCollector import DBsampleCollector
-from lib.devConst import DEVT,QID
+from lib.devConst import DEVT,qSRC
 from lib.tls import get_logger
 
 class hueSampler(DBsampleCollector):
@@ -50,7 +50,7 @@ class hueSampler(DBsampleCollector):
 					logger.info('qid %s deConz=>on, light=%s' % (qid,dev))
 			else:
 				logger.info('unknown light hueid=%s : %s' % (hueid,dev))
-		self.minqid = QID['deCONZ'] if self.deCONZ else QID['HUE']
+		self.minqid = qSRC['deCONZ'] if self.deCONZ else qSRC['HUE']
 		logger.info("%s lights:%s" % (self.manufacturer,len(hueSampler.devdat)-nDev))
 		self.defSignaller()
 			

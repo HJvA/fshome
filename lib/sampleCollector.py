@@ -69,7 +69,7 @@ class signaller(object):
 			active=True
 		if type(qval) is bool:
 			logger.info('bool event:%d = %s' % (qid,qval))
-			return qval  # only trigger once on motion detect
+			return True # deConz bool event only adrrives once  # qval  # only trigger once on motion detect
 		return active
 		
 	def signal(self, qid, qval=None):
@@ -185,7 +185,7 @@ class sampleCollector(object):
 					typ = DEVT[typ]
 				nm =rec['name'] if 'name' in rec else "no:%s" % adr
 				src =rec['source'] if 'source' in rec else ''
-				self._servmap[qid]={sm.ADR:adr,sm.TYP:typ,sm.NM:nm,sm.SRC:src}
+				self._servmap[qid]={sm.ADR:adr, sm.TYP:typ, sm.NM:nm, sm.SRC:src}
 				if 'mask' in rec:
 					logger.info('masking :%s for qid:%s' % (rec['mask'],qid))
 					self._servmap[qid][sm.MSK] = rec['mask']
@@ -268,10 +268,11 @@ class sampleCollector(object):
 				return quid
 		return None
 	def qInRng(self, qid, value):
-		if qid in DVrng:
-			if value<DVrng[qid][0]:
+		qtp = self.qtype(qid)
+		if qtp in DVrng:
+			if value<DVrng[qtp][0]:
 				return False
-			if value>DVrng[qid][1]:
+			if value>DVrng[qtp][1]:
 				return False
 			return True
 		return None
@@ -321,8 +322,8 @@ class sampleCollector(object):
 			return
 		if isinstance(val, collections.Sequence):
 			logger.warning('not numeric %d = %s' % (quantity,val))
-		if self.qInRng(quantity,val)==False:
-			logger.warning("quantity out of range %s" % quantity)
+		if val is None or self.qInRng(quantity,val)==False:
+			logger.warning("quantity out of range %s with %f" % (quantity,val))
 			return
 		else:
 			self._actual[quantity] = {qVAL:val, qSTMP:tstamp}
@@ -331,11 +332,14 @@ class sampleCollector(object):
 			if sampleCollector.signaller.checkEvent(quantity, val):  # handle event by polling
 				sampleCollector.signaller.signal(quantity, val)
 		if self.qIsCounting(quantity): 
-			if quantity in self.average and val>0: # only first and pos edge
-				self.average[quantity][qVAL] += val
+			if quantity in self.average:   # and val>0: # only first and pos edge
+				if val>0:
+					self.average[quantity][qVAL] += val
+				elif self.average[quantity][qVAL]==0:  # !!! some bool types only give false values 
+					self.average[quantity][qVAL] +=1
 				self.average[quantity][qCNT] +=1
-			else:
-				self.average[quantity] = [val,1,tstamp]
+			else: 
+				self.average[quantity] = [1,1,tstamp]   # first counting val  [qVAL,qCNT,qSTMP]
 			self.accept_result(tstamp, quantity)
 			logger.info('(%s) cnt val=%s quantity=%s tm=%s since=%.6g' % (quantity,val, self.qname(quantity), prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
 		elif quantity in self.average:
@@ -361,7 +365,7 @@ class sampleCollector(object):
 		''' process and stores the (averaged) result and init new avg period '''
 		qval=None
 		if self.qIsCounting(quantity):
-			qval = self.average[quantity][qVAL]
+			qval = self.average[quantity][qVAL]   # must have some positives edges
 			self.average[quantity][qVAL]=0
 		elif self.average[quantity][qCNT]>0:
 			rec=self.average.pop(quantity)
@@ -468,6 +472,7 @@ class DBsampleCollector(sampleCollector):
 			
 		
 	def accept_result(self,tstamp,quantity):
+		""" save accepted result to database """
 		qval = super().accept_result(tstamp,quantity)
 		if qval is not None:
 			if quantity in self.qactive():

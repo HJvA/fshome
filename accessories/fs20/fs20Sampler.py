@@ -13,7 +13,7 @@ else:
 	import accessories.fs20.fstls as fstls
 from lib.serComm import serComm
 from lib.sampleCollector import DBsampleCollector,forever
-from lib.devConst import DEVT,QID
+from lib.devConst import DEVT,qSRC
 from lib.tls import get_logger
 
 class fs20Sampler(DBsampleCollector):
@@ -25,7 +25,7 @@ class fs20Sampler(DBsampleCollector):
 		quantities=kwargs['quantities']
 		self.hausc = quantities['hausc']  # not realy a quantity !!
 		self.serdev.send_message("X21")  # prepare to receive known msg with RSSI
-		self.minqid=QID['fs20']
+		self.minqid=qSRC['fs20']
 		#self.qtyp = super().quantitymap(quantities,'typ')
 		self.defSignaller()
 	

@@ -15,3 +15,6 @@ obsolete/
 /setup/rclone.txt
 /config/*
 /inkplate/test/*
+/test/*
+/setup/rclone.conf
+/inkplate/lib/adafruit-tmp117.py

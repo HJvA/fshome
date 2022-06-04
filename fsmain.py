@@ -43,8 +43,8 @@ if os.path.isfile("config/fs20.json"):
 	add_fs20_to_bridge(bridge, config="./config/fs20.json")
 if os.path.isfile("config/p1DSMR.json"):
 	add_p1DSMR_to_bridge(bridge, config="./config/p1DSMR.json")
-if os.path.isfile("config/WNDR.json"):
-	add_WNDR_to_bridge(bridge, config="./config/WNDR.json")
+#if os.path.isfile("config/WNDR.json"):
+#	add_WNDR_to_bridge(bridge, config="./config/WNDR.json")
 if os.path.isfile("config/openweather.json"):
 	add_WeaMap_to_bridge(bridge, config="./config/openweather.json")
 

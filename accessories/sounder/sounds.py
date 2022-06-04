@@ -6,7 +6,7 @@ if __name__ == "__main__":
 else:
 	pass
 from lib.sampleCollector import DBsampleCollector
-from lib.devConst import DEVT,QID
+from lib.devConst import DEVT,qSRC
 from lib.tls import get_logger
 from lib.fsHapper import HAP_accessory,fsBridge
 from lib.devConfig import devConfig
@@ -19,7 +19,7 @@ class sounder(DBsampleCollector):
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self.minqid=QID['SND']
+		self.minqid=qSRC['SND']
 		pygame.mixer.init()
 		self.defSignaller()
 	
@@ -77,7 +77,7 @@ class SND_accessory(HAP_accessory):
 
 def add_SND_to_bridge(bridge, config="sound.json"):
 	conf = devConfig(config)
-	conf.updateConfig({QID['SND']:{'typ':17,'name':'earamp'}})
+	conf.updateConfig({qSRC['SND']:{'typ':17,'name':'earamp'}})
 	sampler = sounder(dbFile=None, quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=0)
 	#sampler.minqid=None  # do not auto create
 	bridge.add_sampler(sampler, conf.itstore)	
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 	}
 	player = sounder(dbFile=conf['dbFile'], quantities={QID['SND']:{'typ':17,'name':'earamp'}})
 	
-	player.set_state(QID['SND'],0.5)
+	player.set_state(qSRC['SND'],0.5)
 
 	#pygame.mixer.init()
 	#pygame.mixer.music.load("zounds/37.wav")

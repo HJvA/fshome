@@ -8,14 +8,14 @@ if __name__ == "__main__":
 else:
 	import accessories.BLEAIOS.aiosAPI as aiosAPI  #import aiosDelegate,ENV_SVR
 from lib.sampleCollector import DBsampleCollector,forever,sm
-from lib.devConst import DEVT,QID
+from lib.devConst import DEVT,qSRC
 from lib.tls import get_logger
 from bluepy import btle
 
 class aiosSampler(DBsampleCollector):
 	""" specific AIOS database sample collector """
 	manufacturer="AdaFruit"
-	minqid=QID['AIOS']	# base for database quantityId for aios
+	minqid=qSRC['AIOS']	# base for database quantityId for aios
 	def __init__(self, loop, *args, devAddress=aiosAPI.DEVADDRESS, **kwargs):
 		super().__init__(*args, **kwargs)
 		masks ={}

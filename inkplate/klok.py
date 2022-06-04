@@ -1,7 +1,7 @@
 import machine 
 import neopixel
 import time
-import grtls
+#import grtls
 """
 """
 nNEO = 12	# nr of leds
@@ -11,24 +11,40 @@ wzSEC = 0
 wzMIN = 1
 wzHR  = 2
 
-
-class horloge():
+class neoRound():
 	def __init__(self,pinnr=pNEO,nleds=nNEO):
 		pn = machine.Pin(pinnr, machine.Pin.OUT) 
+		self.nleds=nleds
 		self.np = neopixel.NeoPixel(pn, n=nleds,bpp=3,timing=1)   #800kHz
 		self.np.fill( (0,0,0) )
 		self.np.write()
-		self.rgb={}
-		self.scl={}
-		self.actad={}
-		self.actsb={}
-		self.nleds=nleds
-		self.last ={}
-
+	
 	def __del__(self):
-		print("dispose klok")
+		print("dispose neoRound")
 		self.np.fill( (0,0,0) )
 		self.np.write()
+		
+	def actrgb(self, ldi):
+		return self.np[ldi]
+		
+	def appl(self, ldi, rgb=(0,0,0)):
+		argb = self.actrgb(ldi)
+		if not all(n==o for n,o in zip(rgb,argb)):
+			self.np[ldi] = [max(0,int(v)) for v in rgb]
+			#print(".{}".format(ldi))
+
+class horloge(neoRound):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		#pn = machine.Pin(pinnr, machine.Pin.OUT) 
+		#self.np = neopixel.NeoPixel(pn, n=nleds,bpp=3,timing=1)   #800kHz
+		#self.np.fill( (0,0,0) )
+		#self.np.write()
+		self.rgb={}
+		self.scl={}		# full scale val per wijzId for 1 round
+		self.actad={}
+		self.actsb={}
+		self.last ={}
 		
 	def defWijzer(self, id, rgb, rndval=60):
 		self.rgb[id]  = rgb
@@ -72,7 +88,8 @@ class horloge():
 			print("ld0:{} fadd:{}".format(ldi,fadd))
 		add = [ld*abs(fadd) for ld in self.rgb[wid]]
 		act = list(self.np[ldi])	# incl other wijz
-		self.np[ldi] = [max(0,int(a+d)) for a,d in zip(act,add)]
+		super().appl(ldi, [a+d for a,d in zip(act,add)])
+		#self.np[ldi] = [max(0,int(a+d)) for a,d in zip(act,add)]
 	
 	def klok(self,tobj):
 		""" draw time """
@@ -83,6 +100,19 @@ class horloge():
 		self.np.write()
 
 if __name__ == "__main__":
+	r,g,b = (0,1,2)
+	kl = neoRound()
+	p=0
+	for i in range(0,kl.nleds):
+		kl.appl(p, (0,0,0))
+		kl.appl(i, (r,g,b))
+		p=i
+		g+=1
+		kl.np.write()
+		time.sleep(1)
+	time.sleep(5)	
+		
+	
 	kl = horloge()
 	kl.defWijzer(0, (5,0,0) )	# red
 	kl.defWijzer(1, (0,5,0))	# green

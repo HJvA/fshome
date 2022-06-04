@@ -19,7 +19,7 @@ else:
 
 from lib.sampleCollector import DBsampleCollector,qVAL,qSTMP
 from lib.fsHapper import HAP_accessory,fsBridge 
-from lib.devConst import DEVT,QID,SIsymb
+from lib.devConst import DEVT,qSRC,SIsymb
 from lib.devConfig import devConfig
 from pyhap.accessory_driver import AccessoryDriver
 from accessories.openweather.openweather import openweather,CONFFILE
@@ -31,7 +31,7 @@ class WeaMap_sampler(DBsampleCollector):
 	def __init__(self, city, pwd, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.tstamp = None
-		self.minqid = QID['WeaMap']
+		self.minqid = qSRC['WeaMap']
 		#self.host = host
 		#self.pwd = pwd
 		self.semaphore=None 

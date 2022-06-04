@@ -9,6 +9,10 @@ touch .gitignore
 git add .gitignore
 git commit -m "initial commit setting up submodules"
 
+git clone --depth=1 https://github.com/FuzzyMistborn/python-eufy-security ./submod/eufy
+git submodule add https://github.com/FuzzyMistborn/python-eufy-security
+git submodule update --force --checkout submod/eufy
+
 # get bottle as submodule
 git clone --depth=1 --no-checkout https://github.com/bottlepy/bottle ./bottle
 git submodule add https://github.com/bottlepy/bottle

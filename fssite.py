@@ -17,11 +17,11 @@ except ImportError:
 	
 from lib.devConfig import devConfig
 from lib.dbLogger import sqlLogger
-from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb
+from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb,qSrc,qDEF,qtName
 from lib.tls import get_logger
 from lib.grtls import julianday,unixsecond,prettydate,SiNumForm
 
-__copyright__="<p>Copyright &copy; 2019,2021, hjva</p>"
+__copyright__="<p>Copyright &copy; 2019,2021,2022 hjva</p>"
 TITLE=r"fshome quantity viewer"
 CONFFILE = "./config/fs20.json"
 dbfile = None # '~/fs20store.sqlite'
@@ -185,13 +185,13 @@ def quantity_put():
 		#qkey = bottle.request.params.get('qkey')
 		qkey=int(bottle.request.query.qkey)
 		if qkey:
-			dbStore.additem(qkey,'Tpin','fsRest',0)
+			dbStore.additem(qkey,qDEF[qkey][0], qSrc(qkey), qDEF[qkey][1])
 		qval=float(bottle.request.query.qval)
 		#data = json.load(utf8reader(bottle.request.body))
 		logger.info('qval put:{}={}'.format(qkey,qval))
 		dbStore.logi(qkey,qval)
 	except:
-		raise ValueError
+		raise	ValueError
 
 	
 @app.post('/menu', method="POST")

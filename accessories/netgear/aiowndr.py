@@ -36,6 +36,7 @@ async def traffic(session: aiohttp.ClientSession, user = 'admin',pwd=None, host=
 			async with session.get(url=url, auth=auth, timeout=4) as response:
 				stuff = await response.text()
 				if len(stuff)>1 and response.status<400:
+					logger.debug('wndr stuff:{}'.format(stuff))
 					break  # success
 				else:
 					logger.info('no stuff from wndr stat=%d' % response.status)
@@ -65,8 +66,9 @@ async def get_traffic(host='192.168.1.1', pwd=None, semaphore=None):
 		return await traffic(session, pwd=pwd, host=host, semaphore=semaphore)
 
 if __name__ == "__main__":
+	import secret
 	logger = tls.get_logger(__file__, logging.DEBUG, logging.DEBUG)
-	traf = asyncio.run(get_traffic(pwd='har'))
+	traf = asyncio.run(get_traffic(pwd=secret.ROUTPWD))
 	logger.info('\ntraffic:\n%s' % traf)
 else:
 	logger = logging.getLogger(__name__)

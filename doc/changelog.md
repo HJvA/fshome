@@ -15,6 +15,17 @@ Sections
 ### Developers
 ### Confinement
 -->
+## [1.5.0] - 2022-06-04
+### Added
+- inkplate 6 plus display on micropython with i2c comm interface
+- scd30 Sensirion CO2 sensor
+- bme680 temperature, humidity, pressure sensor
+- tmp117 precise temperature sensor  
+
+## [1.4.7] - 2021-12-29
+### Changed
+- DVrng for power type to block bad power readings from DSMR
+
 ## [1.4.6] - 2021-08-26
 ### Added
 - inkplate display updated sync time & timezone
