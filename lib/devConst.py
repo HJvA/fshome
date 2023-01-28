@@ -57,6 +57,7 @@ DEVT ={
 	"Sulphur diOxide":77,
 	"Ammonia":78,
 	"Carbon diOxide":79,
+	"weathercode":80,
 	"secluded":98, # known device but to be ignored
 	"unknown":99 } # unknown device
 
@@ -98,16 +99,19 @@ def qSrc(qkey):
 			return src
 
 qCOUNTING = [10,11,12,15,44]  # quantity counting types
+qACCUMULATING = [21,31,51]    # typs only running up indefinitely
+
 #colour for a quantity in graphs etc
 strokes={0:"#1084e9",1:"#a430e9",4:"#706060",5:"#90e090",10:"#c060d0",20:"#c080f0",21:"#a0d0f0", 22:"#f06040",11:"#f080d0",12:"#f0a0d0",13:"#f0c0d0",14:"#f0e0d0",15:"#d0e0d0",
-   40:"#10d4fa",41:"#10f4f9",44:"#20a4e9",70:"#3094d9",71:"#40b469",72:"#50f429",76:"60b419",79:"#80d039"}
+	31:"#20f0d0",
+   40:"#10d4fa",41:"#10f4f9",44:"#20a4e9",70:"#3094d9",71:"#40b469",72:"#50f429",76:"#60b419",79:"#80d039"}
 
-SIsymb = {  # symbols and units
+SIsymb = {  # symbols and units  : https://nadnosliw.wordpress.com/unicode-characters/
 	0:("T","°C"),
 	1:("Hum","%"),
 	2:("Precip","mm"),
 	3:("V","m/s"),
-	4:("P","kPa"),
+	4:("P","kPa"),  # = kN/m²
 	5:("E","lux"),
 	6:("pyro",""),
 	10:("bell",""),
@@ -122,8 +126,8 @@ SIsymb = {  # symbols and units
 	21:("E","kWh"),
 	22:("U","V"),
 	23:("I","A"),
-	30:("flow","m3/s"),
-	31:("Vol","m3"),
+	30:("flow","m³/s"),
+	31:("Vol","m³"),
 	40:("Vol","%"),
 	41:("Conc","ppm"),
 	50:("bps","1/s"),
@@ -131,17 +135,18 @@ SIsymb = {  # symbols and units
 	60:("t","s"),
 	61:("date","days"),
 	70:("AQI","1..5"),   # air quality index
-	71:("pm2_5","μg/m3"),
-	72:("pm10","μg/m3"),
-	73:("CO","μg/m3"),
-	74:("NO","μg/m3"),
-	75:("NO2","μg/m3"),
-	76:("O3","μg/m3"),
-	77:("SO2","μg/m3"),
-	78:("NH3","μg/m3"),
-	79:("CO2","ppm")
+	71:("pm2_5","μg/m³"),
+	72:("pm10","μg/m³"),
+	73:("CO","μg/m³"),
+	74:("NO","μg/m³"),
+	75:("NO2","μg/m³"),
+	76:("O3","μg/m³"),
+	77:("SO2","μg/m³"),
+	78:("NH3","μg/m³"),
+	79:("CO2","ppm"),
+	80:("wci","")   # openweathermap weathercode
 	}
-	
+
 DVrng = {  # qtype normal range
 	0:(-273,99), # temperature
 	1:(0,100),   # hum
@@ -171,13 +176,69 @@ DVrng = {  # qtype normal range
 	60:(0,9e9),   # s
 	61:(0,9e9),   # days
 	70:(1,5),
-	79:(0,8000)   # ppm
+	79:(0,8000),  # ppm
+	80:(200,999)  #
 	}
-
+owicons = {  # openweathermap.org
+	200:("11d","thunderstrorm w light rain"),
+	201:("11d","thunderstrorm w rain"),
+	202:("11d","thunderstrorm w heavy rain"),
+	210:("11d","light thunderstrorm"),
+	211:("11d","thunderstrorm"),
+	212:("11d","heavy thunderstrorm"),
+	221:("11d","ragged thunderstrorm"),
+	230:("11d","thunderstrorm w drizzle"),
+	231:("11d","thunderstrorm w drizzle"),
+	232:("11d","thunderstrorm w haevy drizzle"),
+	300:("09d","light drizzle"),
+	301:("09d","drizzle"),
+	302:("09d","heavy drizzle"),
+	310:("09d","light drizzle rain"),
+	311:("","drizzle rain"),
+	312:("","heavy drizzle rain"),
+	313:("","shower rain and drizzle"),
+	314:("","heavy shower rain and drizzle"),
+	321:("","shower drizzle"),
+	500:("10d","light rain"),
+	501:("","moderate rain"),
+	502:("","heavy intensity rain"),
+	503:("","very heavy rain"),
+	504:("","extreme rain"),		
+	511:("13d","freezing rain"),
+	520:("09d","light shower rain"),
+	521:("","shower rain"),
+	522:("","heavy shower rain"),
+	531:("","ragged shower rain"),
+	600:("13d","light snow"),
+	601:("","snow"),
+	602:("","heavy snow"),
+	611:("","sleet"),
+	612:("","light shower sleet"),
+	613:("","shower sleet"),
+	615:("","light rain and snow"),
+	616:("","rain and snow"),
+	620:("","light shower snow"),
+	621:("","shower snow"),
+	622:("","heavy shower snow"),
+	701:("50d","mist"),
+	711:("","smoke"),
+	721:("","haza"),
+	741:("50d","fog"),
+	751:("50d","sand"),
+	761:("50d","dust"),
+	762:("50d","ash"),
+	771:("50d","squalls"),
+	781:("50d","tornado"),
+	800:("01d","clear"),
+	801:("02d","few clouds"),
+	802:("03d","scattered clouds"),
+	803:("04d","broken clouds"),
+	804:("04d","overcast clouds")
+	}
 	
 """ openweathermap air quality
 main.aqi Air Quality Index. Possible values: 1, 2, 3, 4, 5. Where 1 = Good, 2 = Fair, 3 = Moderate, 4 = Poor, 5 = Very Poor.
-components
+component
 components.co Сoncentration of CO (Carbon monoxide), μg/m3
 components.no Сoncentration of NO (Nitrogen monoxide), μg/m3
 components.no2 Сoncentration of NO2 (Nitrogen dioxide), μg/m3

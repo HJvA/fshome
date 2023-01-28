@@ -5,9 +5,12 @@
 import time
 import asyncio
 from bluepy import btle
+import sys,os
+sys.path.append(os.getcwd()) # + '/..')
+import lib.tls as tls
 
-import logging
-logger = logging.getLogger(__name__)
+#import logging
+logger = tls.get_logger(__file__)
 
 # some example GATT services
 DEVINF_SVR= "180a"  #"0000180a-0000-1000-8000-00805f9b34fb"  # device info

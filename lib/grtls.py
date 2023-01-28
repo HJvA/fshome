@@ -3,14 +3,15 @@
 import sys,os,math
 #import logging
 import re
+from typing import Tuple
 
 if sys.implementation.name == "micropython":
-	import utime as time
-	import machine
-	_S_DELTA = 946681200  # 2000-1-1  to 1970-1-1	=10957 days
+	from utime import time	# type: ignore
+	import machine				# type: ignore
+	_S_DELTA = 946681200		# 2000-1-1  to 1970-1-1	=10957 days
 else:
 	import datetime
-	import time
+	from time import time	# type ignore
 	_S_DELTA = 0
 
 	def seconds_since_epoch(epoch = datetime.datetime.utcfromtimestamp(0), utcnow=datetime.datetime.utcnow()):
@@ -38,7 +39,7 @@ def julianday(tunix = None, isMJD=False):
 			tunix = list(machine.RTC().datetime()) # tuple (Y,M,D,H,M,S,,,)
 			del tunix[3]
 		else:
-			tunix = time.time()   # float seconds since 00:00:00 Thursday, 1 January 1970
+			tunix = time()   # float seconds since 00:00:00 Thursday, 1 January 1970
 		#return julianday(tunix, isMJD)
 	if isinstance(tunix ,(tuple,list)):
 		#_io=1 if sys.implementation.name == "micropython" else 0
@@ -68,11 +69,8 @@ def julianday(tunix = None, isMJD=False):
 		return (tunix / 86400.0) + 40587.0  # epoch midnight on November 17, 1858.
 	return (tunix / 86400.0 ) + 2440587.5  # epoch noon on Monday, January 1 4713 BC
 
-"""
-
-"""
 	
-def JulianTime(jdn, isMJD=False):
+def JulianTime(jdn, isMJD=False) -> Tuple[int,int,int,int,int,float]:
 	""" get (Y M D H M S) from julianday number see https://quasar.as.utexas.edu/BillInfo/JulianDatesG.html """
 	if isMJD:
 		F, I = math.modf(jdn)
@@ -106,15 +104,13 @@ def JulianTime(jdn, isMJD=False):
 	second = minute % 1 * 60	
 	return year,month,int(day),int(hour),int(minute),second
 	
-	
-	
-def weekday(jd, isMJD=False):
+def weekday(jd, isMJD=False) -> int:
 	""" 0=Sunday """
 	if isMJD:
 		return (jd+3) % 7
 	return (jd+1.5) % 7
 	
-def prettydate(JulianDay, format="{:%d %H:%M:%S}"):
+def prettydate(JulianDay, format="{:%d %H:%M:%S}") -> str:
 	''' generates string representation of julianday '''
 	if not JulianDay:
 		JulianDay=julianday()
@@ -138,7 +134,7 @@ def prettydate(JulianDay, format="{:%d %H:%M:%S}"):
 	return ("{} {}:{}:{}").format(tobj.tm_mday,tobj.tm_hour,tobj.tm_min,tobj.tm_sec)
 	return time.strftime(format, tobj)
 
-def SiNumForm(num):
+def SiNumForm(num) -> str:
 	''' format number with SI prefixes '''
 	pref = ['f','p','n','u','m',' ','k','M','G','T','P','E','Z','Y']
 	mul=1e-15
@@ -150,20 +146,20 @@ def SiNumForm(num):
 		return "{:4.0f} ".format(num)
 	return "{:4.3g}{}".format(num/mul,pr)
 
-def prettyprint(fetchrecs):
+def prettyprint(fetchrecs) -> None:
 	''' print the records fetched by fetch method to the console '''
 	for tpl in fetchrecs:
 		tm = prettydate(tpl[0])   
 		print("%s %4.3g %s %s" % (tm,tpl[1],tpl[2],tpl[3]))
 
-def graphyprint(fetchrecs, ddfrm = "%a %H:%M", xcol=0, ycol=1):
+def graphyprint(fetchrecs, ddfrm = "%a %H:%M", xcol=0, ycol=1) -> None:
 	''' print graphically to console selected quantity trace from database '''
 	curve = [rec[ycol] for rec in fetchrecs]
 	printCurve(curve)
 	jdays = [rec[xcol] for rec in fetchrecs]
 	printTimeAx(jdays)
 
-def printTimeAx(jddata):
+def printTimeAx(jddata) -> None:
 	''' print time x axis to console '''
 	def diffxh(julday, hr24=0):
 		julday -= 0.5
@@ -176,7 +172,7 @@ def printTimeAx(jddata):
 		df = [diffxh(jd) for jd in jddata[i:i+3]]
 		if df.index(min(df))==1:
 			print("|",end='')
-			logger.debug("marker@%s df:%s jd=%.5f" % (prettydate(jddata[i+1]),df,jddata[i+1]))
+			#logger.debug("marker@%s df:%s jd=%.5f" % (prettydate(jddata[i+1]),df,jddata[i+1]))
 		elif df.index(max(df))==1:
 			print(prettydate(jddata[i+1],"%a"),end='')
 			noon=i+1
@@ -185,7 +181,7 @@ def printTimeAx(jddata):
 	print("=")
 	
 
-def printCurve(data, height=10, vmax=None, vmin=None, backgndchar=0x2581):
+def printCurve(data, height=10, vmax=None, vmin=None, backgndchar=0x2581) -> None:
 	''' print float data array graphically to console using block char fillings '''
 	if data is None or len(data)==0:
 		#logger.error("no data to graph")	
@@ -217,7 +213,7 @@ if __name__ == "__main__":
 	jdhj = julianday(NAIS,isMJD=True)
 	print('MJD: hj={} = jt:{} on wd:{}'.format(jdhj,JulianTime(jdhj,isMJD=True),weekday(jdhj,True)))
 	
-	nw = time.time() 
+	nw = time() 
 	jdnow = julianday(nw)
 	jdt = julianday()
 	print('unixnow={} jdnow={} jdt={} wd={} prdate={}'.format(nw,jdnow,jdt,weekday(jdt),prettydate(None)))

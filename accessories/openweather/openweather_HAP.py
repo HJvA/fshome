@@ -94,7 +94,7 @@ def add_WeaMap_to_bridge(bridge, config=CONFFILE):
 	""" create WeaMap_happer and add it to the application bridge """
 	conf = devConfig(config)
 	dbFile=conf['dbFile']
-	sampler = WeaMap_sampler(dbFile=dbFile, city=conf['ville'], pwd=conf['apikey'], quantities=conf.itstore, maxNr=2,minNr=1,minDevPerc=0.02)
+	sampler = WeaMap_sampler(dbFile=dbFile, city=conf['ville'], pwd=conf['apikey'], quantities=conf.itstore, maxNr=1,minNr=1,minDevPerc=0.02)
 	bridge.add_sampler(sampler, conf.itstore)
 
 if __name__ == "__main__":

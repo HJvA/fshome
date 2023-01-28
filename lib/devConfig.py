@@ -15,7 +15,7 @@ class devConfig(object):
 	"""
 	def __init__(self, fname, newItemPrompt="Please enter a name for it:"):
 		''' loads item store from disk '''
-		self.itstore = {}
+		self.itstore:Dict[int,dict] = {}
 		self.prompt=newItemPrompt
 		self.fname=fname
 		if fname:
@@ -68,7 +68,7 @@ class devConfig(object):
 			self.itstore[ikey] = signature	# add or update
 		return ikey
 	
-	def setItem(self, ikey, ivals):
+	def setItem(self, ikey:int, ivals):
 		if ikey in self.itstore and isinstance(self.itstore[ikey], dict):
 			self.itstore[ikey].update(ivals)
 		else:
@@ -77,7 +77,7 @@ class devConfig(object):
 	def __setitem__(self, ikey, val):
 		self.setItem(ikey, val)
 	
-	def getItem(self, ikey, default=None):
+	def getItem(self, ikey:int, default=None):
 		if not ikey in self.itstore:
 			self.itstore[ikey]=default
 			logger.info("adding '%s' to [%s] in config" % (default,ikey))
@@ -111,10 +111,12 @@ class devConfig(object):
 
 if __name__ == "__main__":		# for testing
 	logger = logging.getLogger()
-	[logger.removeHandler(h) for h in logger.handlers[::-1]] # handlers persist between calls
+	
+	for h in logger.handlers[::-1]: # handlers persist between calls
+		logger.removeHandler(h) 
 	logger.addHandler(logging.StreamHandler())	# use console
 	logger.setLevel(logging.DEBUG)
-	os.remove(os.path.expanduser("~/test.json"))
+	#os.remove(os.path.expanduser("~/test.json"))
 	
 	try:
 		cnf = devConfig("~/test.json")

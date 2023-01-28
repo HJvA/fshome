@@ -9,10 +9,6 @@ touch .gitignore
 git add .gitignore
 git commit -m "initial commit setting up submodules"
 
-git clone --depth=1 https://github.com/FuzzyMistborn/python-eufy-security ./submod/eufy
-git submodule add https://github.com/FuzzyMistborn/python-eufy-security
-git submodule update --force --checkout submod/eufy
-
 # get bottle as submodule
 git clone --depth=1 --no-checkout https://github.com/bottlepy/bottle ./bottle
 git submodule add https://github.com/bottlepy/bottle
@@ -21,15 +17,15 @@ echo bottle.py >> ./bottle/.git/info/sparse-checkout
 git submodule update --force --checkout bottle
 
 # get HAP-python as submodule
-git clone --depth=1 --no-checkout https://github.com/ikalchev/HAP-python ./submod/HAP-python
+git clone --depth=1 --no-checkout https://github.com/ikalchev/HAP-python ./HAP-python
 git submodule add https://github.com/ikalchev/HAP-python
-git -C ./submod/HAP-python config core.sparsecheckout true
-echo !tests/* >> ./submod/HAP-python/.git/info/sparse-checkout
-echo !docs/* >> ./submod/HAP-python/.git/info/sparse-checkout
-echo !accessories/* >> ./submod/HAP-python/.git/info/sparse-checkout
+git -C ./HAP-python config core.sparsecheckout true
+echo !tests/* >> ./HAP-python/.git/info/sparse-checkout
+echo !docs/* >> ./HAP-python/.git/info/sparse-checkout
+echo !accessories/* >> ./HAP-python/.git/info/sparse-checkout
 #echo "pyhap/">> ./HAP-python/.git/info/sparse-checkout
-echo "/*">> ./submod/HAP-python/.git/info/sparse-checkout
-git submodule update --force --checkout submod/HAP-python
+echo "/*">> ./HAP-python/.git/info/sparse-checkout
+git submodule update --force --checkout HAP-python
 
 # get bluepy as submodule
 git clone --depth=1 --no-checkout https://github.com/IanHarvey/bluepy ./bluepy

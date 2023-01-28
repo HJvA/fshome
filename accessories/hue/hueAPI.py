@@ -12,7 +12,7 @@
 import asyncio, aiohttp #, functools
 
 import math
-import time,os
+import time,os,sys
 from datetime import datetime,timedelta,timezone
 import logging
 	
@@ -243,6 +243,8 @@ class HueBaseDev (object):
 				return cache[self.hueId][reskey]
 			elif reskey in cache[self.hueId] and isinstance(cache[self.hueId], dict) and prop in cache[self.hueId][reskey]:
 				return cache[self.hueId][reskey][prop]
+			else:
+				logger.warning("hue prop:{} not found in {} for {}".format(prop, reskey, self.hueId))
 		elif cache: # when fetching cache failed
 			logger.warning('hueid %s not in cache %s' % (self.hueId,prop))
 		return None
@@ -258,6 +260,7 @@ class HueBaseDev (object):
 		if dtm-self.dtActive >= timedelta(seconds=minChangeInterval):
 			val =await self.state(prop=self.prop)
 			if val is not None:
+				logger.debug("{} newval:{}={}".format(self.devDescr, self.prop,val))
 				return (val != self.last)
 			logger.debug('no prop %s in state %s' % (self.prop,val))
 		else:
@@ -600,6 +603,8 @@ async def main(ipadr,user,sensors,lmp):
 	
 if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	#from lib import tls
+	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../..'))
+	
 	import secret
 	logger = logging.getLogger()
 	[logger.removeHandler(h) for h in logger.handlers[::-1]] # handlers persist between calls
@@ -614,7 +619,7 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 		#"hueuser": "",
 		"hueuser":  secret.keySIGNIFY,
 		#"huebridge": "192.168.1.21"
-		"huebridge": "192.168.1.20"
+		"huebridge": "192.168.44.21"
 	}
 	#CONF['huebridge'] =ipadrGET()
 	
@@ -642,6 +647,7 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 		user =  _loop.run_until_complete(createUser('homekit','fshome',ipadr=ipadr,deCONZ=True))
 		print('put hueuser in the config file:\n%s' % user.result())
 	else:
+		logger.info("sensors:{}".format(sns))
 		for adr,rec in sns.items():
 			logger.info("rsns %s:%s" % (adr,rec))
 			

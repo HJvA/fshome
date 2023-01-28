@@ -204,7 +204,7 @@ if __name__ == "__main__":
 	tmp = tmp117.create(addr=0x48)
 	scd = SCD30.create(addr=0x61)
 	bme = BME680.create(addr=0x77)
-	wdt = machine.WDT(timeout=300000)  # watchdog ms
+	wdt = machine.WDT(timeout=600000)  # watchdog ms
 	time.sleep(0)
 	inktls.display.begin()
 	#kl = klok.horloge()

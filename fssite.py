@@ -2,6 +2,7 @@
 """ 
 application to display measured quantities graphically and interactively
 uses bottle web-framework: https://github.com/bottlepy/bottle
+doc: https://bottlepy.org/docs/dev/index.html
 and sqlite database
 get values and picklists from a database which was filled by fsmain.py et al.
 """
@@ -17,12 +18,15 @@ except ImportError:
 	
 from lib.devConfig import devConfig
 from lib.dbLogger import sqlLogger
-from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb,qSrc,qDEF,qtName
+from lib.devConst import DEVT,qCOUNTING,qACCUMULATING,strokes,SIsymb,qSrc,qDEF,qtName
 from lib.tls import get_logger
 from lib.grtls import julianday,unixsecond,prettydate,SiNumForm
+from threading import Lock
+lock = Lock()
 
-__copyright__="<p>Copyright &copy; 2019,2021,2022 hjva</p>"
+__copyright__="<p>Copyright &copy; 2019,2021,2022,2023 hjva</p>"
 TITLE=r"fshome quantity viewer"
+DEBUG = True
 CONFFILE = "./config/fs20.json"
 dbfile = None # '~/fs20store.sqlite'
 TPL='static/fsapp.tpl'
@@ -47,7 +51,9 @@ tmBACKs={0.2:(u'5hr',5,0.0417,'{:%H}'),
 	182.6:(u'6mnth',24*60,30.44,'{:%b}'), 
 	365.25:(u'1yr',2*24*60,30.44,'{:%b}') }
 app =bottle.Bottle()
-bottle.debug(False)
+if DEBUG:
+	bottle.debug(DEBUG)
+	app.catchall = False # Now most exceptions are re-raised within bottle.
 dbStore=None
 
 bottle.response.headers['Content-Type'] = 'application/json'
@@ -58,6 +64,10 @@ def typnames(devTyps):
 	''' convert DEVT id numbers to their name '''
 	return [dnm for dnm,tp in DEVT.items() if tp in devTyps or tp+100 in devTyps]
 
+def typSI(devTyps):
+	''' convert DEVT id numbers to their (Symb,Unit) '''
+	return [tup for tp,tup in SIsymb.items() if tp in devTyps or tp+100 in devTyps]
+	
 def srcQids():
 	''' get active quantities either from cookie or last saved to database '''
 	Qids=[]
@@ -136,62 +146,69 @@ def quantity_lastval():
 	''' rest api for getting averaged quantity values from database
 	e.g. http://192.168.1.20:8080/quantityact?qkeys=[401]
 	will return last results of quantity 401 from database '''
-	recs={}
-	qkeys = bottle.request.query.qkeys
-	logger.info('lastval get qkeys={}='.format(qkeys))
-	if qkeys:
-		qkeys = json.loads(qkeys)
-		for qk in qkeys:
-			dbres = dbStore.fetchlast(qk)
-			if dbres:
-				logger.info("db:qk:{} last:{}".format(qk,dbres))
-				recs[qk] = dbres['numval']  # json.dumps(dbres)
-	return '{}'.format(recs)
+	with lock:
+		recs={}
+		qkeys = bottle.request.query.qkeys
+		logger.info('lastval get qkeys={}='.format(qkeys))
+		if qkeys:
+			qkeys = json.loads(qkeys)
+			for qk in qkeys:
+				dbres = dbStore.fetchlast(qk)
+				if dbres:
+					logger.info("db:qk:{} last:{}".format(qk,dbres))
+					recs[qk] = dbres['numval']  # json.dumps(dbres)
+		return '{}'.format(recs)
 
 @app.get('/somevals')
 def quantity_somevals():
 	''' rest api for getting averaged quantity values from database
 	e.g. http://192.168.1.20:8080/quantity?qkeys=[401,403]&ndays=0.2 
 	will return last results of quantity 401 from database '''
-	recs={}
-	qkeys = bottle.request.query.qkeys
-	#logger.info('somevals get qkeys={}='.format(qkeys))
-	if qkeys:
-		qkeys = json.loads(qkeys)
-		ndays = float(bottle.request.query.ndays or '0.2')
-		avginterval = float(bottle.request.query.interval or '5') # averaging interval in minutes
-		#bottle.response.headers['Content-Type'] = 'application/json'
-		#bottle.response.headers['Cache-Control'] = 'no-cache'
-		
-		for qk in qkeys:
-			dbres = dbStore.fetchiavg(qk,tstep=avginterval,daysback=ndays,jdend=None)
-			if dbres:
-				#recs['nm{}'.format(qk)] = dbStore.qname(qk)
-				recs[qk] = [rec[1] for rec in dbres]
-				recs[qk*10] = [round(rec[0]-2400000.5,3) for rec in dbres]  # MJD
-				jdlast = dbres[-1][0]
-				logger.info('somevals request:{},step:{}[min],name:{} ={}, {}'.format(qk, avginterval, dbStore.qname(qk), recs[qk*10],recs[qk]))
-				#logger.info('quantity request:%s' % bottle.request.params.items())
-				#return json.dumps({'qval': [rec[1] for rec in recs], 'jdlast':jdlast})
-			else:
-				logger.warning('no quantity results for %s' % bottle.request.body)
-				#return '{}'
-	return '{}'.format(recs)
-	return '{'+'"qvals":{}'.format(recs)+'}'
+	with lock:
+		recs={}
+		qkeys = bottle.request.query.qkeys
+		#logger.info('somevals get qkeys={}='.format(qkeys))
+		if qkeys:
+			qkeys = json.loads(qkeys)
+			ndays = float(bottle.request.query.ndays or '0.2')
+			avginterval = float(bottle.request.query.interval or '5') # averaging interval in minutes
+			#bottle.response.headers['Content-Type'] = 'application/json'
+			#bottle.response.headers['Cache-Control'] = 'no-cache'
+			
+			for qk in qkeys:
+				dbres = dbStore.fetchiavg(qk,tstep=avginterval,daysback=ndays,jdend=None)
+				if dbres:
+					#recs['nm{}'.format(qk)] = dbStore.qname(qk)
+					if dbStore.qtyp(qk) in qACCUMULATING:
+						vFirst = dbres[0][1]
+					else:
+						vFirst = 0.0
+					recs[qk] = [rec[1]-vFirst for rec in dbres]
+					recs[qk*10] = [round(rec[0]-2400000.5,3) for rec in dbres]  # MJD
+					jdlast = dbres[-1][0]
+					logger.info('somevals request:{},step:{},vFirst:{},[min],name:{} ={}, {}'.format(qk, avginterval,vFirst, dbStore.qname(qk), recs[qk*10],recs[qk]))
+					#logger.info('quantity request:%s' % bottle.request.params.items())
+					#return json.dumps({'qval': [rec[1] for rec in recs], 'jdlast':jdlast})
+				else:
+					logger.warning('no quantity results for %s' % bottle.request.body)
+					#return '{}'
+		return '{}'.format(recs)
+		return '{'+'"qvals":{}'.format(recs)+'}'
 
 @app.put('/qsave')
 def quantity_put():
-	try:
-		#qkey = bottle.request.params.get('qkey')
-		qkey=int(bottle.request.query.qkey)
-		if qkey:
-			dbStore.additem(qkey,qDEF[qkey][0], qSrc(qkey), qDEF[qkey][1])
-		qval=float(bottle.request.query.qval)
-		#data = json.load(utf8reader(bottle.request.body))
-		logger.info('qval put:{}={}'.format(qkey,qval))
-		dbStore.logi(qkey,qval)
-	except:
-		raise	ValueError
+	with lock:
+		try:
+			#qkey = bottle.request.params.get('qkey')
+			qkey=int(bottle.request.query.qkey)
+			if qkey:
+				dbStore.additem(qkey,qDEF[qkey][0], qSrc(qkey), qDEF[qkey][1])
+			qval=float(bottle.request.query.qval)
+			#data = json.load(utf8reader(bottle.request.body))
+			logger.info('qval put:{}={}'.format(qkey,qval))
+			dbStore.logi(qkey,qval)
+		except:
+			raise	ValueError
 
 	
 @app.post('/menu', method="POST")
@@ -203,7 +220,8 @@ def formhandler():
 	else:
 		ip = None
 		
-	logger.info("==== form handler menu main %s =====:\n%s" % (ip,bottle.request.body.read())) 
+	logger.warning("==== form handler menu main from:{} =====:\n".format(ip)  )
+	logger.info("body:{}".format(bottle.request.body.read()))
 	selqs = bottle.request.forms.getall('quantities')	# selected quantities
 	src=bottle.request.forms.get('source')					# actual source
 	tbcknm=bottle.request.forms.get('tmback')				# time span # days
@@ -352,7 +370,7 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 				qtyp=0
 			ylbls=SiNumLbls(vmin,vmax,4)
 			logger.debug("selq:%s,len:%d,col:%s,ylbls:%s" % (selq,len(jdat),stroke,ylbls))
-			curve=dict(crv=crv, stroke=stroke, ylbls=ylbls, selq=selq, qtyp=qtyp, legend=selq)
+			curve=dict(crv=crv, stroke=stroke, ylbls=ylbls, selq=selq, qtyp=qtyp, legend=selq, unit=symbol[1])
 			data.append(curve)
 	ret['subtitle']='' #" , ".join(subtitle)
 	ret['statbar'] =[ " dd:%s , %s" % (prettydate(jdtill), " , ".join(subtitle)) ]
@@ -396,6 +414,8 @@ def redraw(src, selqs, jdtill, ndays=7):
 	srcs=sorted(dbStore.sources())
 	#quantities=sorted(dbStore.quantities())
 	quantities=typnames(dbStore.quantities(prop=2))
+	SIsymbols = typSI(dbStore.quantities(prop=2))
+	units = [rec[1] for rec in SIsymbols]
 	jdats=[]
 	ydats=[]
 	qss=[]
@@ -423,8 +443,12 @@ def redraw(src, selqs, jdtill, ndays=7):
 					iy=2	# counting quantity
 				else:
 					iy=1
-				logger.info("redraw src:%s,qs:%s,iy:%d,typ:%d,qkey:%d" % (src,qs,iy,typ,qkey))
-				ydats.append([rec[iy] for rec in recs])
+				if typ in qACCUMULATING:
+					vFirst = recs[0][iy]
+				else:
+					vFirst = 0.0
+				logger.info("redraw src:%s,qs:%s,iy:%d,typ:%d,qid:%d,vFirst:%f" % (src,qs,iy,typ,qkey,vFirst))
+				ydats.append([rec[iy]-vFirst for rec in recs])
 				jdats.append([rec[0] for rec in recs])  # julian days
 				qss.append(qs)
 	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays), grQuantIds="%s" % list(grQuantIds), evtData=json.dumps(evtData), **buildChart(jdats,ydats,qss,jdtill,ndays))
@@ -439,26 +463,29 @@ def server_static(filepath):
 
 if __name__ == '__main__':
 	import socket
-	logger = get_logger(__file__,logging.INFO,logging.DEBUG)
+	logger = get_logger(__file__,logging.INFO, logging.DEBUG if DEBUG else logging.INFO)
 	
 	config = devConfig(CONFFILE)
 	dbfile = config.getItem('dbFile',dbfile)
 	try:
 		dbStore = sqlLogger(dbfile)
+		dbStore.writeTypes(SIsymb)
 		dbStore.sources(minDaysBack=5)
 		#logger.info("statistics:%s" %  dbStore.statistics(5)) # will get list of quantities and sources
 		logger.info('quantities:%s' % dbStore.items)
 		for qk in dbStore.items:
 			rec = dbStore.fetchlast(qk)
-			logger.info("qkey:{}={}".format(qk,rec))
+			logger.info("qid:{}={}".format(qk,rec))
 		if config.hasItem('tailScale'):
 			ip = config.getItem('tailScale')  # ip accessible by world, issued by tailScale
 		else: # ip of listening host
-			ip=socket.gethostbyname(socket.gethostname())
+			ip=socket.gethostbyname(socket.gethostname())			
 			ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
+		logger.warning("running bottle on {} with {}".format(socket.gethostname(),ip))
 		ip = '0.0.0.0'  # Pass 0.0.0.0 to listens on all interfaces including the external one
 		port = int(os.environ.get('PORT', 8080))
-		app.run(host=ip, port=port, debug=False, reloader=False)
+		logger.info('req env:{}'.format(bottle.request.environ))
+		app.run(host=ip, port=port, reloader=False, debug=DEBUG)
 	finally:
 		dbStore.close()
 else:	# this is running as a module

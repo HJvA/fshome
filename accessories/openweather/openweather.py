@@ -101,6 +101,7 @@ class openweather(object):
 		elif lat and lon:
 			self.lat=lat
 			self.lon=lon
+		self.weathercode=None
 		self.data = {}
 		self.tRefresh = 60 * tRefreshMinutes  # to seconds
 		self.tMark = datetime.datetime.now() 
@@ -128,6 +129,8 @@ class openweather(object):
 		stuff = await self._collect(item=item) 
 		self.lat = stuff['coord']['lat']
 		self.lon = stuff['coord']['lon']
+		self.weathercode = stuff['weather'][0]['id']
+		self.weatherdescr =stuff['weather'][0]['description']
 		logger.info('got lat:{}, lon:{} with {}'.format(self.lat,self.lon,item))
 		return stuff
 		
@@ -141,7 +144,8 @@ class openweather(object):
 			airq = stuff['list'][0]['components']
 			airq['dt'] = dt
 			#airq['jd'] = julianday(dt)
-			airq['aqi'] = aqi
+			airq['aqi'] = aqi  # air quality index
+			airq['wci'] = self.weathercode
 			logger.debug('air quality ={}=>\n{}'.format(aqi,airq))
 			return airq
 		
@@ -153,14 +157,38 @@ class openweather(object):
 			#rain  ={rec['dt']:rec['rain']['3h'] for rec in forec['list'] if 'rain' in rec}
 			return xdat,ydat
 		
-	async def getPressureForecast(self):
+	async def getMainForecast(self, item='pressure'):
+		""" item = temp | feels_like | temp_min | temp_max | pressure | sea_level | grnd_level | humidity | temp_kf """
 		forec = await self._collect('forecast')
 		if 'list' in forec:
 			xdat = [julianday(rec['dt']) for rec in forec['list']]
-			ydat = [rec['main']['pressure'] for rec in forec['list']]
-			#pressure  ={rec['dt']:rec['main']['pressure'] for rec in forec['list']}
+			ydat = [rec['main'][item] for rec in forec['list']]
 			#logger.info('got %d pressure dd from %s to %s' % (len(pressure),next(iter(pressure)),list(pressure.keys())[-1]))
-			logger.info('got %d pressure dd from %s to %s' % (len(xdat),xdat[0],xdat[-1]))
+			logger.info('got %d %s dd from %s to %s' % (len(xdat),item,xdat[0],xdat[-1]))
+			return xdat,ydat
+		else:
+			logger.warning('no forecast from openweather')
+			return [],[]
+
+	async def getCoudsForecast(self, item='all'):
+		forec = await self._collect('forecast')
+		if 'list' in forec:
+			xdat = [julianday(rec['dt']) for rec in forec['list']]
+			ydat = [rec['clouds'][item] for rec in forec['list']]
+			logger.info('got %d %s dd from %s to %s' % (len(xdat),item,xdat[0],xdat[-1]))
+			return xdat,ydat
+		else:
+			logger.warning('no forecast from openweather')
+			return [],[]
+			
+	async def getWeatherForecast(self, item='id', cnt=5):
+		""" item = id | main | descrption | icon """
+		forec = await self._collect('forecast', {'cnt':cnt})
+		if 'list' in forec:
+			xdat = [julianday(rec['dt']) for rec in forec['list']]
+			logger.debug('weather lst:{}'.format(forec['list']))
+			ydat = [rec['weather'][0][item] for rec in forec['list']]
+			logger.info('got %d %s dd from %s to %s' % (len(xdat),item,xdat[0],xdat[-1]))
 			return xdat,ydat
 		else:
 			logger.warning('no forecast from openweather')
@@ -208,6 +236,9 @@ if __name__ == '__main__':
 		logger.debug('weather:code:%s\n actual:%s \n ' % (code,stuff))
 		icon =_loop.run_until_complete( getIcon(stuff['weather'][0]['icon']))
 	
+	forecast = 	_loop.run_until_complete( weather.getWeatherForecast() )
+	logger.info('forecast ={}'.format(forecast))
+	
 	airpolut =  _loop.run_until_complete( weather.getAirQuality() )
 	#airq = airpolut['list'][0]
 	logger.info('air quality ={}'.format(airpolut))
@@ -230,8 +261,8 @@ if __name__ == '__main__':
 	#forecast = _loop.run_until_complete( restGet(appkey,lat=lat,lon=lon, collect='forecast',timeout=10) )	
 	
 	rain = _loop.run_until_complete(weather.getRainForecast())
-	pressure = _loop.run_until_complete(weather.getPressureForecast())
-	logger.info('rain:%s \n pressure:%s' % (rain[1],pressure[1]))
+	temp = _loop.run_until_complete(weather.getMainForecast(item='temp'))
+	logger.info('forecast: rain:%s \n temp:%s' % (rain[1],temp[1]))
 	
 	history =  _loop.run_until_complete(weather.getHistory(ndays=2))
 	logger.debug('history:x:%s\n y:%s' % history)

@@ -6,7 +6,7 @@ import logging
 import os
 import time
 import enum
-from lib.grtls import julianday
+from lib.grtls import julianday,prettydate
 
 __author__ = "Henk Jan van Aalderen"
 __version__ = "1.0.0"
@@ -60,7 +60,7 @@ class txtLogger(object):
 		''' adds item type i.e. quantity descriptor '''
 		isnew = ikey not in self.items
 		if isnew:
-			logger.info("new qkey:{}=nm:{},src:{},typ:{}".format(ikey,iname,isource,itype))
+			logger.debug("new qkey:{}=nm:{},src:{},typ:{}".format(ikey,iname,isource,itype))
 		self.items.update({ikey:(iname,isource,itype)})
 		logger.debug('%slogitem %s,%s,%s with ikey=%s' % ("new " if isnew else "",iname,isource,itype,ikey))
 		return isnew
@@ -88,6 +88,11 @@ class txtLogger(object):
 	def qsource(self, ikey):
 		if ikey in self.items:
 			return self.items[ikey][1]
+		return None
+
+	def qtyp(self, ikey):
+		if ikey in self.items:
+			return self.items[ikey][2]
 		return None
 		
 	def checkitem(self, iname, isource=None,itype=None, addUnknown=True):
@@ -298,6 +303,21 @@ class sqlLogger(txtLogger):
 			sql = "INSERT INTO eventsLog (ddJulian,descr) VALUES (?,?);"
 			self.execute(sql, (julDay,evtDescr + " ::%s" % root if root else ""))
 
+	def writeTypes(self, SIdict):
+		sqlupd = 'UPDATE quantitytypes SET name=?,unit=? WHERE ID=?;'
+		sqlins = 'INSERT INTO quantitytypes (name,unit,ID) VALUES (?,?,?);'
+		curs = self.con.cursor()
+		for qt,tup in SIdict.items():
+			parms = ( tup[0], tup[1], qt, )
+			logger.info("upd qtyp:{}".format(parms))
+			curs.execute(sqlupd, parms)
+			self.con.commit()
+			if curs.rowcount==0:
+				curs.execute(sqlins, parms)
+				logger.info("ins qtyp:{}".format(parms))
+			self.con.commit()
+		curs.close()
+	
 	def statistics(self, ndays=10, flds="source,quantity,name,type"):  # its order
 		''' queries database for quantity prevalence. keeps list of them internaly '''
 		sql = "SELECT %s,COUNT(*) as cnt,AVG(numval) as avgval,MIN(ddJulian) jdFirst " \
@@ -309,6 +329,40 @@ class sqlLogger(txtLogger):
 				self.checkitem(rec.name, rec.source, rec.type)
 		return recs
 	
+	def linRegression(self, ikey, itvhrs, jdback):
+		""" """ 
+		sql = """ SELECT qdy,COUNT(*) as cnt,dd1st,ddavg,ddlst,num1st,numavg,numlst, 
+			SUM((ddJulian-ddavg)*(numval-numavg)) as ddSumNum, 
+			SUM(((ddJulian-ddavg)*(ddJulian-ddavg))) as ddSumSqr
+			FROM 
+			(SELECT qdy,ddJulian,numval,
+			first_value(ddJulian) OVER win as dd1st,
+			first_value(numval) OVER win as num1st,
+			last_value(ddJulian) OVER win as ddlst,
+			last_value(numval) OVER win as numlst,
+			AVG(ddJulian) OVER win as ddavg,AVG(numval) OVER win as numavg
+			 FROM 
+				(SELECT ddJulian,quantity,numval,CAST(ddJulian*{1} AS int)/{1} as qdy FROM logdat
+				 WHERE quantity={3} AND {0} < ddJulian)
+				 WINDOW win AS (PARTITION BY qdy))
+			 GROUP BY qdy """
+		itvday=24/itvhrs
+		jd = julianday()
+		jdstart = round((jd-jdback)*itvday+0.5)/itvday # multitude of itvhrs
+		logger.info("q:{}={} strt:{}={} itv:{}".format(ikey,self.qname(ikey),jdstart,prettydate(jdstart),itvhrs))
+		curs = self.con.cursor()
+		recs = curs.execute(sql.format(jdstart, itvday,jdback*itvday, ikey))
+		rslt = []
+		for rec in recs:
+			jd = rec[2]
+			slope = rec[8]/rec[9]  # ddSumNum / ddSumSqr
+			intercept = rec[6] - slope * rec[3] # numavg - slope * ddavg	
+			rec = {'jd':jd, 'slope':slope,  'íntercept':intercept, 'cnt':rec[1]}
+			jd+=2
+			logger.info("{} predict+2d:{}".format(rec, slope*jd+intercept))
+			rslt.append(rec)
+		return rslt
+
 	def sources(self, quantities=None, minDaysBack=None):
 		if minDaysBack is None and self.items:
 			return super().sources(quantities)
@@ -353,8 +407,10 @@ class sqlLogger(txtLogger):
 			if rtyp:
 				if tname and tunit:
 					self.execute('UPDATE quantitytypes SET name=?,unit=? WHERE ID=?;',(tname,tunit,itype))
-				tname = rtyp[0]
-				tunit = rtyp[1]
+				if len(rtyp)==2:
+					logger.info("{},{}=>{}".format(tname,tunit,rtyp))
+					tname = rtyp[0]
+					tunit = rtyp[1]
 			elif tname and tunit:
 				self.execute('INSERT INTO quantitytypes (ID,name,unit) VALUES (%d,"%s","%s");' % (itype,tname,tunit))
 		if recs is None or len(recs)==0:
@@ -383,7 +439,8 @@ if __name__ == "__main__":		# for testing
 	import random
 	#os.remove('~/tstlogdata.db')
 	logger = logging.getLogger()
-	[logger.removeHandler(h) for h in logger.handlers[::-1]]
+	for h in logger.handlers[::-1]:
+		logger.removeHandler(h)
 	logger.addHandler(logging.StreamHandler())	# use console
 	logger.setLevel(logging.DEBUG)
 

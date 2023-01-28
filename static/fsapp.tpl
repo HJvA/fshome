@@ -21,7 +21,7 @@
   %setdefault('xgrid',[100,300,500,700,900])
   %setdefault('ygrid',[50,183,317,450])
   %setdefault('xlbls',['morning', 'after noon', 'evening', 'night'])
-  %setdefault('curves',[{'selq': 'temperature', 'qtyp': 0, 'legend': 'rubbish', 'crv': [' 101,450 87,417 142,460 167,450 184,383 192,350 201,317 226,217 242,183 251,150 276,150 292,117 301,150 326,117 367,50 401,83.3 409,83.3 417,117', ' 867,217 884,117 892,83.3 901,50'], 'stroke': '#1084e9', 'ylbls': ['19.8 ', '20.2 ', '20.6 ', '  21 ']}])
+  %setdefault('curves',[{'selq': 'temperature', 'qtyp': 0, 'legend': 'rubbish', 'crv': [' 101,450 87,417 142,460 167,450 184,383 192,350 201,317 226,217 242,183 251,150 276,150 292,117 301,150 326,117 367,50 401,83.3 409,83.3 417,117', ' 867,217 884,117 892,83.3 901,50'], 'stroke': '#1084e9', 'ylbls': ['19.8 ', '20.2 ', '20.6 ', '  21 '], 'unit':'ºC'}])
   %setdefault('xaxlbl',"")
   %setdefault('yaxlbl',"")
   %setdefault('footer',"")
@@ -84,7 +84,8 @@
       %end
      </g>
      <g class="labels y-labels" fill={{curve['stroke']}} >
-       <text  x="-50%" y="2%" transform="rotate(270)">{{yaxlbl}}</text>       
+       <text  x="-50%" y="2%" transform="rotate(270)">{{yaxlbl}}</text>
+       <text  x="{{side}}" y="3%" text-anchor="{{'start' if side>400 else 'end'}}">{{curve['unit']}}</text>	 
        %for i in range(len(ygrid)):
          <text y="{{ygrid[i]}}" x="{{side}}" text-anchor="{{'start' if side>400 else 'end'}}"> {{curve['ylbls'][-i-1]}}  </text>
        %end

@@ -55,8 +55,6 @@ ROOM_SVR   = "0000003E-0000-1000-8000-0026BB765291"
 TEMP_SVR   = "0000008A-0000-1000-8000-0026BB765291"
 HUM_SVR    = "00000082-0000-1000-8000-0026BB765291"
 PRESS_SVR  = "E863F00A-079E-48FF-8F27-9C2605A29F52"
-LOG_SVR = "e863f007-079e-48ff-8f27-9c2605a29f52"
-
 
 chPOW=1
 chENRG=2
@@ -64,8 +62,6 @@ chVOLT=3
 chAMP =4
 chAIRQ=5
 chTEMP=6
-chHUMI=7
-chLOG=8
 
 chDIGI    = 10		# func id for digitals
 chANA1ST  = 11		# func id for first analog channel
@@ -78,15 +74,12 @@ CHARS[chENRG]   = "E863F10C-079E-48FF-8F27-9C2605A29F52"
 CHARS[chPOW]    = "E863F10D-079E-48FF-8F27-9C2605A29F52"
 CHARS[chVOLT]   = "E863F10A-079E-48FF-8F27-9C2605A29F52"
 CHARS[chAMP]    = "E863F126-079E-48FF-8F27-9C2605A29F52"
-CHARS[chTEMP]   = "00000011-0000-1000-8000-0026BB765291"  # "00000023-0000-1000-8000-0026bb765291"
-CHARS[chHUMI]   = "00000010-0000-1000-8000-0026BB765291"
+CHARS[chTEMP]   = "00000011-0000-1000-8000-0026BB765291"
 CHARS[chAIRQ]   = "E863F10B-079E-48FF-8F27-9C2605A29F52"
 CHARS[chBAT]    = 0x2a19   #"00002a19-0000-1000-8000-00805f9b34fb"
-CHARS[chLOG] = "E863F11C-079E-48FF-8F27-9C2605A29F52"
-
 
 class eveDelegate(bluepyDelegate):
-	''' specialization of bluepy to have eve interface '''
+	''' specialization of bluepy to have aios interface '''
 	def __init__(self, devAddress=DEVADDRESS):
 		''' devAddress : address of device as found by e.g. bluetoothctl
 		'''
@@ -94,7 +87,7 @@ class eveDelegate(bluepyDelegate):
 
 	def __repr__(self):
 		"""Return the representation of the ble client."""
-		return 'ble eve client: dev@{} ' \
+		return 'ble aios client: dev@{} ' \
 			.format(self.dev.addr )
 	
 	def _CharId(self, charist, CharDef=CHARS):
@@ -157,13 +150,9 @@ async def main():
 	
 	if delg.dev:
 		service = delg.dev.getServiceByUUID(btle.UUID(TEMP_SVR))
-		#showChars(service)
-		
 		charist = service.getCharacteristics(CHARS[chTEMP])
-		logger.info('Tsrv:%s Tchar:%s ' % (service,charist))
-		if charist:
-			logger.info("Tchar prop:{}".format(charist[0].propertiesToString()))
-			#logger.info(' temp:%s' % delg.read(charist[0]))
+		logger.info('Tsrv:%s char:%s ' % (service,charist))
+		logger.info(' temp:%s' % delg.read(charist[0]))
 		
 		logger.info("Services...")
 		for svc in delg.dev.services:
@@ -172,7 +161,6 @@ async def main():
 			showChars(svc)
 		time.sleep(5)
 		
-		logger.info("Descriptors...")
 		descr = delg.dev.getDescriptors()
 		for des in descr:
 			try:

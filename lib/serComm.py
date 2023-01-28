@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.5
-""" classes for serial transceiver devices
-"""
-import serial
+""" classes for serial transceiver devices """
+from serial import Serial,serial_for_url,SerialException,VERSION
+from serial.tools import list_ports  # type:ignore
 import time
 import asyncio
 import logging
@@ -28,7 +28,7 @@ class serComm(object):
 	def __init__(self, serdev=DEVICE, baud=BAUDRATE, parity=PARITY):
 		''' constructor : setup elementary io functions 
 		'''
-		self.ser = serial.serial_for_url(serdev, do_not_open=True, timeout=TIMEOUT)
+		self.ser = serial_for_url(serdev, do_not_open=True, timeout=TIMEOUT)
 		self.ser.baudrate = baud
 		self.ser.parity = parity
 		self.ser.rtscts = RTSCTS
@@ -37,10 +37,10 @@ class serComm(object):
 		self.reading=False
 		try:
 			self.ser.open()
-		except serial.SerialException as e:
-			logger.critical('Could not open serial port {} \n'.format(self.ser.name, e))
+		except SerialException as e:
+			logger.critical('Could not open serial port {} err:{} \n'.format(self.ser.name, e))
 			#sys.exit(1)
-		logger.debug("serial opened:%s version=%s" % (self.ser.name, serial.VERSION))
+		logger.debug("serial opened:%s version=%s" % (self.ser.name, VERSION))
 		
 	def exit(self):
 		if self.ser.is_open:
@@ -91,11 +91,12 @@ class serComm(object):
 					await asyncio.sleep(tres)
 					cnt+=1
 				if self.ser.in_waiting>0:
-					self.buf += self.ser.read(self.ser.in_waiting)
+					with lock:
+						self.buf += self.ser.read(self.ser.in_waiting)
 			except KeyboardInterrupt:
 				raise
-			except serial.SerialException:
-				logger.critical('error reading serial port {} \n'.format(self.ser.name, e))
+			except SerialException:
+				logger.critical('error reading serial port {} err:{} \n'.format(self.ser.name, e))
 			except TypeError:
 				logger.error('serial interrupt while awaiting')
 			except Exception as e:
@@ -140,7 +141,8 @@ class serComm(object):
 		#with self.ser:
 		if self.ser.is_open:
 			#self.ser.open()
-			self.ser.write(data)
+			with lock:
+				self.ser.write(data)
 	
 	def send_message(self, msg, termin='\r\n'):
 		""" sends a terminated string to the device """
@@ -160,17 +162,18 @@ if __name__ == "__main__":		# just receives strings, basic parsing
 	logger.addHandler(logging.StreamHandler())	# use console
 	logger.setLevel(logging.DEBUG)
 	loop = asyncio.get_event_loop()
-
-	devices = [port.device for port in serial.list_ports.comports()]
+	
+	
+	devices = [port.device for port in list_ports.comports()]
 	ports = [port for port in devices if port in ['/dev/ttyACM0','/dev/ttyUSB0']]
 	logger.info('devices:%s: ports:%s:' % (devices,ports))
-	ser = serial.Serial(ports[0], BAUDRATE)
+	ser = Serial(ports[0], BAUDRATE)
 	
 	try:
 		cul = serComm(DEVICE, BAUDRATE)
 		logger.info("cul version %s" % cul.get_info(b'V\r\n'))
-		
-		loop.run_until_complete(forever(cul.asyRead, termin=b'\n'))
+		asyncio.ensure_future(cul.asyRead(termin=b'\n'))		
+		loop.run_forever() #cul.asyRead(termin=b'\n'))
 	except KeyboardInterrupt:
 		logger.warning("terminated by ctrl c")
 	loop.close()
