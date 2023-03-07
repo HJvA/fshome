@@ -1,5 +1,6 @@
 """ system constants
 """
+from enum import Enum
 
 # base id numbers for a specific device
 qSRC={  # was QID
@@ -15,6 +16,50 @@ qSRC={  # was QID
 	"WeaMap":900   # WeatherMap 
 }
 
+class qTYP(Enum):
+	temperature=0 # temperature sensor [°C]
+	humidity=1    # humidity sensor [%]
+	rain=2        # precipitation meter
+	wind:3        # wind speed meter
+	pressure=4    # incl air pressure [kPa]
+	illuminance=5 # brightness meter [lux]
+	pyro=6       # pyro detector
+	fs20=9       # unknown fs20 device
+	doorbell=10  # doorbell button
+	motion=11    # motion detector
+	button=12    # button stateless [nPresses]
+	lamp=13      # lamp
+	dimmer=14    # mains (light) dimmer [%]
+	outlet=15    # mains outlet 
+	switch=16    # remote on/off switch
+	signal=17    # event signal
+	power=20.    # mains actual power usage [W]
+	energy=21 	# kWh
+	voltage=22 	# V
+	current=23 	# A
+	gasFlow=30 	# m3/h
+	gasVolume=31 # m3
+	ECO2=40      # derived from TVOC
+	TVOC=41 
+	DIGI=44      # aios digital IO
+	bytesPs=50   # bytes per sec
+	Mbytes=51    # mega bytes 
+	duration=60 
+	julianDay=61 # days since 
+	AirQualityIdx=70
+	Fine_particles=71
+	Coarse_particles=72
+	Carbon_monOxide=73
+	Nitrogen_monOxide=74
+	Nitrogen_diOxide=75
+	Ozone=76
+	Sulphur_diOxide=77
+	Ammonia=78
+	Carbon_diOxide=79
+	weathercode=80
+	secluded=98 # known device but to be ignored
+	unknown=99  # unknown device
+	
 # known device types enumeration
 # type name, qtype
 DEVT ={
@@ -66,8 +111,8 @@ def qtName(qTyp):
 		if qTyp==qt:
 			return qnm
 
-#        qkey   qnam    typ   src
-qDEF = { 801 : ("Tpin",   0,  800),
+#        	qkey   qnam    typ   src
+qDEF = { 	801 : ("Tpin",   0,  800),
 			803 : ("Tbme",   0,  800),
 			804 : ("CO2",   79,  800),
 			#805 : ("ECO2",  40,  800),

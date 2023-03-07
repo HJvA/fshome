@@ -22,7 +22,26 @@ from lib.devConst import DEVT,qCOUNTING,qACCUMULATING,strokes,SIsymb,qSrc,qDEF,q
 from lib.tls import get_logger
 from lib.grtls import julianday,unixsecond,prettydate,SiNumForm
 from threading import Lock
-lock = Lock()
+from contextlib import contextmanager
+
+class TimeoutLock(object):
+	def __init__(self):
+		self._lock = Lock()
+
+	def acquire(self, blocking=True, timeout=-1):
+		return self._lock.acquire(blocking, timeout)
+
+	@contextmanager
+	def acquire_timeout(self, timeout):
+		result = self._lock.acquire(timeout=timeout)
+		yield result
+		if result:
+			self._lock.release()
+
+	def release(self):
+		self._lock.release()
+
+lock = TimeoutLock()
 
 __copyright__="<p>Copyright &copy; 2019,2021,2022,2023 hjva</p>"
 TITLE=r"fshome quantity viewer"
@@ -146,69 +165,85 @@ def quantity_lastval():
 	''' rest api for getting averaged quantity values from database
 	e.g. http://192.168.1.20:8080/quantityact?qkeys=[401]
 	will return last results of quantity 401 from database '''
-	with lock:
-		recs={}
-		qkeys = bottle.request.query.qkeys
-		logger.info('lastval get qkeys={}='.format(qkeys))
-		if qkeys:
-			qkeys = json.loads(qkeys)
-			for qk in qkeys:
-				dbres = dbStore.fetchlast(qk)
-				if dbres:
-					logger.info("db:qk:{} last:{}".format(qk,dbres))
-					recs[qk] = dbres['numval']  # json.dumps(dbres)
-		return '{}'.format(recs)
+	global lock
+	with lock.acquire_timeout(10) as ack:
+		if ack:
+			recs={}
+			qkeys = bottle.request.query.qkeys
+			logger.info('lastval get qkeys={}='.format(qkeys))
+			if qkeys:
+				qkeys = json.loads(qkeys)
+				for qid in qkeys:
+					dbres = dbStore.fetchlast(qid)
+					if dbres:
+						logger.info("db:qid:{} last:{}".format(qid,dbres))
+						recs[qid] = dbres['numval']  # json.dumps(dbres)
+			return '{}'.format(recs)
+		else:
+			logger.warning("unable to get lock for lastval:{}".format(qkeys))
 
 @app.get('/somevals')
 def quantity_somevals():
 	''' rest api for getting averaged quantity values from database
 	e.g. http://192.168.1.20:8080/quantity?qkeys=[401,403]&ndays=0.2 
 	will return last results of quantity 401 from database '''
-	with lock:
-		recs={}
-		qkeys = bottle.request.query.qkeys
-		#logger.info('somevals get qkeys={}='.format(qkeys))
-		if qkeys:
-			qkeys = json.loads(qkeys)
-			ndays = float(bottle.request.query.ndays or '0.2')
-			avginterval = float(bottle.request.query.interval or '5') # averaging interval in minutes
-			#bottle.response.headers['Content-Type'] = 'application/json'
-			#bottle.response.headers['Cache-Control'] = 'no-cache'
-			
-			for qk in qkeys:
-				dbres = dbStore.fetchiavg(qk,tstep=avginterval,daysback=ndays,jdend=None)
-				if dbres:
-					#recs['nm{}'.format(qk)] = dbStore.qname(qk)
-					if dbStore.qtyp(qk) in qACCUMULATING:
-						vFirst = dbres[0][1]
+	global lock
+	with lock.acquire_timeout(10) as ack:
+		if ack:
+			recs={}
+			qkeys = bottle.request.query.qkeys
+			#logger.info('somevals get qkeys={}='.format(qkeys))
+			if qkeys:
+				qkeys = json.loads(qkeys)
+				ndays = float(bottle.request.query.ndays or '0.2')
+				avginterval = float(bottle.request.query.interval or '5') # averaging interval in minutes
+				#bottle.response.headers['Content-Type'] = 'application/json'
+				#bottle.response.headers['Cache-Control'] = 'no-cache'
+				
+				for qid in qkeys:
+					dbres = dbStore.fetchiavg(qid,tstep=avginterval,daysback=ndays,jdend=None)
+					if dbres:
+						#recs['nm{}'.format(qk)] = dbStore.qname(qk)
+						if dbStore.qtyp(qid) in qACCUMULATING:
+							vFirst = dbres[0][1]
+						else:
+							vFirst = 0.0
+						recs[qid] = [rec[1]-vFirst for rec in dbres]
+						recs[qid*10] = [round(rec[0]-2400000.5,3) for rec in dbres]  # MJD
+						jdlast = dbres[-1][0]
+						logger.info('somevals request:{},step:{},vFirst:{},[min],name:{} ={}, {}'.format(qid, avginterval,vFirst, dbStore.qname(qid), recs[qid*10],recs[qid]))
+						#logger.info('quantity request:%s' % bottle.request.params.items())
+						#return json.dumps({'qval': [rec[1] for rec in recs], 'jdlast':jdlast})
 					else:
-						vFirst = 0.0
-					recs[qk] = [rec[1]-vFirst for rec in dbres]
-					recs[qk*10] = [round(rec[0]-2400000.5,3) for rec in dbres]  # MJD
-					jdlast = dbres[-1][0]
-					logger.info('somevals request:{},step:{},vFirst:{},[min],name:{} ={}, {}'.format(qk, avginterval,vFirst, dbStore.qname(qk), recs[qk*10],recs[qk]))
-					#logger.info('quantity request:%s' % bottle.request.params.items())
-					#return json.dumps({'qval': [rec[1] for rec in recs], 'jdlast':jdlast})
-				else:
-					logger.warning('no quantity results for %s' % bottle.request.body)
-					#return '{}'
-		return '{}'.format(recs)
-		return '{'+'"qvals":{}'.format(recs)+'}'
+						logger.warning('no quantity results for %s' % bottle.request.body)
+						#return '{}'
+			return '{}'.format(recs)
+			return '{'+'"qvals":{}'.format(recs)+'}'
+		else:
+			logger.warning("unable to get lock for :somevals")
+			
 
 @app.put('/qsave')
 def quantity_put():
-	with lock:
-		try:
-			#qkey = bottle.request.params.get('qkey')
-			qkey=int(bottle.request.query.qkey)
-			if qkey:
-				dbStore.additem(qkey,qDEF[qkey][0], qSrc(qkey), qDEF[qkey][1])
-			qval=float(bottle.request.query.qval)
-			#data = json.load(utf8reader(bottle.request.body))
-			logger.info('qval put:{}={}'.format(qkey,qval))
-			dbStore.logi(qkey,qval)
-		except:
-			raise	ValueError
+	qkey=None
+	global lock
+	with lock.acquire_timeout(10) as ack:
+		if ack:
+			try:
+				#qkey = bottle.request.params.get('qkey')
+				qkey=int(bottle.request.query.qkey)
+				if qkey:
+					dbStore.additem(qkey,qDEF[qkey][0], qSrc(qkey), qDEF[qkey][1])
+				qval=float(bottle.request.query.qval)
+				#data = json.load(utf8reader(bottle.request.body))
+				logger.info('qval put:{}={}'.format(qkey,qval))
+				dbStore.logi(qkey,qval)
+			except:
+				logger.warning("unable to save {}".format(qkey))
+				raise	ValueError
+		else:
+			logger.warning("unable to get lock for put:{}".format(qkey))
+			
 
 	
 @app.post('/menu', method="POST")
@@ -433,9 +468,9 @@ def redraw(src, selqs, jdtill, ndays=7):
 			if qkey is not None:
 				grQuantIds.add(qkey)
 				if qs=='energy':
-					recs = dbStore.fetchiiavg(310,311,tstep=avgminutes,daysback=ndays,jdend=jdtill)
+					recs = dbStore.fetchiiavg(310,311,tstep=avgminutes,daysback=ndays, jdend=jdtill)
 				else:
-					recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays,jdend=jdtill)
+					recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays, jdend=jdtill)
 				if recs is None or len(recs)==0:
 					logger.info('no samples for %s at %s with %s' % (qkey,qs,src))
 					continue
@@ -460,11 +495,45 @@ def redraw(src, selqs, jdtill, ndays=7):
 def server_static(filepath):
 	return bottle.static_file(filepath, root='./static/')
 
+def fssiteRun(cnfFname=CONFFILE):
+	config = devConfig(cnfFname)
+	dbfile = config.getItem('dbFile',None)
+	global dbStore
+	try:
+		dbStore = sqlLogger(dbfile)
+		dbStore.writeTypes(SIsymb)
+		dbStore.sources(minDaysBack=5)
+		#logger.info("statistics:%s" %  dbStore.statistics(5)) # will get list of quantities and sources
+		logger.info('quantities:%s' % dbStore.items)
+		for qk in dbStore.items:
+			rec = dbStore.fetchlast(qk)
+			logger.info("qid:{}={}".format(qk,rec))
+		if config.hasItem('tailScale'):
+			ip = config.getItem('tailScale')  # ip accessible by world, issued by tailScale
+		else: # ip of listening host
+			ip=socket.gethostbyname(socket.gethostname())			
+			ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
+		logger.warning("running bottle on {} with {}".format(socket.gethostname(),ip))
+		ip = '0.0.0.0'  # Pass 0.0.0.0 to listens on all interfaces including the external one
+		port = int(os.environ.get('PORT', 8080))
+		logger.info('bottle req env:{} ip:{} port:{}'.format(bottle.request.environ,ip,port))
+		app.run(host=ip, port=port, reloader=False, debug=DEBUG)
+	finally:
+		dbStore.close()	
 
 if __name__ == '__main__':
-	import socket
+	import multiprocessing
 	logger = get_logger(__file__,logging.INFO, logging.DEBUG if DEBUG else logging.INFO)
+	# create a process
+	fssiteRun()
 	
+	exit()
+	lock = multiprocessing.Lock()
+	process = multiprocessing.Process(target=fssiteRun, args=(CONFFILE))
+	process.start()
+	process.join()
+	
+	"""
 	config = devConfig(CONFFILE)
 	dbfile = config.getItem('dbFile',dbfile)
 	try:
@@ -488,5 +557,6 @@ if __name__ == '__main__':
 		app.run(host=ip, port=port, reloader=False, debug=DEBUG)
 	finally:
 		dbStore.close()
+	"""
 else:	# this is running as a module
 	logger = logging.getLogger(__name__)	# get logger from main program

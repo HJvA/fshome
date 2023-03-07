@@ -7,13 +7,15 @@ import logging
 
 if __name__ == "__main__":
 	import signal
-	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../..'))
-	#from pyhap.accessory import Bridge
-	from hueSampler import hueSampler
+	sys.path.append(os.getcwd()) # + '/..')
+	#sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../..'))
+	import hueSampler
+	import hueSamplerV2
 	from pyhap.accessory_driver import AccessoryDriver
 else:
 	logger = logging.getLogger(__name__)	# get logger from main program
-	from .hueSampler import hueSampler
+	import accessories.hue.hueSampler as hueSampler
+	import accessories.hue.hueSamplerV2 as hueSamplerV2
 
 from lib.fsHapper import HAP_accessory,fsBridge
 from lib.devConfig import devConfig
@@ -25,15 +27,16 @@ class HUE_accessory(HAP_accessory):
 		''' add lamp characteristics to HUE accessory '''
 		if typ==DEVT['lamp']:
 			sampler = fsBridge._samplers[self.receiver]
-			self.gamut = sampler.devdat[quantity].gamut()
 			self.level=None
 			chars=None
-			if type(self.gamut) is list:	# color can be set
-				chars=['On','Brightness','Hue','Saturation']
-			elif type(self.gamut) is dict:	# ct can be set
-				chars=['On','Brightness']
-			elif self.gamut is not None:
-				chars=['On','Brightness']
+			if sampler is hueSampler.hueSampler:  # deCONZ or hue bridge V1
+				self.gamut = sampler.devdat[quantity].gamut()
+				if type(self.gamut) is list:	# color can be set
+					chars=['On','Brightness','Hue','Saturation']
+				elif type(self.gamut) is dict:	# ct can be set
+					chars=['On','Brightness']
+				elif self.gamut is not None:
+					chars=['On','Brightness']
 			if chars is not None:
 				serv = self.add_preload_service('Lightbulb', chars=chars)
 				self._chars[quantity] = {'bri': serv.configure_char('Brightness',setter_callback=self.HAPsetlev)}
@@ -42,6 +45,8 @@ class HUE_accessory(HAP_accessory):
 					self._chars[quantity].update({'hue': serv.configure_char('Hue',setter_callback=self.HAPsethue)})
 				if 'Saturation' in chars:
 					self._chars[quantity].update({'sat': serv.configure_char('Saturation',setter_callback=self.HAPsetsat)})
+			else:
+				self._chars[quantity] = {}
 		else:
 			super().addService(quantity, typ)
 	
@@ -54,7 +59,13 @@ class HUE_accessory(HAP_accessory):
 	def HAPsetsat(self, value):
 		self.setValue(value, 'sat')
 
-class hue_happer(hueSampler):
+class hue_happerV2(hueSamplerV2.hueSampler):
+	""" HUE accessories for HAP bridge """
+	def create_accessory(self, HAPdriver, quantities, aid):
+		aname="-".join([self.qname(q) for q in quantities])
+		return HUE_accessory(HAPdriver, aname, quantities=quantities, stateSetter=self.set_state, aid=aid, sampler=self)
+		
+class hue_happer(hueSampler.hueSampler):
 	""" HUE accessories for HAP bridge """
 	def create_accessory(self, HAPdriver, quantities, aid):
 		aname="-".join([self.qname(q) for q in quantities])
@@ -62,7 +73,10 @@ class hue_happer(hueSampler):
 
 def add_HUE_to_bridge(bridge, config="hue.json"):
 	conf = devConfig(config)
-	sampler = hue_happer(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=0)
+	if 'deCONZ' in config:
+		sampler = hue_happer(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=0)
+	else:
+		sampler = hue_happerV2(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=0)
 	#sampler.minqid=None  # do not auto create
 	bridge.add_sampler(sampler, conf.itstore)	
 

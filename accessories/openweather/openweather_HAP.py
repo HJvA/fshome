@@ -60,12 +60,12 @@ class WeaMap_sampler(DBsampleCollector):
 			rec = await self.weather.getAirQuality()
 			if rec and isinstance(rec,dict) and 'old' not in rec:
 				if rec['dt']<=self.lastdt:
-					logger.debug('same WeaMap rec:{}'.format(rec))
+					logger.debug('same WeaMap rec:{} since={}'.format(rec,since))
 				else:
 					self.lastdt = rec['dt']
 					diff = self.lastdt - time.time()
 					if abs(diff)>100:
-						logger.warning("WeaMap large tdiff:{}".format(diff))
+						logger.warning("WeaMap large tdiff rec-last:{}".format(diff))
 					logger.info('Openweather since:%s rec:%s' % (self.sinceStamp(),rec))
 					for itm,rx in rec.items():
 						try:
@@ -77,9 +77,10 @@ class WeaMap_sampler(DBsampleCollector):
 						logger.debug('WeaMap qid:%s devadr:%s=%s' % (qid,itm,rx))
 						self.check_quantity(self.lastdt, quantity=qid, val=rx)
 			else:
-				logger.debug('bad WeaMap rec:{}'.format(rec))
+				logger.info('bad or old WeaMap rec:{}'.format(rec))
 				await asyncio.sleep(0.2)
 				n+=1
+			await asyncio.sleep(READINTERVAL/4)
 		else:
 			await asyncio.sleep(0.1)
 			logger.debug('WeaMap waiting %.4g' % self.sinceStamp())

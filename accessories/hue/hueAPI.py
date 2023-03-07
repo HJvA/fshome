@@ -243,8 +243,6 @@ class HueBaseDev (object):
 				return cache[self.hueId][reskey]
 			elif reskey in cache[self.hueId] and isinstance(cache[self.hueId], dict) and prop in cache[self.hueId][reskey]:
 				return cache[self.hueId][reskey][prop]
-			else:
-				logger.warning("hue prop:{} not found in {} for {}".format(prop, reskey, self.hueId))
 		elif cache: # when fetching cache failed
 			logger.warning('hueid %s not in cache %s' % (self.hueId,prop))
 		return None
@@ -260,7 +258,6 @@ class HueBaseDev (object):
 		if dtm-self.dtActive >= timedelta(seconds=minChangeInterval):
 			val =await self.state(prop=self.prop)
 			if val is not None:
-				logger.debug("{} newval:{}={}".format(self.devDescr, self.prop,val))
 				return (val != self.last)
 			logger.debug('no prop %s in state %s' % (self.prop,val))
 		else:
@@ -648,7 +645,7 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 		print('put hueuser in the config file:\n%s' % user.result())
 	else:
 		logger.info("sensors:{}".format(sns))
-		for adr,rec in sns.items():
+		for adr,rec in sns[0].items():
 			logger.info("rsns %s:%s" % (adr,rec))
 			
 		#asyncio.create_task(tst_webSock(ipadr,user))

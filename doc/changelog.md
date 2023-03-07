@@ -15,6 +15,15 @@ Sections
 ### Developers
 ### Confinement
 -->
+## [1.5.1] - 2023-03-07
+### Added
+- Hue API V2 (having event driven updates instead of polling)
+- inkplate 6 plus nicer fonts, higher resolution
+- weathericons (preliminary)
+- use of typing module to have strickter parameter types
+- use of mypy tool to check source code
+- tls.clavier class for universal keyboard keys detection
+
 ## [1.5.0] - 2022-06-04
 ### Added
 - inkplate 6 plus display on micropython with i2c comm interface

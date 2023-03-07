@@ -169,9 +169,7 @@ class EventSource:
                     continue
 
                 if line[0] == ':':
-                    _LOGGER.debug("comment:{}".format(line))
-                    # comment line, ignore
-                    #continue
+                    _LOGGER.debug("sse comment:{}".format(line))
 
                 if ':' in line:
                     # contains ':'

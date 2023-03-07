@@ -102,17 +102,11 @@ class hueSampler(DBsampleCollector):
 								if signaller.checkEvent(qid,val):
 									logger.info('%s event by %s=>%s typ(%s) cnt:%s' % (devName,qid,rec,typ,mcnt))
 									signaller.signal(qid, rec)
-								else:
-									logger.info("no event for {} with {}".format(qid,rec))
 								await asyncio.sleep(4)
 								mcnt=0
-							elif 'attr' in msg:  # eg for lights
-								rec = msg['attr']
 							else:
 								mcnt +=1
-								logger.debug("no event for qid:{} in evmsg:{}".format(qid,msg))
 						else:
-							logger.info("no id in event msg:{}".format(msg))
 							await asyncio.sleep(0.01)
 		logger.warning('no eventListener in %s, deCONZ:%s' % (self,self.deCONZ))
 			

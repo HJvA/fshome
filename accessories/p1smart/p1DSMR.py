@@ -26,7 +26,9 @@ if __name__ == "__main__":
 	logger = get_logger(__file__, logging.DEBUG, logging.DEBUG)
 else:
 	from lib.serComm import serComm
-	logger = logging.getLogger(__name__)	# get logger from main program
+	from lib.tls import get_logger
+	logger = get_logger()
+	#logger = logging.getLogger(__name__)	# get logger from main program
 from lib.devConst import DEVT,qSRC
 from lib.grtls import julianday,prettydate
 from lib.sampleCollector import DBsampleCollector,forever
@@ -34,6 +36,7 @@ from lib.sampleCollector import DBsampleCollector,forever
 # Serial Device
 DEVICE = '/dev/ttyUSB0'
 BAUDRATE = 115200
+DEBUG = 0
 
 reOBIS = r"^(\d)\-(\d)\:(\d+\.\d+\.\d+)\((.*)\)"  # parses: "1-0:1.8.2(000754.925*kWh)"
 reOBIS = r"^(\d)\-(\d)\:(\d+\.\d+\.\d+)(\(([\d\.]+[^()]+)\))+"  # parses: "1-0:1.8.2(000754.925*kWh)"
@@ -93,9 +96,9 @@ def parseDSMR(line):
 					return (qkey,fval)
 				elif qkey=='1.0.0':   #  tstamp
 					dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None	# winter or summer time
-					_tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
-					#logger.debug('tstamp:%s dst:%s line:%s' % (_tstamp,dst,line))
 					tz = timezone(timedelta(seconds=-time.timezone))
+					_tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
+					logger.debug('tstamp:{} dst:{} line:{}'.format(_tstamp,dst,val))
 					return (qkey,_tstamp,val)
 			except ValueError as e:
 				if qkey in p1QDEF:
@@ -107,8 +110,8 @@ def parseDSMR(line):
 			crc = line[1:]
 			return ('crc',crc)
 		elif m and m.groups():
-			logger.info('bad dsmr line:%s: n.grp:%s:' % (line, len(m.groups()) if m else None))
-		else:
+			logger.warning('bad dsmr line:%s: n.grp:%s:' % (line, len(m.groups()) if m else None))
+		elif DEBUG:
 			logger.debug('unreconised dsmr line:%s' % line)
 	return None
 
@@ -149,7 +152,8 @@ class p1DSMR(DBsampleCollector):
 					fval=rec[1]
 					qid = self.qCheck(None,qkey,name=p1QDEF[qkey][0])	# create when not there
 					self.qCheck(qid,qkey,typ=p1QDEF[qkey][2])	# define also typ
-					logger.debug('dsmr:"%s" => %s @ sinceAccept=%.6g' % (line, rec, self.sinceAccept(qid)))
+					if DEBUG:
+						logger.debug('dsmr:"%s" => %s @ sinceAccept=%.6g' % (line, rec, self.sinceAccept(qid)))
 					self.check_quantity(self.tstamp, quantity=qid, val=fval*p1QDEF[qkey][1])
 				elif rec[0]=='1.0.0':
 					self.tstamp=rec[1]
@@ -157,7 +161,8 @@ class p1DSMR(DBsampleCollector):
 					dst=0 if val[-1]=='W' else 1 if val[-1]=='S' else None
 					self.tstamp=time.mktime(time.strptime(val[:-1], "%y%m%d%H%M%S"))
 					tz = timezone(timedelta(seconds=-time.timezone))
-					logger.debug('dsmr tstamp:%s dst:%s tz:%s val:%s:' % (prettydate(julianday(self.tstamp)), dst, tz, val))
+					if DEBUG:
+						logger.debug('dsmr tstamp:%s dst:%s tz:%s val:%s:' % (prettydate(julianday(self.tstamp)), dst, tz, val))
 				elif rec[0]=='idf':
 					self.actual={}
 				elif rec[0]=='crc':

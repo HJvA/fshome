@@ -8,7 +8,7 @@ from lib.devConst import DEVT
 from pyhap.accessory import Accessory,Bridge
 from pyhap.const import CATEGORY_SENSOR,CATEGORY_SWITCH,CATEGORY_PROGRAMMABLE_SWITCH,CATEGORY_LIGHTBULB
 
-RUNINTERVAL=3.0 # s
+RUNINTERVAL=5.0 # s
 
 class fsBridge(Bridge):
 	_samplers={}		# static dict of unique samplers
@@ -28,7 +28,7 @@ class fsBridge(Bridge):
 		remies = await asyncio.gather(*coros)
 		#if max(remies)>2:
 		tm0 = time.time()
-		logger.debug('remaining data:%s' % (dict(zip(nms,remies))))
+		logger.debug('fsHap remaining data:%s' % (dict(zip(nms,remies))))
 		await super().run()  # getting accessories via HAP bridge
 	
 	def add_sampler(self, sampler, quantities):

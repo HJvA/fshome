@@ -9,7 +9,8 @@ import asyncio
 from lib.grtls import julianday,prettydate
 from lib.dbLogger import sqlLogger
 from lib.devConst import qCOUNTING,DEVT,DVrng
-logger = logging.getLogger(__name__)	# get logger from main program
+from lib.tls import get_logger
+logger = get_logger(__file__)	# get logger from main program
 from typing import Dict,Tuple,List,Any,Set,Union
 
 async def forever(func, *args, **kwargs):
@@ -197,7 +198,7 @@ class sampleCollector(object):
 				src =rec['source'] if 'source' in rec else ''
 				self._servmap[qid]={sm.ADR:adr, sm.TYP:typ, sm.NM:nm, sm.SRC:src}
 				if 'mask' in rec:
-					logger.info('masking :%s for qid:%s' % (rec['mask'],qid))
+					logger.info('masking:{} for qid:{} nm:{} with:{}'.format(rec['mask'],qid,nm,typ))
 					self._servmap[qid][sm.MSK] = rec['mask']
 				if 'signal' in rec:
 					if sampleCollector.signaller:
@@ -206,6 +207,7 @@ class sampleCollector(object):
 		return self._servmap
 		
 	def nAvgSamps(self, qid):
+		""" nr of samples to average, before accepting the avg """
 		if qid in self.average:
 			return self.average[qid][qCNT]
 		return None
@@ -223,14 +225,14 @@ class sampleCollector(object):
 			if qi:
 				return qi
 		return None
-		
+	
 	def qCheck(self,quantity,devadr,typ=None,name=None,source=None):
 		''' check whether quantity with devadr,typ,name,source attributes exists in servmap;
 			creates or updates (unknown) quantity to self._servmap '''
 		if not quantity:
 			quantity=self.qid(devadr=devadr,typ=typ,name=name)
-			if quantity:
-				logger.debug("qid:{} for {} as {}".format(quantity,name,typ))
+			if quantity and name:
+				logger.debug("qid:{} nm:{} adr:{} tp:{} n={}".format(quantity,name,devadr,typ, self.nAvgSamps(quantity)))
 		if typ and (typ>=DEVT['unknown'] or typ==DEVT['fs20']):  # not precise
 			typ=None
 		if not source:
@@ -270,12 +272,12 @@ class sampleCollector(object):
 			if smItem in self._servmap[qid]:
 				return self._servmap[qid][smItem]
 		return None
-
+	
 	def qactive(self):
 		''' list of active quantities i.e. known and not secluded '''
 		return (qid for qid in self._servmap if self.qIsActive(qid))
 		#(self._servmap[qid][sm.TYP] < DEVT['secluded']) and not self._servmap[qid][sm.NM].startswith("nk."))
-
+	
 	def qname(self, qid):
 		''' quantity name '''
 		return self.serving(qid, sm.NM)
@@ -288,7 +290,7 @@ class sampleCollector(object):
 	def qdevadr(self, qid):
 		''' quantity devadr '''
 		return self.serving(qid, sm.ADR)
-		
+	
 	def qIsActive(self, qid):
 		if qid and qid>0 and qid in self._servmap:
 			if self._servmap[qid][sm.SRC] and self._servmap[qid][sm.TYP] < DEVT["secluded"]:
@@ -366,7 +368,7 @@ class sampleCollector(object):
 		if isinstance(val, collections.Sequence):
 			logger.warning('not numeric %d = %s' % (quantity,val))
 		if val is None or self.qInRng(quantity,val)==False:
-			logger.warning("quantity out of range %s with %s" % (quantity,val))
+			logger.warning("quantity {} typ:{} out of range with {}".format(quantity,self.qtype(quantity),val))
 			return
 		else:
 			self._actual[quantity] = {qVAL:val, qSTMP:tstamp}

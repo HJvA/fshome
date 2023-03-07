@@ -59,8 +59,13 @@ class txtLogger(object):
 	def additem(self, ikey, iname, isource, itype=None):
 		''' adds item type i.e. quantity descriptor '''
 		isnew = ikey not in self.items
-		if isnew:
-			logger.debug("new qkey:{}=nm:{},src:{},typ:{}".format(ikey,iname,isource,itype))
+		if not isnew:
+			if iname!=self.qname(ikey):
+				logger.warning("changing qname '{}'->'{}'".format(self.qname(ikey),iname))
+			if itype!=self.qtyp(ikey):
+				logger.warning("changing qtyp '{}'->'{}'".format(self.qtyp(ikey),itype))
+			if isource!=self.qsource(ikey):
+				logger.warning("changing qsource '{}'->'{}'".format(self.qsource(ikey),isource))
 		self.items.update({ikey:(iname,isource,itype)})
 		logger.debug('%slogitem %s,%s,%s with ikey=%s' % ("new " if isnew else "",iname,isource,itype,ikey))
 		return isnew

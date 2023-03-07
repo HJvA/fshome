@@ -121,7 +121,7 @@ class openweather(object):
 			logger.debug('%s collected %s openweather:%s ' % (self.tMark,item,self.data[item]))
 		else:
 			self.data[item]['old']=True
-			logger.debug('returning ancient WeaMap data')
+			logger.debug('returning ancient WeaMap data for:{} ddLast:{}'.format(item,self.tMark))
 		return self.data[item]
 	
 	async def getCurrent(self, item='weather'):
@@ -131,6 +131,7 @@ class openweather(object):
 		self.lon = stuff['coord']['lon']
 		self.weathercode = stuff['weather'][0]['id']
 		self.weatherdescr =stuff['weather'][0]['description']
+		#if 'old' not in self.data[item]: 
 		logger.info('got lat:{}, lon:{} with {}'.format(self.lat,self.lon,item))
 		return stuff
 		
@@ -146,7 +147,9 @@ class openweather(object):
 			#airq['jd'] = julianday(dt)
 			airq['aqi'] = aqi  # air quality index
 			airq['wci'] = self.weathercode
-			logger.debug('air quality ={}=>\n{}'.format(aqi,airq))
+			if 'old' not in self.data[item]: 
+				dd = datetime.datetime.fromtimestamp(dt)
+				logger.info('air quality ={} dd:{}=>\n{}'.format(aqi,dd,airq))
 			return airq
 		
 	async def getRainForecast(self):
