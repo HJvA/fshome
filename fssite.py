@@ -21,12 +21,12 @@ from lib.dbLogger import sqlLogger
 from lib.devConst import DEVT,qCOUNTING,qACCUMULATING,strokes,SIsymb,qSrc,qDEF,qtName
 from lib.tls import get_logger
 from lib.grtls import julianday,unixsecond,prettydate,SiNumForm
-from threading import Lock
+#from threading import Lock
 from contextlib import contextmanager
 
 class TimeoutLock(object):
-	def __init__(self):
-		self._lock = Lock()
+	def __init__(self, mpLock=None):
+		self._lock = mpLock
 
 	def acquire(self, blocking=True, timeout=-1):
 		return self._lock.acquire(blocking, timeout)
@@ -41,7 +41,8 @@ class TimeoutLock(object):
 	def release(self):
 		self._lock.release()
 
-lock = TimeoutLock()
+lock = None  # global to be set to TimeoutLock 
+queue = None
 
 __copyright__="<p>Copyright &copy; 2019,2021,2022,2023 hjva</p>"
 TITLE=r"fshome quantity viewer"
@@ -118,7 +119,7 @@ def index(name=TITLE):
 	else:
 		ip = None
 	tm=time.perf_counter()
-	logger.info("===== index request:%s from %s=====" % (bottle.request.body.read(),ip)) 
+	logger.info("===== frm index request:%s from %s=====" % (bottle.request.body.read(),ip)) 
 
 	if bottle.request.query.title:
 		bottle.redirect('/menu')
@@ -136,7 +137,7 @@ def index(name=TITLE):
 		selqs=typnames(dbStore.quantities([src],prop=2))[:2]  # quantity typs that are in src
 		ndays=4
 		bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
-	logger.info("src:%s,selqs:%s len:%d" % (src,selqs,len(selqs)))
+	logger.info("frm src:%s,selqs:%s len:%d" % (src,selqs,len(selqs)))
 	if len(selqs)==0 or len(selqs)>15:
 		selqs=['temperature']
 	#page = dict(menitms=buildMenu(srcs,src,typnames(dbStore.quantities(prop=2)),selqs,ndays))
@@ -144,7 +145,7 @@ def index(name=TITLE):
 	jdtill = julianday()
 	page = redraw(src, selqs, jdtill, ndays)
 	page.update( dict(title=name, footer=__copyright__)) #jdtill=julianday(),ndays=ndays,grQuantIds=quantIds))
-	logger.debug("index page:(t:%s)\n%s\n" % (time.perf_counter()-tm,page))
+	logger.debug("frm index page:(t:%s)\n%s\n" % (time.perf_counter()-tm,page))
 	return bottle.template(TPL, page)
 
 @app.post('/cursor', method="POST")
@@ -155,7 +156,7 @@ def cursorhandler():
 	rec = bottle.request.json
 	jd = float(rec['jdtill']) - (900 -float(rec['cursorPos']))/800*float(rec['ndays']);
 	qids = rec['grQuantIds']
-	logger.info("cursor %s at %s " % (rec,prettydate(jd)))
+	logger.info("frm cursor %s at %s " % (rec,prettydate(jd)))
 	#logger.info("curs post:%s" % bottle.request.body.read()) 
 	return dict(dd=prettydate(jd),jdtill=jd,evtDescr='curs')
 	
@@ -166,21 +167,21 @@ def quantity_lastval():
 	e.g. http://192.168.1.20:8080/quantityact?qkeys=[401]
 	will return last results of quantity 401 from database '''
 	global lock
-	with lock.acquire_timeout(10) as ack:
+	with lock.acquire_timeout(4) as ack:
 		if ack:
 			recs={}
 			qkeys = bottle.request.query.qkeys
-			logger.info('lastval get qkeys={}='.format(qkeys))
+			logger.debug('rest lastval get qkeys={}='.format(qkeys))
 			if qkeys:
 				qkeys = json.loads(qkeys)
 				for qid in qkeys:
 					dbres = dbStore.fetchlast(qid)
 					if dbres:
-						logger.info("db:qid:{} last:{}".format(qid,dbres))
+						logger.info("rest get:qid:{} last:{}".format(qid,dbres))
 						recs[qid] = dbres['numval']  # json.dumps(dbres)
 			return '{}'.format(recs)
 		else:
-			logger.warning("unable to get lock for lastval:{}".format(qkeys))
+			logger.warning("unable to get rest lock for lastval")
 
 @app.get('/somevals')
 def quantity_somevals():
@@ -188,7 +189,7 @@ def quantity_somevals():
 	e.g. http://192.168.1.20:8080/quantity?qkeys=[401,403]&ndays=0.2 
 	will return last results of quantity 401 from database '''
 	global lock
-	with lock.acquire_timeout(10) as ack:
+	with lock.acquire_timeout(4) as ack:
 		if ack:
 			recs={}
 			qkeys = bottle.request.query.qkeys
@@ -211,51 +212,55 @@ def quantity_somevals():
 						recs[qid] = [rec[1]-vFirst for rec in dbres]
 						recs[qid*10] = [round(rec[0]-2400000.5,3) for rec in dbres]  # MJD
 						jdlast = dbres[-1][0]
-						logger.info('somevals request:{},step:{},vFirst:{},[min],name:{} ={}, {}'.format(qid, avginterval,vFirst, dbStore.qname(qid), recs[qid*10],recs[qid]))
+						logger.info('rest somevals req:{},step:{},vFirst:{},[min],name:{} ={}, {}'.format(qid, avginterval,vFirst, dbStore.qname(qid), recs[qid*10],recs[qid]))
 						#logger.info('quantity request:%s' % bottle.request.params.items())
 						#return json.dumps({'qval': [rec[1] for rec in recs], 'jdlast':jdlast})
 					else:
-						logger.warning('no quantity results for %s' % bottle.request.body)
+						logger.warning('no rest for %s' % bottle.request.body)
 						#return '{}'
 			return '{}'.format(recs)
 			return '{'+'"qvals":{}'.format(recs)+'}'
 		else:
-			logger.warning("unable to get lock for :somevals")
+			logger.warning("unable to get rest locked for :somevals")
 			
 
 @app.put('/qsave')
 def quantity_put():
-	qkey=None
-	global lock
-	with lock.acquire_timeout(10) as ack:
+	qid=None
+	global queue,lock
+	with lock.acquire_timeout(4) as ack:
 		if ack:
 			try:
 				#qkey = bottle.request.params.get('qkey')
-				qkey=int(bottle.request.query.qkey)
-				if qkey:
-					dbStore.additem(qkey,qDEF[qkey][0], qSrc(qkey), qDEF[qkey][1])
+				qid=int(bottle.request.query.qkey)
+				if qid:
+					dbStore.additem(qid,qDEF[qid][0], qSrc(qid), qDEF[qid][1])
 				qval=float(bottle.request.query.qval)
 				#data = json.load(utf8reader(bottle.request.body))
-				logger.info('qval put:{}={}'.format(qkey,qval))
-				dbStore.logi(qkey,qval)
+				logger.info('rest put:qid:{}={} qsize:{}'.format(qid,qval,queue.qsize()))
+				dbStore.logi(qid,qval)
+				if queue:
+					queue.put((qid,qval), block=False)
+				else:
+					logger.warning("no queue for watchdog for qid:{}".format(qid))
 			except:
-				logger.warning("unable to save {}".format(qkey))
+				logger.warning("unable to rest save qid:{}".format(qid))
 				raise	ValueError
 		else:
-			logger.warning("unable to get lock for put:{}".format(qkey))
+			logger.warning("unable to get rest locked for put:{}".format(qid))
 			
 
 	
 @app.post('/menu', method="POST")
 def formhandler():
-	''' Handle form submission '''
+	''' Handle frm submission '''
 	tm=time.perf_counter()
 	if 'REMOTE_ADDR' in bottle.request.environ:
 		ip = bottle.request.environ.get('REMOTE_ADDR')
 	else:
 		ip = None
 		
-	logger.warning("==== form handler menu main from:{} =====:\n".format(ip)  )
+	logger.warning("==== frm handler menu main from:{} =====:\n".format(ip)  )
 	logger.info("body:{}".format(bottle.request.body.read()))
 	selqs = bottle.request.forms.getall('quantities')	# selected quantities
 	src=bottle.request.forms.get('source')					# actual source
@@ -277,7 +282,7 @@ def formhandler():
 	jdcursor = jdtill -jdofs
 	if evtDescr and evtDescr!='comment':  # define event at cursor
 		root = sys.modules['__main__'].__file__
-		logger.info('received event descr %s at jd:%s' % (evtDescr,jdcursor))
+		logger.info('form received event descr %s at jd:%s' % (evtDescr,jdcursor))
 		
 		dbStore.setEvtDescription(jdcursor,evtDescr,root=root)
 	else:  # place right side at cursor
@@ -286,11 +291,11 @@ def formhandler():
 	if abs(jdtill-julianday())<ndays/5.0:
 		jdtill=julianday()  # adjust to now when close
 	else:
-		logger.info("adjusting jd %f with ofs:%f evt:%s" % (jdtill,jdofs,evtDescr))
+		logger.info("frm adjusting jd %f with ofs:%f evt:%s" % (jdtill,jdofs,evtDescr))
 	statbar=bottle.request.forms.get('statbar')
 	logger.info("statbar=%s" % statbar)
 	
-	logger.info("menu response(t:%s):qtt=%s src=%s jd=%s ndys=%s cPos=%s evtData=%s" % (time.perf_counter()-tm, selqs, src, prettydate(jdtill), tbcknm,cursXpos,evtData))
+	logger.info("frm menu response(t:%s):qtt=%s src=%s jd=%s ndys=%s cPos=%s evtData=%s" % (time.perf_counter()-tm, selqs, src, prettydate(jdtill), tbcknm,cursXpos,evtData))
 	bottle.response.set_cookie(COOKIE, json.dumps((src,selqs,ndays)), max_age=AN1)
 	return bottle.template(TPL, redraw(src, selqs, jdtill, ndays))
 	
@@ -350,18 +355,18 @@ def tax_grid(jdnow,ndays,gridstep):
 		gridofs= jdnow-int(jdnow)
 		gridofs= gridofs % 0.0417
 		gridofs *= 24.0	#[hr]
-		logger.debug("frac in 1hrs %s utcofs=%s now=%s" % (gridofs,utcoff,prettydate(jdnow)))
+		logger.debug("frm frac in 1hrs %s utcofs=%s now=%s" % (gridofs,utcoff,prettydate(jdnow)))
 	elif gridstep==0.25:   # 6hrs
 		gridofs= (jdnow+utcoff) % 0.25  #[d]
 		gridofs *= 4.0	#[6h]
-		logger.debug("frac in 6hrs %s utcofs=%s now=%s" % (gridofs,utcoff,prettydate(jdnow)))
+		logger.debug("frm frac in 6hrs %s utcofs=%s now=%s" % (gridofs,utcoff,prettydate(jdnow)))
 	elif gridstep==7:  # a week
 		gridofs = (jdnow+1.5+utcoff) % 7  #[d]
-		logger.debug("day of week:%s" % gridofs)
+		logger.debug("frm day of week:%s" % gridofs)
 		gridofs /= 7	#[w]
 	elif int(gridstep)==30:  # a month
 		gridofs = datetime.datetime.fromtimestamp(unixsecond(jdnow))
-		logger.debug("date %s hour %s" % (gridofs.day,gridofs.hour))
+		logger.debug("frm date %s hour %s" % (gridofs.day,gridofs.hour))
 		gridofs = gridofs.day + gridofs.hour/24.0  #[d]
 		gridofs /= 30.44	#[m]
 	else:
@@ -370,7 +375,7 @@ def tax_grid(jdnow,ndays,gridstep):
 
 	gridlocs = [jdnow-(f+gridofs)*gridstep for f in range(int(ndays/gridstep+0.1))]
 	gridlocs.reverse()
-	logger.debug("jdnow=%s gridlocs=%s" % (jdnow,gridlocs))
+	logger.debug("frm jdnow=%s gridlocs=%s" % (jdnow,gridlocs))
 	return gridlocs
 
 	
@@ -392,7 +397,7 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 			vlast=ydat[-1]
 			subtitle.append("%s=%.4g %s " % (symbol[0],vlast,symbol[1]))
 		else:
-			logger.debug("selq %s not in strokes:%s" % (selq,strokes))
+			logger.debug("frm selq %s not in strokes:%s" % (selq,strokes))
 			stroke=strokes[0]
 		if len(jdat)>0:
 			if selq in DEVT and DEVT[selq] in qCOUNTING:
@@ -404,13 +409,13 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 				crv = buildCurve(jdat,ydat, ndays,vmax-vmin, jdtill-ndays,vmin)
 				qtyp=0
 			ylbls=SiNumLbls(vmin,vmax,4)
-			logger.debug("selq:%s,len:%d,col:%s,ylbls:%s" % (selq,len(jdat),stroke,ylbls))
+			logger.debug("frm selq:%s,len:%d,col:%s,ylbls:%s" % (selq,len(jdat),stroke,ylbls))
 			curve=dict(crv=crv, stroke=stroke, ylbls=ylbls, selq=selq, qtyp=qtyp, legend=selq, unit=symbol[1])
 			data.append(curve)
 	ret['subtitle']='' #" , ".join(subtitle)
 	ret['statbar'] =[ " dd:%s , %s" % (prettydate(jdtill), " , ".join(subtitle)) ]
 	if len(data)==0:
-		logger.warning('missing chart data:jd:%d yd:%d q:%d' % (len(jdats),len(ydats),len(selqs)))
+		logger.warning('frm missing chart data:jd:%d yd:%d q:%d' % (len(jdats),len(ydats),len(selqs)))
 		ret.update(dict(curves=[],xgrid=[]))
 		return ret
 	
@@ -424,7 +429,7 @@ def buildChart(jdats, ydats,selqs, jdtill, ndays):
 	xgrid = [round(plXMARG+plWIDTH-(jdtill-jd)*xscl,1) for jd in gridlocs]
 	xlbls=TimeLbls([jd+gridstep/2 for jd in gridlocs[:-1]],lblformat)
 
-	logger.info("chart upd: ndays=%.4g xlbls=%s xgrid=%s" % (ndays,xlbls,xgrid))
+	logger.info("frm chart upd: ndays=%.4g xlbls=%s xgrid=%s" % (ndays,xlbls,xgrid))
 	ret.update(dict(title=TITLE, curves=data, xgrid=xgrid, xlbls=xlbls))
 	return ret
 
@@ -472,7 +477,7 @@ def redraw(src, selqs, jdtill, ndays=7):
 				else:
 					recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays, jdend=jdtill)
 				if recs is None or len(recs)==0:
-					logger.info('no samples for %s at %s with %s' % (qkey,qs,src))
+					logger.info('frm no samples for %s at %s with %s' % (qkey,qs,src))
 					continue
 				if typ in qCOUNTING:
 					iy=2	# counting quantity
@@ -482,12 +487,12 @@ def redraw(src, selqs, jdtill, ndays=7):
 					vFirst = recs[0][iy]
 				else:
 					vFirst = 0.0
-				logger.info("redraw src:%s,qs:%s,iy:%d,typ:%d,qid:%d,vFirst:%f" % (src,qs,iy,typ,qkey,vFirst))
+				logger.info("frm redraw src:%s,qs:%s,iy:%d,typ:%d,qid:%d,vFirst:%f" % (src,qs,iy,typ,qkey,vFirst))
 				ydats.append([rec[iy]-vFirst for rec in recs])
 				jdats.append([rec[0] for rec in recs])  # julian days
 				qss.append(qs)
 	page = dict(menitms=buildMenu(srcs,src,quantities,selqs,ndays), grQuantIds="%s" % list(grQuantIds), evtData=json.dumps(evtData), **buildChart(jdats,ydats,qss,jdtill,ndays))
-	logger.debug("redraw page:(t:%s)\n%s\n" % (time.perf_counter()-tm,page))
+	logger.debug("frm redraw page:(t:%s)\n%s\n" % (time.perf_counter()-tm,page))
 	return page
 
 #fall back to static as last
@@ -495,7 +500,11 @@ def redraw(src, selqs, jdtill, ndays=7):
 def server_static(filepath):
 	return bottle.static_file(filepath, root='./static/')
 
-def fssiteRun(cnfFname=CONFFILE):
+def fssiteRun(cnfFname=CONFFILE, mpLock=None, mpQueue=None):
+	""" running fssite webserver """
+	global queue,lock
+	queue = mpQueue
+	lock = TimeoutLock(mpLock)
 	config = devConfig(cnfFname)
 	dbfile = config.getItem('dbFile',None)
 	global dbStore
@@ -503,21 +512,24 @@ def fssiteRun(cnfFname=CONFFILE):
 		dbStore = sqlLogger(dbfile)
 		dbStore.writeTypes(SIsymb)
 		dbStore.sources(minDaysBack=5)
+		logger.info("frm fssiteRun :qsize:{} cnf:{}".format(mpQueue.qsize(),cnfFname))
 		#logger.info("statistics:%s" %  dbStore.statistics(5)) # will get list of quantities and sources
-		logger.info('quantities:%s' % dbStore.items)
+		logger.info('frm quantities:%s' % dbStore.items)
 		for qk in dbStore.items:
 			rec = dbStore.fetchlast(qk)
-			logger.info("qid:{}={}".format(qk,rec))
+			logger.info("frm qid:{}={}".format(qk,rec))
 		if config.hasItem('tailScale'):
 			ip = config.getItem('tailScale')  # ip accessible by world, issued by tailScale
 		else: # ip of listening host
 			ip=socket.gethostbyname(socket.gethostname())			
 			ip =[l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
-		logger.warning("running bottle on {} with {}".format(socket.gethostname(),ip))
+		logger.warning("frm running bottle on {} with {}".format(socket.gethostname(),ip))
 		ip = '0.0.0.0'  # Pass 0.0.0.0 to listens on all interfaces including the external one
 		port = int(os.environ.get('PORT', 8080))
-		logger.info('bottle req env:{} ip:{} port:{}'.format(bottle.request.environ,ip,port))
+		#logger.info('bottle req env:{} ip:{} port:{}'.format(bottle.request.environ, ip,port))
 		app.run(host=ip, port=port, reloader=False, debug=DEBUG)
+	except KeyboardInterrupt:
+		pass
 	finally:
 		dbStore.close()	
 
@@ -529,7 +541,7 @@ if __name__ == '__main__':
 	
 	exit()
 	lock = multiprocessing.Lock()
-	process = multiprocessing.Process(target=fssiteRun, args=(CONFFILE))
+	process = multiprocessing.Process(target=fssiteRun, args=(CONFFILE,lock))
 	process.start()
 	process.join()
 	
@@ -559,4 +571,4 @@ if __name__ == '__main__':
 		dbStore.close()
 	"""
 else:	# this is running as a module
-	logger = logging.getLogger(__name__)	# get logger from main program
+	logger = get_logger()	# get logger from main program

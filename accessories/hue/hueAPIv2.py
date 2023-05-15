@@ -42,7 +42,7 @@ class HueTyps(Enum):
 	temperature,motion,light_level,device_power, zigbee_connectivity, \
 	unknown	= range(1,16) 
 	@property
-	def qTyp(self):
+	def qTyp(self) -> int:
 		if self is HueTyps.light:
 			return DEVT['lamp']
 		#grouped_light: DEVT[''],
@@ -67,7 +67,7 @@ class HueTyps(Enum):
 
 HUETYP = {
 	 HueTyps.light:{'prop':['dimming.brightness','on.on','color.xy.x', 'color.xy.y', 'color_temperature.mirek'], 'qtyp':DEVT['lamp']},
-	 HueTyps.grouped_light:{'prop':['on.on','dimming.brightness'], 'qtyp':DEVT['unknown']},
+	 HueTyps.grouped_light:{'prop':['dimming.brightness'], 'qtyp':DEVT['unknown']},   # 'on.on'
 	 HueTyps.temperature:{'prop':['temperature.temperature'], 'qtyp':DEVT['temperature']},
 	 HueTyps.motion:{'prop':['motion.motion'], 'qtyp':DEVT['motion']},
 	 HueTyps.light_level:{'prop':['light.light_level'], 'qtyp':DEVT['illuminance']},
@@ -79,6 +79,7 @@ HUETYP = {
 	}
 
 UPDATEINTERVAL=300
+DEBUG = 0
 _loop = None
 Semaphore=None
 
@@ -128,7 +129,7 @@ async def hueGET(ipadr:str,appkey:str,resource='',rid='',timeout=2, ssl=True) ->
 	if Semaphore is None:
 		Semaphore = asyncio.Semaphore()
 		
-	stuff:dict
+	stuff:dict = {}
 	url=('https://' if ssl else 'http://') +ipadr+'/clip/v2/resource'
 	headers = {'Content-Type': 'application/json'}
 	headers = {'hue-application-key': appkey } # "{}".format(appkey) }
@@ -224,6 +225,9 @@ async def getCharDat(ipadr:str, appkey:str, endpoints:List[str]=ENDPOINTS[:5], c
 	for endpnt in endpoints:
 		dat = await hueGET(ipadr, appkey, resource=endpnt)
 		#logger.info("ep:{}".format(endpnt))
+		if dat is None or not 'data' in dat:
+			logger.warning("bad hue dat:{}".format(dat))
+			continue
 		for dt in dat['data']: # a list usually 1 elm?
 			_id = dt['id']
 			nact,nsvr,nchld,ngrpnts = (0,0,0,-1)
@@ -304,6 +308,7 @@ async def getCharDat(ipadr:str, appkey:str, endpoints:List[str]=ENDPOINTS[:5], c
 	"""
 
 def findName(hid, chDat):
+	""" find name of characteritic (or owner of it) with hueId 'hid' in chDat """
 	nam:str=''
 	oid=None
 	if hid and hid in chDat:
@@ -335,7 +340,7 @@ def findName(hid, chDat):
 						logger.debug("svr fndnm:{} as:{} for {} as {}".format(hid,nam,own,rt))
 						oid=hid
 						break
-		if not nam:
+		if not nam and DEBUG:
 			logger.warning("name not found for {} -> {}".format(hid,oid))
 	#logger.debug("fndName:{}->{} ".format(id,nam))
 	return nam,oid
@@ -359,6 +364,7 @@ def FindId(name, qtyp, chDat):
 	return sid
 
 def FindOwnerId(sid, htyp, chDat):
+	""" find hid of owner of service 'sid' having huetype 'htyp' """
 	oid=None
 	#for htp,trec in HUETYP.items():
 	#	if htp==htyp:  #qtyp==trec['qtyp']:
@@ -372,84 +378,93 @@ def FindOwnerId(sid, htyp, chDat):
 	return oid
 
 
-async def eventListener(ipadr:str, appkey:str, evCallback, chDat:ChDat) ->None:
+async def evListener(ipadr:str, appkey:str, evCallback, chDat:ChDat) ->None:
 	""" keep listening for events arriving at hue bridge """
 	headers = {'hue-application-key': appkey, 'Accept': 'text/event-stream'  } # "{}".format(appkey) }
 	url = 'https://{}/eventstream/clip/v2'.format(ipadr)
+	logger.info('starting hue evListerner on:{}'.format(ipadr))
+	lastid=None
 	async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=0)) as session:
 		async with sse.EventSource(url, session=session, headers=headers, ssl=False) as event_source:
 			try:
-				logger.info('Event.src:{} ready:{}'.format(event_source.url,event_source.ready_state))
+				logger.info('Event.src:{} ready:{} '.format( event_source.url, event_source.ready_state))
 				async for event in event_source:  # repeat listening
-					dat = json.loads(event.data)
-					for dt in dat: # is a list
-						tm = dt['creationtime'] # ISO 8601						
-						if 'Z' in tm:  # The timezone offset for UTC is 0 and would be indicated with the letter Z
-							tm = tm.replace('Z','+0000')  # allow parsing to tx:utc
-						loct = datetime.strptime(tm, "%Y-%m-%dT%H:%M:%S%z").astimezone() # aware local tz
-						#loct = date.fromisoformat(dt['creationtime'])
-						for dati in  dt['data']: # try to find numerical value associated with key in EVtypes
-							num=float('nan')
-							val=None
-							tp = dati['type']
-							_id = dati['id']
-							nam,oid = findName(_id, chDat) # may give owner name
-							htyp = HueTyps.fromstr(tp)
-							if htyp in HUETYP:
-								key = HUETYP[htyp]['prop']
-								typ = htyp.qTyp # HUETYP[htyp]['qtyp']
-								if _id in chDat:
-									oid = _id
-									logger.debug("known.ev.id:{} for:{} typ:{} dd:{}".format(oid,nam,typ,tm))
-								else:
-									oid = FindOwnerId(_id, tp, chDat)
-									logger.debug("indir.ev.id:{} typ:{} {} for:{} dd:{}".format(oid,typ,nam,_id,tm))
-								if key and len(key)>0:
-									for ky in key: # all posible properties of the type
-										kys=ky.split('.')
-										if kys[0] in dati:
-											val = dati[kys[0]]  # entire rec
-											if len(kys)>0 and isinstance(val,dict) and kys[1] in val:
-												val = val[kys[1]]
-												num = val
-												if isinstance(val, (float,int)):
-													num = float(val)
-												elif isinstance(val, str) and val.replace('.','').isnumeric():
-													num = float(val)
-												elif isinstance(val, dict):  # {'x':0.123, 'y':0.234}
-													logger.info("dict({}) for {}:{} has changed".format(val,tp,nam))
-												elif isinstance(val, str) and tp=='button':
-													logger.info("ev.{} '{}'.[{}] for {}".format(tp,val,kys[1],nam))
+					try:
+						dat = json.loads(event.data)
+						#logger.info("evid:{} =? {}".format(lastid , event_source._event_id))
+						if lastid == event_source._event_id:
+							logger.info("ev2Dat:{}, id:{}".format(event, lastid))
+							continue
+						if DEBUG:
+							logger.debug("event from {}->{}".format(event_source._event_id, dat))
+						lastid = event_source._event_id
+						for dt in dat: # is a list
+							tm = dt['creationtime'] # ISO 8601						
+							if 'Z' in tm:  # The timezone offset for UTC is 0 and would be indicated with the letter Z
+								tm = tm.replace('Z','+0000')  # allow parsing to tx:utc
+							loct = datetime.strptime(tm, "%Y-%m-%dT%H:%M:%S%z").astimezone() # aware local tz
+							#loct = date.fromisoformat(dt['creationtime'])
+							for dati in  dt['data']: # try to find numerical value associated with key in EVtypes
+								num=float('nan')
+								val=None
+								tp = dati['type']
+								_id = dati['id']
+								nam,oid = findName(_id, chDat) # may give owner name
+								htyp = HueTyps.fromstr(tp)
+								if DEBUG:
+									logger.info("evVal:{}=:{} evid:{}".format(nam,dati,lastid))
+								if htyp in HUETYP:
+									key = HUETYP[htyp]['prop'] # [rec.item]
+									typ = htyp.qTyp # HUETYP[htyp]['qtyp']
+									if _id in chDat:
+										oid = _id
+										logger.debug("known.ev.id:{} for:{} typ:{} dd:{}".format(oid,nam,typ,tm))
+									else:
+										oid = FindOwnerId(_id, tp, chDat)
+										logger.debug("indir.ev.id:{} typ:{} {} for:{} dd:{}".format(oid,typ,nam,_id,tm))
+									if key and len(key)>0:
+										for ky in key: # all posible properties of the type
+											kys=ky.split('.')
+											if kys[0] in dati:
+												val = dati[kys[0]]  # entire rec
+												if len(kys)>0 and isinstance(val,dict) and kys[1] in val:
+													val = val[kys[1]]
+													num = val
+													if isinstance(val, (float,int)):
+														num = float(val)
+													elif isinstance(val, str) and val.replace('.','').isnumeric():
+														num = float(val)
+													elif isinstance(val, dict):  # {'x':0.123, 'y':0.234}
+														logger.info("dict({}) for {}:{} has changed".format(val,tp,nam))
+													elif isinstance(val, str) and tp=='button':
+														logger.info("ev.{} '{}'.[{}] for {}".format(tp,val,kys[1],nam))
+													else:
+														logger.warning("{} for {} is not a num in {}".format(val,tp,ky))
 												else:
-													logger.warning("{} for {} is not a num in {}".format(val,tp,ky))
-											else:
-												logger.debug("no prop:{} for ev:{} of:{} in:{}".format(key,nam,tp,val))
-											evCallback(oid,loct,nam,num,htyp)
-											break
-							else:
-								logger.warning("unknown ev-HueTyp:{} for {} with {}".format(tp,nam,htyp))
+													logger.debug("no prop:{} for ev:{} of:{} in:{}".format(key,nam,tp,val))
+												evCallback(oid,loct,nam,num,htyp)
+												break
+								else:
+									logger.warning("unknown ev-HueTyp:{} for {} with {}".format(tp,nam,htyp))
+					except aiohttp.client_exceptions.ClientPayloadError as aex:
+						logger.error("aiohttp error:{}".format(aex))
 			except ConnectionError as ex:
 				logger.error("error:{}".format(ex))
 
 				
-def evCallback(id:str, tm:datetime,name, val, typ) -> Tuple[datetime,str,float]:
+def evCallback(id:str, tm:datetime,name, val, typ) -> Tuple[datetime,str,float,int]:
 	""" find id in chDat , return name with num val """ 
 	logger.info("evCallback:{}->{} as:{} dd:{}".format(name,val,typ,tm))
 	return tm,name,val,typ
 
 async def main(ipadr,appkey, chDat:ChDat={}):
-	#global chDat
-	#chDat={}
-	#dat = st_hueGET(ipadr,user=user, resource=ep)
 	ret = await getCharDat(ipadr, appkey, ENDPOINTS)
 	logger.warning("chDat len:{} ep:{}".format(len(ret),ENDPOINTS))
 	for id,dat in ret.items():
 		logger.debug("chId:{}->dat:{}".format(id,dat))
 	chDat.update(ret)
-	await eventListener(ipadr, appkey, evCallback, chDat)
+	await evListener(ipadr, appkey, evCallback, chDat)
 	
-	#await asyncio.gather(* [tst_sensors(sensors), tst_light(lmp), tst_webSock(ipadr,user)])
-
 if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	logger = tls.get_logger(__file__, levelConsole=logging.INFO, levelLogfile=logging.DEBUG)
 	

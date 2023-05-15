@@ -115,7 +115,7 @@ class HAP_accessory(sampler_accessory):
 				val =fsBridge._samplers[self.receiver].get_state(quantity)
 				if val is not None:
 					self._chars[quantity]['lev'].set_value(val)
-					logger.info("set val:%s to %s" % (val,quantity))
+					logger.info("set HAP val:%s to %s" % (val,quantity))
 	
 		self.set_info_service(firmware_revision=None, manufacturer=fsBridge._samplers[self.receiver].manufacturer, model=None, serial_number=None)
 		#self.stat = None
@@ -165,8 +165,11 @@ class HAP_accessory(sampler_accessory):
 	def sendValue(self, value, quantity=None):
 		''' send myvalue to HAP '''
 		if quantity in self._chars:
-			self._chars[quantity]['lev'].set_value(value)
-			logger.info("send HAP val %s to %s quantity:%d" % (value,self.display_name,quantity))
+			if 'lev' in self._chars[quantity]:
+				self._chars[quantity]['lev'].set_value(value)
+				logger.info("send HAP val %s to %s quantity:%d" % (value,self.display_name,quantity))
+			else:
+				logger.warning("no lev item for {}={}".format(quantity,value))
 		else:
 			logger.warning("no hap quantity like:%s for:%s in %s" % (quantity,value,self._chars))
 	

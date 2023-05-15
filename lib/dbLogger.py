@@ -61,13 +61,14 @@ class txtLogger(object):
 		isnew = ikey not in self.items
 		if not isnew:
 			if iname!=self.qname(ikey):
-				logger.warning("changing qname '{}'->'{}'".format(self.qname(ikey),iname))
+				logger.warning("changing qname '{}'->'{}' for:{}".format(self.qname(ikey),iname,ikey))
 			if itype!=self.qtyp(ikey):
-				logger.warning("changing qtyp '{}'->'{}'".format(self.qtyp(ikey),itype))
+				logger.warning("changing qtyp '{}'->'{}' for:{}".format(self.qtyp(ikey),itype, ikey))
 			if isource!=self.qsource(ikey):
-				logger.warning("changing qsource '{}'->'{}'".format(self.qsource(ikey),isource))
+				logger.warning("changing qsource '{}'->'{}' for:{}".format(self.qsource(ikey),isource,ikey))
 		self.items.update({ikey:(iname,isource,itype)})
-		logger.debug('%slogitem %s,%s,%s with ikey=%s' % ("new " if isnew else "",iname,isource,itype,ikey))
+		if isnew:
+			logger.info('%slogitem %s,%s,%s with qid=%s' % ("new " if isnew else "",iname,isource,itype,ikey))
 		return isnew
 	
 	def sources(self, quantities=None):
@@ -341,12 +342,12 @@ class sqlLogger(txtLogger):
 			SUM(((ddJulian-ddavg)*(ddJulian-ddavg))) as ddSumSqr
 			FROM 
 			(SELECT qdy,ddJulian,numval,
-			first_value(ddJulian) OVER win as dd1st,
-			first_value(numval) OVER win as num1st,
-			last_value(ddJulian) OVER win as ddlst,
-			last_value(numval) OVER win as numlst,
-			AVG(ddJulian) OVER win as ddavg,AVG(numval) OVER win as numavg
-			 FROM 
+			 first_value(ddJulian) OVER win as dd1st,
+			 first_value(numval) OVER win as num1st,
+			 last_value(ddJulian) OVER win as ddlst,
+			 last_value(numval) OVER win as numlst,
+			 AVG(ddJulian) OVER win as ddavg,AVG(numval) OVER win as numavg
+			  FROM 
 				(SELECT ddJulian,quantity,numval,CAST(ddJulian*{1} AS int)/{1} as qdy FROM logdat
 				 WHERE quantity={3} AND {0} < ddJulian)
 				 WINDOW win AS (PARTITION BY qdy))

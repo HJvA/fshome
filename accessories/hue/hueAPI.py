@@ -18,7 +18,8 @@ import logging
 	
 RESOURCES = ['lights','sensors','whitelist','groups','locations','config', 'scenes','schedules','resourcelinks','rules']
 # mapping hue quantity to DEVT 
-SENSTYPES = {'temperature':0,'lightlevel':5,'buttonevent':12,'presence':11}
+SENSTYPES = {'temperature':0,'lightlevel':5,'buttonevent':12,'presence':11,'lux':5,'relative_rotary':12}
+SCALERS   = {'temperature':100,'lightlevel':10000,'lux':1}
 LIGHTTYPES = ['On/off light','Dimmable light','Extended color light','Color temperature light', 'On/Off plug-in unit']
 
 UPDATEINTERVAL=300
@@ -172,10 +173,17 @@ async def webSocket(ipadr,user,port=443,reskey='state'):
 def getProp(state):
 	""" get property value """
 	typ = getTyp(state)
-	if typ:
+	if typ is not None:
 		prop=next(prp for prp in SENSTYPES if prp in state)
 		if prop in state:
-			return state[prop]
+			val= state[prop]
+			if prop=='lightlevel':  # to lux
+				val /= 10000.0
+				val = math.pow(10.0,val)
+				val = round(val,2)
+			elif prop in SCALERS:
+				val = float(val) / SCALERS[prop]
+			return val
 	return None
 	
 def getTyp(state):
@@ -391,22 +399,25 @@ class HueSensor (HueBaseDev):
 					return None
 				else:
 					val=val1
-			if self.prop=='temperature':
-				val/=100.0
-			elif self.prop=='lightlevel': # compute lux
-				val /= 10000.0
-				val = math.pow(10.0,val)
-				val = round(val,2)
-			elif self.prop=='buttonevent':
-				if val>=1000:
-					typ = val % 100
-					val /= 1000
-				elif val>15:
-					val = [34,16,17,18].index(val)
-			elif self.prop=='presence':
-				pass
+			if self.prop in SCALERS:
+				val /= SCALERS[self.prop]
 			else:
-				logger.error('(%s) unknown prop:%s val:%s' % (self.hueId,self.prop,val))
+				if self.prop=='temperature':
+					val/=100.0
+				elif self.prop=='lightlevel': # compute lux
+					val /= 10000.0
+					val = math.pow(10.0,val)
+					val = round(val,2)
+				elif self.prop=='buttonevent':
+					if val>=1000:
+						typ = val % 100
+						val /= 1000
+					elif val>15:
+						val = [34,16,17,18].index(val)
+				elif self.prop=='presence':
+					pass
+				else:
+					logger.error('(%s) unknown prop:%s val:%s' % (self.hueId,self.prop,val))
 		return val
 		
 	@staticmethod

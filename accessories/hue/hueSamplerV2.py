@@ -27,7 +27,7 @@ class hueSampler(DBsampleCollector):
 	
 	def __init__(self,iphue,appkey, *args, **kwargs):
 		super().__init__(*args, **kwargs) # gets _servmap from config
-		hueBase(iphue,appkey, self.evCallback)
+		hueBase(iphue,appkey, self.debug)
 		for hid,rec in hueBase.chDat:
 			nm = rec['name']
 			qtyp = rec['type'].qTyp
@@ -109,8 +109,8 @@ class hueSampler(DBsampleCollector):
 		return n,await super().receive_message(dt)
 	"""
 
-	def evCallback(self, hid:str, tm:datetime, name, val, htyp) -> Tuple[datetime,str,float]:
-		""" """
+	def evCallback(self, hid:str, tm:datetime, name, val, htyp): #-> Tuple[datetime,str,float]:
+		""" called by eventListener on receiving an hue event """
 		hueBase.evCallback(hid,tm,name,val,htyp)
 		qid = self.qCheck(quantity=None, devadr=None, typ=htyp.qTyp, name=name)
 		if qid:
@@ -119,11 +119,11 @@ class hueSampler(DBsampleCollector):
 			#	DBsampleCollector.signaller.signal(qid, rec)
 			#dtm = datetime.now(timezone.utc)
 			self.check_quantity(tm.timestamp(), qid, val)
-			#if sampleCollector.signaller.checkEvent(qid,val):
-			#	logger.info('%s signal by %s=>%s typ(%s) ' % (devName,qid,val,typ))
-			#	sampleCollector.signaller.signal(qid, val)
-		else:
-			logger.warning("unknown event from:{} with:{}={} for:{}".format(name,htyp,val,hid))
+			if DBsampleCollector.signaller.checkEvent(qid,val):
+				logger.info('%s signal by %s=>%s typ(%s) ' % (name,qid,val,htyp))
+				# sampleCollector.signaller.signal(qid, val)
+		elif self.debug:
+			logger.warning("unknown event from:{} as:{}={} for:{}".format(name,htyp,val,hid))
 		return qid
 		
 	
@@ -131,6 +131,7 @@ class hueSampler(DBsampleCollector):
 		''' waiting for events indefinitely, will be registered by defSignaler '''
 		await super().eventListener(signaller)  # virtual empty one
 		#allready scheduled eventlistener by hueBase
+		logger.info("starting eventListener from {} in {}".format(self.__class__.__name__, self))
 		await hueBase.eventListener(self.evCallback)  #self._iphue, self._appkey, self.evCallback, self.chDat)
 		logger.warning("error:{} should keep listening".format(self.name))
 		return

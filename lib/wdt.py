@@ -1,11 +1,13 @@
 #
 # https://superfastpython.com/watchdog-thread-in-python/
 # https://stackoverflow.com/questions/16148735/how-to-implement-a-watchdog-timer-in-python
+# https://copyprogramming.com/howto/python-timer-with-asyncio-coroutine?utm_content=cmp-true
 from threading import Timer,Lock,Thread
 import asyncio
 import signal
 from datetime import datetime,timedelta
 from contextlib import contextmanager
+import inspect
 
 
 class TimeoutLock(object):
@@ -72,7 +74,6 @@ class wWatchdog(Exception):
 	def defaultHandler(self):
 		raise self
 
-
 class watchdog(Exception):
 	""" only for Unix """
 	def __init__(self, timeout=-1, handler=None):
@@ -116,76 +117,156 @@ class ProcessContextManager:
 	"""
 	def __init__(self, process, seconds=3):
 		#self.seconds = seconds
+		self._start = datetime.now()
 		self.process = process
 		self.signal = TimeoutSignaller(seconds, self.signal_handler)
 
 	def __enter__(self):
+		logger.info("starting process:{} dt:{}".format(self.process, datetime.now()-self._start))
 		self.signal.start()
 		return self.process
 
 	def __exit__(self, exc_type, exc_val, exc_tb):
+		logger.info("exit process:{} dt:{}".format(self.process, datetime.now()-self._start))
 		self.signal.stop_run()
 
 	def signal_handler(self):
 		# Make process terminate however you like
 		# using self.process reference
-		if True: #self.process is asyncio.Task:
+		if asyncio.iscoroutine(self.process):
 			self.process.cancel("timeout occurred")
-		else:
+		else:  #inspect.isawaitable():
+			logger.error("timeout for process")
+			self.process.cancel("timeout occurred dt:{}".format(datetime.now()-self._start))
 			raise TimeoutError("Process took too long to execute")
 
-			
+class asyWatch:
+	def __init__(self, worker, timeout, loop=None):
+		self._timeout = timeout
+		self._loop = loop
+		#self._tmo = asyncio.timeout(timeout)
+		logger.info("asyWatch set tmo:{}".format(timeout))
+		#
+		if inspect.isawaitable(worker):
+			logger.debug("job is awaitable")
+			self._job = asyncio.create_task(worker())# worker
+		elif asyncio.iscoroutine(worker):
+			logger.debug("job is coro")
+			self._job = worker
+		else:
+			logger.debug("job is callable")
+			self._job = asyncio.coroutine(worker)
+			#self._job = asyncio.create_task(worker())  
+		
+	def __enter__(self):
+		self._start = datetime.now()
+		logger.info("start:{}".format(self._start))
+		#self.timer = self._loop.call_later(self._timeout, lambda: asyncio.ensure_future(self._job()))
+		self._wtm = asynio.timeout(self.timeout)
+		async with self._wtm:
+			await self._job()
 
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		logger.info("exit asy:{} dt:{}".format(exc_type, datetime.now()-self._start))
+
+	def alive(self):
+		nwto = self._loop.time() + self._timeout
+		logger.info("reschedule".format(nwto))
+		self._wtm.reschedule(nwto)
+		#self.timer.cancel() # cancels the timer, but not the job, if it's already started
+		#self.__enter__()
+				
+		
 if __name__ == '__main__':	# just testing  
-	import tls,time,random,logging
+	import tls,time,random,logging,os
 	logger = tls.get_logger(__file__, levelConsole=logging.INFO, levelLogfile=logging.DEBUG)
 	def myHandler():
 		logger.info("Watchdog expired")
 
 	async def myworker():
-		for i in range(10):
-			print("working:{}".format(i))
-			await asyncio.sleep(2)
-		print("all done")
+		key = None
+		logger.info("working.. press ESC to stop")
+		with tls.clavier(-1 if os.getgid()<100 else None) as kb:
+			while True:
+				if kb.kbhit():
+					key = kb.getch()
+					if ord(key)==27:  # Ctrl-[
+						break
+					print("key hit: key={}".format(key))
+				await asyncio.sleep(1.6+random.random())
+			print("all done")
 		
-	async def runtask(worker=myworker, timeout=4):
+	async def runtask(worker=myworker, timeout=2):
 		mytask = asyncio.create_task(worker())
+		logger.info("running task:{}".format(mytask))
 		with ProcessContextManager(mytask, timeout) as aqc:
 			try:
 				await mytask
 			except asyncio.exceptions.CancelledError as ex:
 				print("timeout->canceled")	
 	
-	async def myWork(lock, id):
+	async def myWork(lock, id, timeout=2):
 		now = datetime.now()
-		logger.info("myWork{} started {}".format(id, now))
 		await asyncio.sleep(0.01)  # have other task also started
-		async with lock as acq:
-			await asyncio.sleep(1.01+random.random())
-			logger.info("myWork{} done {}".format(id, datetime.now()-now))
+		try:
+			await asyncio.wait_for(lock.acquire(), timeout)
+		except asyncio.TimeoutError:
+			dt = datetime.now()-now
+			dt = dt.total_seconds()
+			logger.warning(f"I'm {id} timedout to lock after {dt}")
+		else:
+			dt = datetime.now()-now
+			dt = dt.total_seconds()
+			logger.info(f"I'm {id} and started working after {dt}")
+			await asyncio.sleep(0.6+random.random())
+			dt = datetime.now()-now
+			dt = dt.total_seconds()
+			logger.info(f"I'm {id} and I'm working for {dt}")
+			if lock.locked():
+				lock.release()
+				logger.info("releasing lock for {}".format(id))
+		#logger.info("myWork{} started {}".format(id, now))
+		#async with lock as acq:
+			#await asyncio.sleep(1.01+random.random())
+			#logger.info("myWork{} done {} lck:{}".format(id, datetime.now()-now, acq))
 
-	async def doWork(mxtime = 3.8):
+	async def doWork(mxtime = 2):
 		lock = asyncio.Lock()  # tmoLock(timeout=mxtime)
-		await asyncio.gather(*[myWork(lock,1), myWork(lock,2), myWork(lock,3)])
+		await asyncio.gather(*[myWork(lock,1,mxtime), myWork(lock,2,mxtime), myWork(lock,3,mxtime)])
 	
 	_loop = asyncio.get_event_loop()
-	asyncio.run(runtask())
+	logger.info("\n asyWatch")
+	strt = datetime.now()
+	asyw = asyWatch(myworker, 2, _loop)
+	with asyw:
+		time.sleep(2.4+random.random())
+		dt = datetime.now()-strt
+		logger.info("worked dt:{}".format( dt.total_seconds()))
 	
-	for i in range(6):
+
+	for i in range(4):
+		asyncio.run(runtask())
+	
+	logger.info("\n asyncio locking parralel tasks")
+	for i in range(4):
 		_loop.run_until_complete(doWork())
 
-	for i in range(6):
+	logger.info("\n watchdog")
+	for i in range(4):
 		try:
 			strt = datetime.now()
-			with watchdog(2, myHandler):
-				time.sleep(1.3+random.random())
-				logger.info("working {}".format( datetime.now()-strt))
+			wd = watchdog(2, myHandler)
+			with wd:
+				time.sleep(1.4+random.random())
+				dt = datetime.now()-strt
+				logger.info("worked {} dt:{}".format(i, dt.total_seconds()))
 		except watchdog as ex:
-			logger.info("watchdog runout {} after {}".format(ex, datetime.now()-strt))
+			logger.info("watchdog runout {} {} after {}".format(i, ex, datetime.now()-strt))
 
+	logger.info("\n windows watchdog")	
 	wdt = wWatchdog(2, myHandler)
 	try: # do something that might take too long
-		for i in range(6):
+		for i in range(4):
 			time.sleep(1.3+random.random())
 			wdt.reset()
 			logger.info("tWork done {}".format(datetime.now()))

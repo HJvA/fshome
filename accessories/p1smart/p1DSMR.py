@@ -119,7 +119,7 @@ class p1DSMR(DBsampleCollector):
 	""" add DSMR specific methods to sampler class """
 	manufacturer="netbeheernederland"
 	def __init__(self,serdev=None, *args, **kwargs):
-		super().__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs, debug=DEBUG)
 		if serdev is None:
 			serdev=serComm(DEVICE,BAUDRATE)
 		self.serdev = serdev

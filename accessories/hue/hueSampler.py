@@ -100,8 +100,9 @@ class hueSampler(DBsampleCollector):
 								if 'buttonevent' in rec:
 									logger.info('button chg:%s' % rec['buttonevent'])
 								if signaller.checkEvent(qid,val):
-									logger.info('%s event by %s=>%s typ(%s) cnt:%s' % (devName,qid,rec,typ,mcnt))
+									logger.info('{} event by {}=>{} typ({}) cnt:{} val:{}'.format(devName,qid,rec,typ,mcnt,val))
 									signaller.signal(qid, rec)
+								self.check_quantity(time.time(), qid,val)
 								await asyncio.sleep(4)
 								mcnt=0
 							else:

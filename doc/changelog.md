@@ -15,6 +15,12 @@ Sections
 ### Developers
 ### Confinement
 -->
+## [1.5.2] - 2023-05-15
+### Changed
+- Hue API V2 (tested further)
+- using python multiprocessing module for fssite and fsmain 
+- using multiprocessing.lock on database operations 
+- tying to implement watchdog using queue in fssite (but unable to restart fssite process)
 ## [1.5.1] - 2023-03-07
 ### Added
 - Hue API V2 (having event driven updates instead of polling)

@@ -25,8 +25,8 @@ qSTMP=2	# time stamp
 
 class sm(enum.IntFlag):
 	ADR=0	# devadr
-	TYP=1 # DEVT
-	NM=2  # name
+	TYP=1	# DEVT
+	NM= 2	# name
 	SRC=3	# source
 	MSK=4	# mask
 	SIG=5	# signaller spec
@@ -87,7 +87,7 @@ class signaller(object):
 			if tsince and tsince<signaller.minEventInterval:
 				logger.warning('event on %s occuring to soon:%s' % (qid,tsince))
 			else:
-				mch = re.compile(signaller.reSIGPTRN).finditer(sdef)
+				mch = re.compile(signaller.reSIGPTRN).finditer(sdef) # find pattern in signal def
 				if mch:
 					lst =[x.group(1) for x in mch] # all numbers
 					logger.info("event signalling:{}".format(lst))
@@ -99,8 +99,8 @@ class signaller(object):
 						#else:
 						#	trgqid,trgval,trgprop,trgdur = (0,None,None,None)
 						logger.info('signalling %s=%s with %s => %s' % (qid,qval,sdef,lst))
-						for hnd,cb in self._handlers.items():  # check all handlers till acq
-							if cb(trgqid, trgval, trgprop, trgdur):  # set_state
+						for hnd,stscb in self._handlers.items():  # check all handlers till acq
+							if stscb(trgqid, trgval, trgprop, trgdur):  # set_state callback
 								self._occurances[qid] = datetime.now()
 								logger.info('event with:%s handled by %s' % (qid,hnd))
 								break
@@ -122,7 +122,8 @@ class signaller(object):
 	def registerEventSource(self, handler, eventListenerCoro):
 		""" add eventListener to actual async loop """
 		loop =asyncio.get_event_loop()
-		task=loop.create_task(eventListenerCoro)
+		logger.info("starting eventListener from {} in {}".format(self.__class__.__name__, self))
+		task =loop.create_task(eventListenerCoro)
 		logger.info('created events task from %s task:%s on:%s' % (handler,task,loop))
 		time.sleep(1)
 
@@ -136,7 +137,7 @@ class sampleCollector(object):
 	def manufacturer(self):
 		return self.name
 
-	def __init__(self, maxNr:int=120,minNr:int=2, minDevPerc:float=5.0, name:str=''):
+	def __init__(self, maxNr:int=120,minNr:int=2, minDevPerc:float=5.0, name:str='', debug=False):
 		""" create object for handling measured quantities of a device 
 		minDevPerc: only store quantity values having deviation larger than this from avg 
 		maxNr : still store sample if nr of samples exceeds this """
@@ -148,6 +149,7 @@ class sampleCollector(object):
 		self._lastval: Dict[int,float]={}
 		self._actual: Dict[int,Dict[int,Any]]= {}
 		self.minqid=None	# allow unknown quantities to be created if not None
+		self.debug=debug
 		sampleCollector.objCount+=1
 		if name:
 			self.name=name
@@ -157,8 +159,6 @@ class sampleCollector(object):
 		logger.info('%s sampler minNr=%d maxNr=%d minDevPerc=%.5g' % (self.name,minNr,maxNr,minDevPerc))
 		self._updated:Set[int]=set() # quantities that have been updated and not accepted yet
 		self._tAccept: Dict[int, float] = {}
-		#self.dtStart = datetime.datetime.now()
-		#self.defSignaller()
 
 	def __repr__(self):
 		"""Return the representation of the sampler."""
@@ -167,7 +167,7 @@ class sampleCollector(object):
 	
 	def defSignaller(self, forName=None):
 		""" creates signaller class, registers set_state for each sampler
-		   registers eventListener of a sampler if it has one
+		    registers eventListener of a sampler if it has one
 			typically called by sampler constructor
 		"""
 		if not hasattr(sampleCollector, 'signaller') or not sampleCollector.signaller:
@@ -231,7 +231,7 @@ class sampleCollector(object):
 			creates or updates (unknown) quantity to self._servmap '''
 		if not quantity:
 			quantity=self.qid(devadr=devadr,typ=typ,name=name)
-			if quantity and name:
+			if quantity and name and self.debug:
 				logger.debug("qid:{} nm:{} adr:{} tp:{} n={}".format(quantity,name,devadr,typ, self.nAvgSamps(quantity)))
 		if typ and (typ>=DEVT['unknown'] or typ==DEVT['fs20']):  # not precise
 			typ=None
@@ -263,7 +263,8 @@ class sampleCollector(object):
 		''' extract modified quantities config enhanced by newly discovered and more info'''
 		cnf={}
 		for qid,tp in self._servmap.items():
-			cnf[qid] = {'devadr':tp[sm.ADR],'typ':tp[sm.TYP],'name':tp[sm.NM],'source':tp[sm.SRC]}
+			if tp and isinstance(tp,dict):
+				cnf[qid] = {'devadr':tp[sm.ADR],'typ':tp[sm.TYP],'name':tp[sm.NM],'source':tp[sm.SRC]}
 		return json.dumps(cnf, ensure_ascii=False, indent=2, sort_keys=True)
 
 	def serving(self, qid, smItem):
@@ -361,7 +362,7 @@ class sampleCollector(object):
 			#self.servmap[quantity] = {'typ':DEVT['unknown']}
 			return
 		if not isinstance(val, (float,int)):
-			logger.warning("val not numeric:{}".format(val))
+			logger.warning("val not numeric:{} for:{}".format(val,quantity))
 			return
 		if self.qtype(quantity)>=DEVT['secluded']:	# ignore
 			return
@@ -399,7 +400,7 @@ class sampleCollector(object):
 				#del self.average[quantity]
 				self.average[quantity] = [val,1,tstamp]
 			else:
-				if abs(avg)>0:
+				if abs(avg)>0 and self.debug:
 					logger.debug('quantity:%d avgCount:%d devperc:%.6g ' % (quantity,self.average[quantity][qCNT], (val-avg)/avg*100) )
 		else:  # first avg val
 			self.average[quantity] = [val,1,tstamp]
@@ -413,6 +414,7 @@ class sampleCollector(object):
 		if self.qIsCounting(quantity):
 			qval = self.average[quantity][qVAL]   # must have some positives edges
 			self.average[quantity][qVAL]=0
+			rec = self.average[quantity]
 		elif self.average[quantity][qCNT]>0:
 			rec=self.average.pop(quantity)
 			qval = rec[qVAL]/rec[qCNT]
@@ -420,7 +422,8 @@ class sampleCollector(object):
 			self._lastval[quantity] = qval
 			self._updated.add(quantity)
 			self._tAccept[quantity] = time.time()
-		#logger.debug("accepted %s=%s tm=%s n=%d" % (quantity, qval, prettydate(julianday(tstamp)), rec[1]))
+		if self.debug:
+			logger.debug("accepted %s=%s tm=%s n=%d" % (quantity, qval, prettydate(julianday(tstamp)), rec[qCNT] ))
 		return qval
 		
 	def set_state(self, quantity, state, prop=None, dur=None):
@@ -482,13 +485,17 @@ class sampleCollector(object):
 
 class DBsampleCollector(sampleCollector):
 	""" adds database logging """
+	_dbStore=None
+	@property
+	def dbStore(self):
+		return DBsampleCollector._dbStore
+		return type(self)._dbStore
+		
 	def __init__(self, dbFile,  *args, quantities={}, **kwargs):
 		super().__init__(*args, **kwargs)
-		if dbFile:
-			self.dbStore = sqlLogger(dbFile)
-		else:
-			self.dbStore = None
-		#self.inkeys=[] 
+		if dbFile and DBsampleCollector._dbStore is None:
+			logger.info("opening dbStore for:{} with nqs:{}".format(self.name, len(quantities)))
+			DBsampleCollector._dbStore = sqlLogger(dbFile)
 		self.defServices(quantities)  # get _servmap
 		logger.info('%s servmap:%s' % (self.name,self._servmap))
 		for qid in self.qactive():
@@ -530,6 +537,8 @@ class DBsampleCollector(sampleCollector):
 		return qval
 
 	def exit(self):
-		logger.error("%s proposed json config:\n%s" % (self.name, self.jsonDump()))
-		if self.dbStore:
-			self.dbStore.close()
+		logger.error("exit samplecolletor for {}".format(self.name))
+		logger.error("{} proposed json config:\n{}".format(self.name, self.jsonDump()))
+		if self.dbStore: # might have multiple users
+			pass 
+			#self.dbStore.close()

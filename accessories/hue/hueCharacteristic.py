@@ -8,7 +8,7 @@ sys.path.append(os.getcwd()) # + '/..')
 import lib.tls as tls
 from lib.devConst import DEVT
 
-from accessories.hue.hueAPIv2 import ChDat,getCharDat,ENDPOINTS,HueTyps, FindId, hueSET,hueGET,eventListener, HueTyps
+from accessories.hue.hueAPIv2 import ChDat,getCharDat,ENDPOINTS,HueTyps, FindId, hueSET,hueGET,evListener, HueTyps
 
 from enum import Enum
 
@@ -18,17 +18,18 @@ class Resource(Enum):
 class hueBase():
 	chDat:ChDat={}
 	eventCallback = None
-	def __init__(self, ipadr:str, appkey:str, evCallback=None):
+	def __init__(self, ipadr:str, appkey:str, debug=False):
 		hueBase.ipadr = ipadr
 		hueBase.appkey = appkey
 		if not hueBase.chDat:
 			 asyncio.ensure_future(hueBase._charLoad(hueBase.chDat) )
-		if evCallback:
-			hueBase.eventCallback = evCallback
-		else:
-			hueBase.eventCallback = hueBase.evCallback
-		if hueBase.eventCallback:
-			asyncio.ensure_future(hueBase.eventListener(hueBase.eventCallback))
+		#if evCallback:
+		#	hueBase.eventCallback = evCallback
+		#else:
+		#	hueBase.eventCallback = hueBase.evCallback
+		#if hueBase.eventCallback:
+		#	logger.info("starting eventListener from {} in {}".format(self.__class__.__name__, self))
+		#	asyncio.ensure_future(hueBase.eventListener(hueBase.eventCallback))
 				
 	@classmethod
 	async def _charLoad(cls, chDat):
@@ -36,9 +37,10 @@ class hueBase():
 		
 	@classmethod
 	async def eventListener(cls, evCallback=None): #, ipadr:str, appkey:str, evCallback, chDat:ChDat):
+		""" wait for events forever """
 		if evCallback is None:
-			evCallback = cls.evCallback
-		await eventListener(cls.ipadr, cls.appkey, evCallback, cls.chDat)
+			evCallback = cls.eventCallback
+		await evListener(cls.ipadr, cls.appkey, evCallback, cls.chDat)
 		
 	@classmethod
 	async def create(cls, name, htyp:HueTyps = HueTyps.unknown):
@@ -57,7 +59,7 @@ class hueBase():
 		#return cls(name) # nc
 	
 	@classmethod
-	def evCallback(cls, id:str, tm:datetime, name, val, htyp) -> Tuple[datetime,str,float]:
+	def evCallback(cls, id:str, tm:datetime, name, val, htyp) -> Tuple[datetime,str,float,int]:
 		""" default virtual only logging """ 
 		logger.info("evCallback:{}->{} as:{} dd:{}".format(name,val,htyp,tm))
 		return tm,name,val,htyp.qTyp

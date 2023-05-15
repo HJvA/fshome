@@ -20,6 +20,9 @@ else:
 from lib.fsHapper import HAP_accessory,fsBridge
 from lib.devConfig import devConfig
 from lib.devConst import DEVT
+#from accessories.hue.hueAPIv2 import DEBUG
+
+DEBUG=0
 
 class HUE_accessory(HAP_accessory):
 	""" adding HUE lights to HAP accessory """
@@ -76,7 +79,7 @@ def add_HUE_to_bridge(bridge, config="hue.json"):
 	if 'deCONZ' in config:
 		sampler = hue_happer(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=0)
 	else:
-		sampler = hue_happerV2(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=0)
+		sampler = hue_happerV2(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=2, debug=DEBUG)
 	#sampler.minqid=None  # do not auto create
 	bridge.add_sampler(sampler, conf.itstore)	
 
