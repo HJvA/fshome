@@ -133,6 +133,7 @@ class sampleCollector(object):
 	signaller:signaller =None # each sampler will have its own statesetter in the signaller set by childs
 	objCount=0
 	dtStart = datetime.now()
+	mintinterval=4
 	@property
 	def manufacturer(self):
 		return self.name
@@ -382,12 +383,17 @@ class sampleCollector(object):
 				if val>0:
 					self.average[quantity][qVAL] += val
 				elif self.average[quantity][qVAL]==0:  # !!! some bool types only give false values 
-					self.average[quantity][qVAL] +=1
+					#self.average[quantity][qVAL] +=1
+					logger.info("not counting falses for {} cnt={}".format(quantity,self.average[quantity][qCNT]))
 				self.average[quantity][qCNT] +=1
 			else: 
 				self.average[quantity] = [1,1,tstamp]   # first counting val  [qVAL,qCNT,qSTMP]
-			self.accept_result(tstamp, quantity)
-			logger.info('(%s) cnt val=%s quantity=%s tm=%s since=%.6g' % (quantity,val, self.qname(quantity), prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
+			if self.sinceAccept(quantity)>sampleCollector.mintinterval:
+				self.accept_result(tstamp, quantity)
+				logger.info('(%s) cnt val=%s quantity=%s tm=%s since=%.6g' % (quantity,val, self.qname(quantity), prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
+			else:
+				logger.info('{}={} rejected mintinterval={}'.format(quantity,val,self.sinceAccept(quantity)))
+					
 		elif quantity in self.average:
 			self.average[quantity][qVAL] += val
 			self.average[quantity][qCNT] += 1
@@ -396,7 +402,10 @@ class sampleCollector(object):
 			if (n>=self.minNr and abs(val-avg)>abs(avg*self.minDevPerc/100)) or n>=self.maxNr:
 				logger.info('(%s) n=%d avg=%g val=%s quantity=%s devPrc=%g>%g tm=%s since=%.6g' % (quantity,n,avg,val, self.qname(quantity), abs(val-avg)/avg*100 if avg>0 else 0.0, self.minDevPerc, prettydate(julianday(tstamp)), self.sinceAccept(quantity)))
 				tm = (tstamp+self.average[quantity][qSTMP])/2
-				self.accept_result(tm, quantity)
+				if self.sinceAccept(quantity)>sampleCollector.mintinterval:
+					self.accept_result(tm, quantity)
+				else:
+					logger.info('{}={} rejected mintinterval={}'.format(quantity,val,self.sinceAccept(quantity)))
 				#del self.average[quantity]
 				self.average[quantity] = [val,1,tstamp]
 			else:

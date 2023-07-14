@@ -289,7 +289,7 @@ def set_logger(logger, pyfile=None, levelConsole=logging.INFO, levelLogfile=logg
 	logger.addHandler(hand)
 	logger.setLevel(levelLogfile)
 	if pyfile == "__main__":
-		logger.critical("### running %s dd %s logging to %s ###" % (__name__,time.strftime("%y%m%d %H:%M:%S"),destDir+base+'.log'))
+		logger.error("### running %s dd %s logging to %s ###" % (__name__,time.strftime("%y%m%d %H:%M:%S"),destDir+base+'.log'))
 	return logger
 
 def get_logger(pyfile=None, levelConsole=logging.INFO, levelLogfile=logging.DEBUG):

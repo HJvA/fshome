@@ -216,7 +216,7 @@ def quantity_somevals():
 						#logger.info('quantity request:%s' % bottle.request.params.items())
 						#return json.dumps({'qval': [rec[1] for rec in recs], 'jdlast':jdlast})
 					else:
-						logger.warning('no rest for %s' % bottle.request.body)
+						logger.warning('no rest for {} ndysbk:{} in {}'.format(qid,ndays, bottle.request.query.qkeys))
 						#return '{}'
 			return '{}'.format(recs)
 			return '{'+'"qvals":{}'.format(recs)+'}'
@@ -227,13 +227,14 @@ def quantity_somevals():
 @app.put('/qsave')
 def quantity_put():
 	qid=None
+	qval=None
 	global queue,lock
 	with lock.acquire_timeout(4) as ack:
 		if ack:
 			try:
 				#qkey = bottle.request.params.get('qkey')
 				qid=int(bottle.request.query.qkey)
-				if qid:
+				if qid:  # make sure qid exists in db
 					dbStore.additem(qid,qDEF[qid][0], qSrc(qid), qDEF[qid][1])
 				qval=float(bottle.request.query.qval)
 				#data = json.load(utf8reader(bottle.request.body))
@@ -243,8 +244,8 @@ def quantity_put():
 					queue.put((qid,qval), block=False)
 				else:
 					logger.warning("no queue for watchdog for qid:{}".format(qid))
-			except:
-				logger.warning("unable to rest save qid:{}".format(qid))
+			except Exception as ex:
+				logger.error("unable to rest save qid:{}={} ex:{}".format(qid,qval,ex))
 				raise	ValueError
 		else:
 			logger.warning("unable to get rest locked for put:{}".format(qid))

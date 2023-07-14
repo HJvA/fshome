@@ -111,6 +111,7 @@ def qtName(qTyp):
 		if qTyp==qt:
 			return qnm
 
+# for fsRest API using URI /qsave 
 #        	qkey   qnam    typ   src
 qDEF = { 	801 : ("Tpin",   0,  800),
 			803 : ("Tbme",   0,  800),
@@ -119,7 +120,9 @@ qDEF = { 	801 : ("Tpin",   0,  800),
 			802 : ("Hum",    1,  800),
 			806 : ("Pres",   4,  800),
 			807 : ("VOC",   41,  800),
-			808 : ("T117",   0,  800)	}
+			808 : ("T117",   0,  800),
+			850 : ("TpodB",  0,  800),
+			851 : ("TpodW",  0,  800)	}
 qCONF={	# to be loaded from json file
 		#"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 		"dbFile": '~/fs20store.sqlite',

@@ -384,12 +384,13 @@ async def evListener(ipadr:str, appkey:str, evCallback, chDat:ChDat) ->None:
 	url = 'https://{}/eventstream/clip/v2'.format(ipadr)
 	logger.info('starting hue evListerner on:{}'.format(ipadr))
 	lastid=None
-	async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=0)) as session:
-		async with sse.EventSource(url, session=session, headers=headers, ssl=False) as event_source:
-			try:
-				logger.info('Event.src:{} ready:{} '.format( event_source.url, event_source.ready_state))
-				async for event in event_source:  # repeat listening
-					try:
+	while True:
+		async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=0)) as session:
+			async with sse.EventSource(url, session=session, headers=headers, ssl=False) as event_source:
+				try:
+					logger.info('Event.src:{} ready:{} '.format( event_source.url, event_source.ready_state))
+					async for event in event_source:  # repeat listening
+						#try:
 						dat = json.loads(event.data)
 						#logger.info("evid:{} =? {}".format(lastid , event_source._event_id))
 						if lastid == event_source._event_id:
@@ -445,11 +446,13 @@ async def evListener(ipadr:str, appkey:str, evCallback, chDat:ChDat) ->None:
 												evCallback(oid,loct,nam,num,htyp)
 												break
 								else:
-									logger.warning("unknown ev-HueTyp:{} for {} with {}".format(tp,nam,htyp))
-					except aiohttp.client_exceptions.ClientPayloadError as aex:
-						logger.error("aiohttp error:{}".format(aex))
-			except ConnectionError as ex:
-				logger.error("error:{}".format(ex))
+									logger.warning("unknown ev-HueTyp:{} for {} with {} in {}".format(tp,nam,htyp,dati))
+				except aiohttp.client_exceptions.ClientPayloadError as aex:
+					logger.error("aiohttp error:{}".format(aex))
+					continue
+				except ConnectionError as ex:
+					logger.error("error:{}".format(ex))
+					break
 
 				
 def evCallback(id:str, tm:datetime,name, val, typ) -> Tuple[datetime,str,float,int]:

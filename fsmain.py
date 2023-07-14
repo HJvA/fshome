@@ -81,10 +81,10 @@ async def checkAlife(prqueue,prsite):  #prtask,*args):
 			try:
 				if prsite.is_alive():  # can only test a child process
 					item = prqueue.get(timeout=600)
-					logger.debug("getting {} from queue left:{} n:{}".format(item, prqueue.qsize(), n ))
+					logger.debug("getting life {} from queue left:{} n:{}".format(item, prqueue.qsize(), n ))
 				else:
 					await asyncio.sleep(20)					
-					logger.info("starting prsite :{} exitcode:{}".format(prsite.name, prsite.exitcode))
+					logger.info("starting prsite alife :{} exitcode:{} pid:{}".format(prsite.name, prsite.exitcode, prsite.pid))
 					prsite.join(1)
 					prsite.start()
 					pid = prsite.pid
@@ -93,25 +93,25 @@ async def checkAlife(prqueue,prsite):  #prtask,*args):
 					#except Exception as ex:
 					logger.warning("not alife: no items in queue n:{} pr={}".format(n, prsite.name)) #prsite.is_alive()))
 					if prsite is None:
-						logger.info("prsite not active!!")
+						logger.info("prsite not alife!!")
 					else:
 						pid = prsite.pid
 						#if prsite.is_alive():  # can only test a child process
-						logger.info("killing prsite :{}, pid:{}".format(prsite.name,pid))
+						logger.error("killing prsite :{}, pid:{}".format(prsite.name,pid))
 						os.kill(pid, signal.SIGTERM)
 						await asyncio.sleep(10)
 						prsite.kill() 
 						await asyncio.sleep(10)
 						prsite.terminate()
 						await asyncio.sleep(10)
-						logger.info("restarting:{} pid:{}".format(prsite.name, prsite.pid))
+						logger.info("restarting alife:{} pid:{}".format(prsite.name, prsite.pid))
 						prsite.start()
 				except Exception as ex:
-					logger.info("unknown exception:{}".format(ex))
+					logger.error("unknown alife exception:{}".format(ex))  #cannot start a process twice 
 				await asyncio.sleep(2)
 				#prsite.start()
 			except Exception as ex:
-				logger.warning("not alife:{}: unknown ex={} ".format(n,ex))
+				logger.error("not alife:{}: unknown ex={} ".format(n,ex))
 			if prqueue.empty():
 				await asyncio.sleep(300)
 			else:

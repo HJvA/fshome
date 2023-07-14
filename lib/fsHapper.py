@@ -14,7 +14,7 @@ class fsBridge(Bridge):
 	_samplers={}		# static dict of unique samplers
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		logger.critical("pincode=%s" % self.driver.state.pincode.decode())
+		logger.error("pincode=%s" % self.driver.state.pincode.decode())
 		logger.info("samplers in bridge :%s" % [nm for nm,smp in fsBridge._samplers.items()])
 
 	@Accessory.run_at_interval(RUNINTERVAL)  
