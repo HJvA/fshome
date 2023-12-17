@@ -10,3 +10,6 @@
 [submodule "submod/eufy"]
 	path = submod/eufy
 	url = https://HJvA@github.com/FuzzyMistborn/python-eufy-security
+[submodule "pyCommon"]
+	path = pyCommon
+	url = git@github.com:HJvA/pyCommon.git
