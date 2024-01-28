@@ -18,8 +18,8 @@ except ImportError:
 	
 from lib.devConfig import devConfig
 from lib.dbLogger import sqlLogger
-from lib.devConst import DEVT,qCOUNTING,qACCUMULATING,strokes,SIsymb,qSrc,qDEF,qtName
-from lib.tls import get_logger
+from lib.devConst import DEVT,qCOUNTING,qACCUMULATING,strokes,SIsymb,qSrc, qDEF,qtName,typnames,typSI
+from submod.pyCommon.tls import get_logger
 from lib.grtls import julianday,unixsecond,prettydate,SiNumForm
 #from threading import Lock
 from contextlib import contextmanager
@@ -44,7 +44,7 @@ class TimeoutLock(object):
 lock = None  # global to be set to TimeoutLock 
 queue = None
 
-__copyright__="<p>Copyright &copy; 2019,2021,2022,2023 hjva</p>"
+__copyright__="<p>Copyright &copy; 2019,2021,2022,2023,2024 hjva</p>"
 TITLE=r"fshome quantity viewer"
 DEBUG = True
 CONFFILE = "./config/fs20.json"
@@ -65,7 +65,7 @@ tmBACKs={ 5:(u'\u251C 5days \u2524',20,1,'{:%d}'),
 	182.6:(u'\u251C 6mnth \u2524',24*60,30.44,'{:%b}'), 
 	365.25:(u'\u251C 1yr \u2524',2*24*60,30.44,'{:%b}') }
 tmBACKs={0.2:(u'5hr',5,0.0417,'{:%H}'),
-   1.0:(u'1day',15,0.25,'#j4'),  #'%H:%M'), 
+	1.0:(u'1day',15,0.25,'#j4'),  #'%H:%M'), 
 	5.0:(u'5days',20,1,'{:%d}'),
 	30.44:(u'1mnth',6*60,7,'wk{:%V}'), 
 	182.6:(u'6mnth',24*60,30.44,'{:%b}'), 
@@ -79,14 +79,6 @@ dbStore=None
 bottle.response.headers['Content-Type'] = 'application/json'
 bottle.response.headers['Cache-Control'] = 'no-cache'
 
-
-def typnames(devTyps):
-	''' convert DEVT id numbers to their name '''
-	return [dnm for dnm,tp in DEVT.items() if tp in devTyps or tp+100 in devTyps]
-
-def typSI(devTyps):
-	''' convert DEVT id numbers to their (Symb,Unit) '''
-	return [tup for tp,tup in SIsymb.items() if tp in devTyps or tp+100 in devTyps]
 	
 def srcQids():
 	''' get active quantities either from cookie or last saved to database '''
@@ -202,7 +194,7 @@ def quantity_somevals():
 				#bottle.response.headers['Cache-Control'] = 'no-cache'
 				
 				for qid in qkeys:
-					dbres = dbStore.fetchiavg(qid,tstep=avginterval,daysback=ndays,jdend=None)
+					dbres = dbStore.fetchiavg(qid,mnstep=avginterval,daysback=ndays,jdend=None)
 					if dbres:
 						#recs['nm{}'.format(qk)] = dbStore.qname(qk)
 						if dbStore.qtyp(qid) in qACCUMULATING:
@@ -474,9 +466,9 @@ def redraw(src, selqs, jdtill, ndays=7):
 			if qkey is not None:
 				grQuantIds.add(qkey)
 				if qs=='energy':
-					recs = dbStore.fetchiiavg(310,311,tstep=avgminutes,daysback=ndays, jdend=jdtill)
+					recs = dbStore.fetchiiavg(310,311,mnstep=avgminutes,daysback=ndays, jdend=jdtill)
 				else:
-					recs = dbStore.fetchiavg(qkey,tstep=avgminutes,daysback=ndays, jdend=jdtill)
+					recs = dbStore.fetchiavg(qkey,mnstep=avgminutes,daysback=ndays, jdend=jdtill)
 				if recs is None or len(recs)==0:
 					logger.info('frm no samples for %s at %s with %s' % (qkey,qs,src))
 					continue

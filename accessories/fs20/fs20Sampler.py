@@ -14,7 +14,7 @@ else:
 from lib.serComm import serComm
 from lib.sampleCollector import DBsampleCollector,forever
 from lib.devConst import DEVT,qSRC
-from lib.tls import get_logger
+from submod.pyCommon.tls import get_logger
 
 class fs20Sampler(DBsampleCollector):
 	''' collects fs20 messages and filters and stores results'''

@@ -152,7 +152,7 @@ class serComm(object):
 		logger.debug("cmd:%s" % data)
 		self.write(data)
 	
-	def get_info(self, command):
+	def query(self, command):
 		""" queries device with command """
 		self.write(command)
 		return self.read(timeout=5, termin=b'\n')
@@ -171,7 +171,7 @@ if __name__ == "__main__":		# just receives strings, basic parsing
 	
 	try:
 		cul = serComm(DEVICE, BAUDRATE)
-		logger.info("cul version %s" % cul.get_info(b'V\r\n'))
+		logger.info("cul version %s" % cul.query(b'V\r\n'))
 		asyncio.ensure_future(cul.asyRead(termin=b'\n'))		
 		loop.run_forever() #cul.asyRead(termin=b'\n'))
 	except KeyboardInterrupt:

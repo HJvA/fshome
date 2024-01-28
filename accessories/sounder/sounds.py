@@ -7,7 +7,7 @@ else:
 	pass
 from lib.sampleCollector import DBsampleCollector
 from lib.devConst import DEVT,qSRC
-from lib.tls import get_logger
+from submod.pyCommon.tls import get_logger
 from lib.fsHapper import HAP_accessory,fsBridge
 from lib.devConfig import devConfig
 

@@ -21,16 +21,16 @@ import asyncio
 
 if __name__ == "__main__":
 	sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../..'))
-	from lib.serComm import serComm
-	from lib.tls import get_logger
+	from submod.pyCommon.serComm import serComm
+	from submod.pyCommon.tls import get_logger
 	logger = get_logger(__file__, logging.DEBUG, logging.DEBUG)
 else:
-	from lib.serComm import serComm
-	from lib.tls import get_logger
+	from submod.pyCommon.serComm import serComm
+	from submod.pyCommon.tls import get_logger
 	logger = get_logger()
 	#logger = logging.getLogger(__name__)	# get logger from main program
 from lib.devConst import DEVT,qSRC
-from lib.grtls import julianday,prettydate
+from submod.pyCommon.timtls import julianday,prettydate
 from lib.sampleCollector import DBsampleCollector,forever
 
 # Serial Device

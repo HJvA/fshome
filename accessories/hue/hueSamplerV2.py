@@ -12,7 +12,7 @@ from accessories.hue.hueCharacteristic import hueLight,hueSensor,hueBase #getTyp
 from accessories.hue.hueAPIv2 import HueTyps,FindId,findName
 from lib.sampleCollector import DBsampleCollector
 from lib.devConst import DEVT,qSRC
-from lib.tls import get_logger
+from submod.pyCommon.tls import get_logger
 #import accessories.hue.hueAPIv2 as hueAPI
 from typing import Tuple,Any
 

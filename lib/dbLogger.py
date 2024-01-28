@@ -2,10 +2,12 @@
 """ general purpose storage handler e.g. for devices continuously spitting numeric values 
 """
 from sqlite3 import connect,OperationalError
+from collections import namedtuple
 import logging
 import os
 import time
-import enum
+import enum,math
+from typing import Tuple
 from lib.grtls import julianday,prettydate
 
 __author__ = "Henk Jan van Aalderen"
@@ -13,11 +15,13 @@ __version__ = "1.0.0"
 __email__ = "hjva@notmail.nl"
 __status__ = "Development"
 
-class its(enum.IntEnum):
+class its(enum.IntEnum):  # statistics ordering
 	SRC=0
 	NAME=2
 	KEY=1
 	TYP=3
+
+itemrec = namedtuple('itemrec',('name','src','typ'),defaults=('salon',0))
 
 class txtLogger(object):
 	""" handler for log messages in a text file
@@ -56,7 +60,7 @@ class txtLogger(object):
 		id = self.checkitem(iname)
 		self.file.write('%d\t%.6f\t%s\t%s\n' % (id,tstamp,iname,itemval))
 	
-	def additem(self, ikey, iname, isource, itype=None):
+	def additem(self, ikey:int, iname:str, isource, itype=None) -> bool:
 		''' adds item type i.e. quantity descriptor '''
 		isnew = ikey not in self.items
 		if not isnew:
@@ -66,42 +70,43 @@ class txtLogger(object):
 				logger.warning("changing qtyp '{}'->'{}' for:{}".format(self.qtyp(ikey),itype, ikey))
 			if isource!=self.qsource(ikey):
 				logger.warning("changing qsource '{}'->'{}' for:{}".format(self.qsource(ikey),isource,ikey))
-		self.items.update({ikey:(iname,isource,itype)})
+		self.items.update({ikey:itemrec(iname,isource,itype)})
 		if isnew:
 			logger.info('%slogitem %s,%s,%s with qid=%s' % ("new " if isnew else "",iname,isource,itype,ikey))
 		return isnew
 	
 	def sources(self, quantities=None):
 		''' set of actual sources that have been saved to the store '''
-		return set([tup[1] for id,tup in self.items.items() if quantities is None or tup[0] in quantities])
+		return set([tup[1] for id,tup in self.items.items() if quantities is None or tup.name in quantities])
 		
 	def quantities(self, sources=None, prop=0):
 		''' set of quantity properties: 0=name,1=source,2=typ '''
-		return set([tup[prop] for id,tup in self.items.items() if len(tup)>prop and (sources is None or tup[1] in sources)])
+		return set([tup[prop] for id,tup in self.items.items() if len(tup)>prop and (sources is None or tup.src in sources)])
 		
-	def quantity(self, source, typ):
+	def quantity(self, source, typ:int) -> int:
 		for ikey,tup in self.items.items():
-			if tup[1]==source and tup[2] is not None and tup[2] % 100==typ:
+			if tup.src==source and tup.typ is not None and tup.typ % 100==typ:
 				return ikey
+		return None
 				
-	def qname(self, ikey):
+	def qname(self, ikey:int) -> str:
 		#if type(ikey)==string and ikey.isnumber():
 		#	ikey=int(ikey)
 		if ikey in self.items:
-			return self.items[ikey][0]
+			return self.items[ikey].name
 		return "nk:%s" % ikey
 		
-	def qsource(self, ikey):
+	def qsource(self, ikey:int):
 		if ikey in self.items:
-			return self.items[ikey][1]
+			return self.items[ikey].src
 		return None
 
-	def qtyp(self, ikey):
+	def qtyp(self, ikey:int) -> int:
 		if ikey in self.items:
-			return self.items[ikey][2]
+			return self.items[ikey].typ
 		return None
 		
-	def checkitem(self, iname, isource=None,itype=None, addUnknown=True):
+	def checkitem(self, iname, isource=None,itype=None, addUnknown=True) -> int:
 		''' check whether item has been seen before, adds it if not 
 			returns unique itemid
 		'''
@@ -124,7 +129,7 @@ class txtLogger(object):
 		else:
 			return -1
 		
-	def fetch(self, iname, daysback=100):
+	def fetch(self, iname:str, daysback=100):
 		''' gets filtered list of items from store '''
 		ikey = self.checkitem(iname,addUnknown=False)
 		self.file.flush()
@@ -137,7 +142,7 @@ class txtLogger(object):
 				buf.append(tuple(itms[1:])) # strip ikey
 		return buf
 
-
+strec = namedtuple('strec',('jd','slope','intercept','cnt','numavg','predict'))
 class sqlLogger(txtLogger):
 	""" keeper for log data in a (sqlite) database
 	"""
@@ -167,7 +172,7 @@ class sqlLogger(txtLogger):
 				rows=cur.fetchall()
 				#cur.close()
 			for rec in rows:
-				super().additem(rec[0],rec[1],rec[2],rec[3])
+				super().additem(rec[0],rec[1],rec[2],rec[3]) # key,nm,src,typ
 				#self.items.update({rec[0]:(rec[1],rec[2],rec[3])})
 	
 	def create(self, fname):
@@ -226,7 +231,7 @@ class sqlLogger(txtLogger):
 		return self.execute(sql, (daysback,))
 		 
 	
-	def fetchlast(self, ikey):
+	def fetchlast(self, ikey:int):
 		''' 
 		sql = "SELECT ddJulian AS dd,numval,source,type,qu.name,qt.unit " \
 			"FROM logdat AS ld,quantities AS qu,quantitytypes AS qt " \
@@ -242,16 +247,16 @@ class sqlLogger(txtLogger):
 			return {'ddJulian':rec[0],'name':rec[2],'numval':rec[1], 'source':rec[3],'type':rec[4],'unit':rec[5]}
 		return None
 	
-	def fetchavg(self, name, tstep=30, daysback=100, jdend=None, source=None):
+	def fetchavg(self, name, mnstep=30, daysback=100, jdend=None, source=None):
 		''' fetch logged messages from the log store 
-			takes averaged numval of name over tstep minutes intervals'''
+			takes averaged numval of name over mnstep minutes intervals'''
 		ids = self.checkitem(name,source,addUnknown=False) # get all quantity ids for source
 		logger.info("nm:%s src:%s ids:%s" % (name,source,ids))
-		return self.fetchiavg(ids, tstep, daysback, jdend)
+		return self.fetchiavg(ids, mnstep, daysback, jdend)
 		
-	def fetchiavg(self, ikey, tstep=30, daysback=100, jdend=None, source=None):
+	def fetchiavg(self, ikey, mnstep=30, daysback=100, jdend=None, source=None):
 		''' fetch averaged interval values from the database, 
-			takes averaged numval of name over tstep minutes intervals'''
+			takes averaged numval of name over mnstep minutes intervals'''
 		where =""
 		if not source is None:
 			where=" AND source='%s'" % source
@@ -267,17 +272,17 @@ class sqlLogger(txtLogger):
 			"GROUP BY quantity,source,dd " \
 			"ORDER BY ddJulian;" % (where,)
 		try:
-			interval=1440/tstep  # minutes per day = 1440
+			interval=1440/mnstep  # minutes per day = 1440
 			return self.execute(sql, (interval,interval,jdend-daysback,jdend))
 		except KeyboardInterrupt:
 			raise
 		except Exception:
 			logger.exception("unknown!!!") # probably locked
 						
-	def fetchiiavg(self, ikey1,ikey2, tstep=30, daysback=100, jdend=None, source=None):
+	def fetchiiavg(self, ikey1,ikey2, mnstep=30, daysback=100, jdend=None, source=None):
 		''' fetch 2 numval quantities added,  from the database '''
-		rec1 = self.fetchiavg(ikey1,tstep,daysback,jdend,source)
-		rec2 = self.fetchiavg(ikey2,tstep,daysback,jdend,source)
+		rec1 = self.fetchiavg(ikey1,mnstep,daysback,jdend,source)
+		rec2 = self.fetchiavg(ikey2,mnstep,daysback,jdend,source)
 		if rec1 is None or rec2 is None:
 			return
 		i2=0
@@ -292,11 +297,11 @@ class sqlLogger(txtLogger):
 			rslt[-1][1] =rc1[1] + rec2[i2][1]  # add both ikey numvals
 		return rslt
 		
-	def evtDescriptions(self, jdtill, ndays):
+	def evtDescriptions(self, jdtill:float, ndays):
 		''' get all event descriptions in ndays period '''
 		sql = "SELECT ddJulian,descr FROM eventsLog " \
 			" WHERE ddJulian>=? AND ddJulian<=? ORDER BY ddJulian;" 
-		#interval=1440/tstep  # minutes per day = 1440
+		#interval=1440/mnstep  # minutes per day = 1440
 		return self.execute(sql, (jdtill-ndays,jdtill))
 
 	def setEvtDescription(self, julDay, evtDescr, maxMinutesDiff=10.0, root=None):
@@ -334,9 +339,9 @@ class sqlLogger(txtLogger):
 			if 'name' in rec and 'source' in rec:
 				self.checkitem(rec.name, rec.source, rec.type)
 		return recs
-	
-	def linRegression(self, ikey, itvhrs, jdback):
-		""" """ 
+
+	def linRegression(self, ikey, itvhrs, jdback, predOfs=2):
+		""" fit a line through latest ikey values """ 
 		sql = """ SELECT qdy,COUNT(*) as cnt,dd1st,ddavg,ddlst,num1st,numavg,numlst, 
 			SUM((ddJulian-ddavg)*(numval-numavg)) as ddSumNum, 
 			SUM(((ddJulian-ddavg)*(ddJulian-ddavg))) as ddSumSqr
@@ -356,17 +361,24 @@ class sqlLogger(txtLogger):
 		jd = julianday()
 		jdstart = round((jd-jdback)*itvday+0.5)/itvday # multitude of itvhrs
 		logger.info("q:{}={} strt:{}={} itv:{}".format(ikey,self.qname(ikey),jdstart,prettydate(jdstart),itvhrs))
+		
 		curs = self.con.cursor()
 		recs = curs.execute(sql.format(jdstart, itvday,jdback*itvday, ikey))
 		rslt = []
 		for rec in recs:
+			cnt = rec[1]
 			jd = rec[2]
-			slope = rec[8]/rec[9]  # ddSumNum / ddSumSqr
+			if cnt<=1 or rec[9]==0.0:
+				logger.warning("regr nr:{} samp in rec:{}".format(cnt,rec))
+				slope=math.nan
+			else:
+				slope = rec[8]/rec[9]  # ddSumNum / ddSumSqr
 			intercept = rec[6] - slope * rec[3] # numavg - slope * ddavg	
-			rec = {'jd':jd, 'slope':slope,  'íntercept':intercept, 'cnt':rec[1]}
-			jd+=2
-			logger.info("{} predict+2d:{}".format(rec, slope*jd+intercept))
-			rslt.append(rec)
+			#drec = {'jd':jd, 'slope':slope,  'intercept':intercept, 'cnt':rec[1]}
+			srec = strec(jd, slope, intercept, rec[1], numavg=rec[6], predict=slope*(jd+predOfs)+intercept)
+			#jd+=predOfs
+			#logger.debug("{} predict+{}d:{}".format(drec,predOfs, slope*(jd+predOfs)+intercept))
+			rslt.append(srec)
 		return rslt
 
 	def sources(self, quantities=None, minDaysBack=None):
@@ -379,7 +391,7 @@ class sqlLogger(txtLogger):
 			super().additem(ikey=rec[its.KEY], iname=rec[its.NAME], isource=rec[its.SRC], itype=rec[its.TYP])
 		return super().sources(quantities)
 	
-	def logi(self, ikey, numval, strval=None, tstamp=None):
+	def logi(self, ikey:int, numval, strval=None, tstamp=None):
 		''' save value to the database '''
 		if tstamp is None:
 			tstamp = round(time.time(),0)	# granularity 1s
@@ -404,7 +416,7 @@ class sqlLogger(txtLogger):
 		else:
 			logger.error("unknown quantity :%s at %s" % (iname,source))
 		
-	def additem(self, ikey, iname, isource, itype=None, tname=None, tunit=None):
+	def additem(self, ikey:int, iname:str, isource:str, itype=None, tname=None, tunit=None):
 		''' add or update a quantity descriptor (will be called automatic for unknown quantities) '''
 		isnew = super().additem(ikey,iname,isource,itype)
 		recs = self.execute('SELECT name FROM quantities WHERE ID=?;' ,(ikey,))

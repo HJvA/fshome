@@ -390,7 +390,7 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	#from lib import tls
 	import sys,os
 	sys.path.append(os.getcwd())	
-	import secret,lib.tls as tls
+	import secret, submod.pyCommon.tls as tls
 	IP='192.168.44.21'
 	appkey = secret.keySIGNIFY
 	_LOGGER = tls.get_logger(__file__, levelConsole=logging.INFO, levelLogfile=logging.DEBUG)

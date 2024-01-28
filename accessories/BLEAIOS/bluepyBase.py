@@ -7,7 +7,7 @@ import asyncio
 from bluepy import btle
 import sys,os
 sys.path.append(os.getcwd()) # + '/..')
-import lib.tls as tls
+import submod.pyCommon.tls as tls
 
 #import logging
 logger = tls.get_logger(__file__)

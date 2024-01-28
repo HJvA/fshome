@@ -11,7 +11,7 @@ if __name__ == "__main__":
 else:
 	logger = logging.getLogger(__name__)	# get logger from main program
 	from .p1DSMR import p1DSMR,DEVICE,BAUDRATE,p1QDEF
-from lib.serComm import serComm
+from submod.pyCommon.serComm import serComm
 from lib.fsHapper import HAP_accessory,fsBridge  #,sampler_accessory
 from lib.devConfig import devConfig
 from pyhap.accessory_driver import AccessoryDriver

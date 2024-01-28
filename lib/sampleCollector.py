@@ -9,7 +9,7 @@ import asyncio
 from lib.grtls import julianday,prettydate
 from lib.dbLogger import sqlLogger
 from lib.devConst import qCOUNTING,DEVT,DVrng
-from lib.tls import get_logger
+from submod.pyCommon.tls import get_logger
 logger = get_logger(__file__)	# get logger from main program
 from typing import Dict,Tuple,List,Any,Set,Union
 

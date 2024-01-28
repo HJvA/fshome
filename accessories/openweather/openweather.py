@@ -11,8 +11,8 @@ if __name__ == "__main__":
 from lib.devConfig import devConfig
 #from lib.dbLogger import sqlLogger,julianday,unixsecond,prettydate,SiNumForm
 #from lib.devConst import DEVT,qCOUNTING,strokes,SIsymb
-import lib.tls as tls # get_logger
-from lib.grtls import julianday
+import submod.pyCommon.tls as tls # get_logger
+from submod.pyCommon.timtls import julianday
 
 __copyright__="<p>Copyright &copy; 2019,2021, hjva</p>"
 TITLE=r"fshome weather fetcher"
@@ -136,9 +136,10 @@ class openweather(object):
 		return stuff
 		
 	async def getAirQuality(self):
+		item = 'air_pollution'
 		if not (self.lat) or not (self.lon):
 			await self.getCurrent() # get lat lon from cityid
-		stuff = await self._collect(item='air_pollution')
+		stuff = await self._collect(item=item)
 		if isinstance(stuff,dict):
 			dt = stuff['list'][0]['dt']
 			aqi = stuff['list'][0]['main']['aqi']  # 1 = Good, 2 = Fair, 3 = Moderate, 4 = Poor, 5 = Very Poor.
@@ -147,7 +148,7 @@ class openweather(object):
 			#airq['jd'] = julianday(dt)
 			airq['aqi'] = aqi  # air quality index
 			airq['wci'] = self.weathercode
-			if 'old' not in self.data[item]: 
+			if item in self.data and 'old' not in self.data[item]: 
 				dd = datetime.datetime.fromtimestamp(dt)
 				logger.info('air quality ={} dd:{}=>\n{}'.format(aqi,dd,airq))
 			return airq

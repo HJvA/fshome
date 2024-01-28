@@ -18,7 +18,7 @@ else:
 from lib.fsHapper import HAP_accessory,fsBridge
 from lib.devConfig import devConfig
 from lib.devConst import DEVT
-import lib.tls as tls
+import submod.pyCommon.tls as tls
 
 class AIOS_accessory(HAP_accessory):
 	""" adding  to HAP accessory """

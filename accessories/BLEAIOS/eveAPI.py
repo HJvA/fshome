@@ -34,10 +34,10 @@ if __name__ == "__main__":  # testing this module
 	import sys,os,logging
 	sys.path.append(os.getcwd()) # bring lib in path: to be called from cwd=fshome
 	#sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..')) # bring lib in path
-	import lib.tls as tls
+	import submod.pyCommon.tls as tls
 	logger = tls.get_logger(__file__, logging.DEBUG, logging.DEBUG)
 else:
-	import lib.tls as tls
+	import submod.pyCommon.tls as tls
 	logger = tls.get_logger()
 from accessories.BLEAIOS.bluepyBase import bluepyDelegate,BAS_SVR,showChars
 

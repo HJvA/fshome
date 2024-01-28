@@ -22,7 +22,7 @@ from typing import Dict,Tuple,List,Any
 import logging
 
 sys.path.append(os.getcwd()) # + '/..')
-import lib.tls as tls
+import submod.pyCommon.tls as tls
 from lib.devConst import DEVT
 import lib.sse_client as sse
 

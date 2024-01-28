@@ -9,7 +9,7 @@ else:
 	from accessories.hue.hueAPI import HueSensor,HueLight,getTyp,getProp
 from lib.sampleCollector import DBsampleCollector
 from lib.devConst import DEVT,qSRC
-from lib.tls import get_logger
+from submod.pyCommon.tls import get_logger
 
 class hueSampler(DBsampleCollector):
 	""" fshome interface to a Hue or deCONZ bridge """

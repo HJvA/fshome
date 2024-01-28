@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 
 sys.path.append(os.getcwd()) # + '/..')
-import lib.tls as tls
+import submod.pyCommon.tls as tls
 from lib.devConst import DEVT
 
 from accessories.hue.hueAPIv2 import ChDat,getCharDat,ENDPOINTS,HueTyps, FindId, hueSET,hueGET,evListener, HueTyps

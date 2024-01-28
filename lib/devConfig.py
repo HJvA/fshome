@@ -68,7 +68,7 @@ class devConfig(object):
 			self.itstore[ikey] = signature	# add or update
 		return ikey
 	
-	def setItem(self, ikey:int, ivals):
+	def setItem(self, ikey:str, ivals):
 		if ikey in self.itstore and isinstance(self.itstore[ikey], dict):
 			self.itstore[ikey].update(ivals)
 		else:
@@ -77,7 +77,7 @@ class devConfig(object):
 	def __setitem__(self, ikey, val):
 		self.setItem(ikey, val)
 	
-	def getItem(self, ikey:int, default=None):
+	def getItem(self, ikey:str, default=None):
 		if not ikey in self.itstore:
 			self.itstore[ikey]=default
 			logger.info("adding '%s' to [%s] in config" % (default,ikey))

@@ -178,7 +178,8 @@ class asyWatch:
 				
 		
 if __name__ == '__main__':	# just testing  
-	import tls,time,random,logging,os
+	import time,random,logging,os
+	import submod.pyCommon.tls as tls
 	logger = tls.get_logger(__file__, levelConsole=logging.INFO, levelLogfile=logging.DEBUG)
 	def myHandler():
 		logger.info("Watchdog expired")

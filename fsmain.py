@@ -20,7 +20,7 @@ from accessories.BLEAIOS.aiosHap import add_AIOS_to_bridge
 from accessories.netgear.netgear_HAP import add_WNDR_to_bridge
 from accessories.sounder.sounds import add_SND_to_bridge
 from accessories.openweather.openweather_HAP import add_WeaMap_to_bridge
-from lib.tls import get_logger
+from submod.pyCommon.tls import get_logger
 #from lib.devConfig import devConfig
 import fssite
 
@@ -120,7 +120,6 @@ async def checkAlife(prqueue,prsite):  #prtask,*args):
 			n+=1
 	else:
 		await asyncio.sleep(300)
-		
 		
 
 if __name__ == '__main__':

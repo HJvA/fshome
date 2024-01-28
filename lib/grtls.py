@@ -11,7 +11,7 @@ if sys.implementation.name == "micropython":
 	_S_DELTA = 946681200		# 2000-1-1  to 1970-1-1	=10957 days
 else:
 	import datetime
-	from time import time	# type ignore
+	from time import time,timezone	# type ignore
 	_S_DELTA = 0
 
 	def seconds_since_epoch(epoch = datetime.datetime.utcfromtimestamp(0), utcnow=datetime.datetime.utcnow()):
@@ -164,7 +164,7 @@ def printTimeAx(jddata) -> None:
 	def diffxh(julday, hr24=0):
 		julday -= 0.5
 		julday += hr24/24.0
-		julday -= time.timezone / 60 / 60 / 24
+		julday -= timezone / 60 / 60 / 24
 		return abs(round(julday)-julday)
 	noon=-3
 	print("=",end='')

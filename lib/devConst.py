@@ -1,6 +1,7 @@
 """ system constants
 """
-from enum import Enum
+from enum import Enum,IntEnum
+from typing import Sequence,Tuple, TypeVar, Optional
 
 # base id numbers for a specific device
 qSRC={  # was QID
@@ -20,7 +21,7 @@ class qTYP(Enum):
 	temperature=0 # temperature sensor [°C]
 	humidity=1    # humidity sensor [%]
 	rain=2        # precipitation meter
-	wind:3        # wind speed meter
+	wind=3        # wind speed meter
 	pressure=4    # incl air pressure [kPa]
 	illuminance=5 # brightness meter [lux]
 	pyro=6       # pyro detector
@@ -106,10 +107,15 @@ DEVT ={
 	"secluded":98, # known device but to be ignored
 	"unknown":99 } # unknown device
 
-def qtName(qTyp):
+def qtName(qTyp:int) -> str:
 	for qnm,qt in DEVT.items():
 		if qTyp==qt:
 			return qnm
+	return None
+
+def typnames(devTyps):
+	''' convert DEVT id numbers to their name '''
+	return [dnm for dnm,tp in DEVT.items() if tp in devTyps or tp+100 in devTyps]
 
 # for fsRest API using URI /qsave 
 #        	qkey   qnam    typ   src
@@ -140,11 +146,12 @@ qCONF={	# to be loaded from json file
 			"source":"fsRest",
 			#"aid":-1
 		}}
-def qSrc(qkey):
+def qSrc(qkey:int) -> str:
 	isrc = qDEF[qkey][2]
 	for src,skey in qSRC.items():
 		if isrc==skey:
 			return src
+	return None
 
 qCOUNTING = [10,11,12,15,44]  # quantity counting types
 qACCUMULATING = [21,31,51]    # typs only running up indefinitely
@@ -152,7 +159,7 @@ qACCUMULATING = [21,31,51]    # typs only running up indefinitely
 #colour for a quantity in graphs etc
 strokes={0:"#1084e9",1:"#a430e9",4:"#706060",5:"#90e090",10:"#c060d0",20:"#c080f0",21:"#a0d0f0", 22:"#f06040",11:"#f080d0",12:"#f0a0d0",13:"#f0c0d0",14:"#f0e0d0",15:"#d0e0d0",
 	31:"#20f0d0",
-   40:"#10d4fa",41:"#10f4f9",44:"#20a4e9",70:"#3094d9",71:"#40b469",72:"#50f429",76:"#60b419",79:"#80d039"}
+   40:"#10d4fa",41:"#10f4f9",44:"#20a4e9",70:"#3094d9",71:"#40b469",72:"#50f429",75:"#a01429",76:"#1034B9",79:"#80d039"}
 
 SIsymb = {  # symbols and units  : https://nadnosliw.wordpress.com/unicode-characters/
 	0:("T","°C"),
@@ -194,6 +201,10 @@ SIsymb = {  # symbols and units  : https://nadnosliw.wordpress.com/unicode-chara
 	79:("CO2","ppm"),
 	80:("wci","")   # openweathermap weathercode
 	}
+
+def typSI(devTyps):
+	''' convert DEVT id numbers to their (Symb,Unit) '''
+	return [tup for tp,tup in SIsymb.items() if tp in devTyps or tp+100 in devTyps]
 
 DVrng = {  # qtype normal range
 	0:(-273,99), # temperature

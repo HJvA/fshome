@@ -8,8 +8,6 @@
 	path = submod/bluepy
 	url = https://github.com/IanHarvey/bluepy
 [submodule "submod/eufy"]
-	path = submod/eufy
-	url = https://HJvA@github.com/FuzzyMistborn/python-eufy-security
-[submodule "pyCommon"]
-	path = pyCommon
+[submodule "submod/pyCommon"]
+	path = submod/pyCommon
 	url = git@github.com:HJvA/pyCommon.git
