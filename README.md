@@ -84,7 +84,9 @@ git clone --recursive  git://github.com/HJvA/fshome
 cd fshome  
 git submodule init  
 git submodule update --depth=1  
-pip3 install aiohttp  
+pip install aiohttp  
+pip install pyserial  
+pip install pygame  
 ```  
 
 create a script 'secret.py' having the following definitions:
@@ -124,7 +126,7 @@ cd ~/fshome
 # edit hueAPI.py to have correct IP of deCONZ 'bridge'
 # run it to create user on the bridge:
 python3 accessories/hue/hueAPI.py  
-# enter user in deCONZ.json
+# enter user in secret.py  # deCONZ.json
 ```
 #### to update deCONZ
 Depending on the exact type of zigbee controller, also look at the latest available version on the [deconz](https://deconz.dresden-elektronik.de/deconz-firmware) site.
@@ -147,14 +149,15 @@ ln -s ./submod/HAP-python/pyhap ./pyhap
 cd ./submod/HAP-python  
 git checkout master  
 git pull  
-pip3 install .  
+pip install .  
 ```
 ### bluetooth  
 based on bluepy
 ```bash
 cd ./submod/bluepy  
 sudo apt install libglib2.0-dev  
-pip3 install .  
+#python setup.py build
+pip install .  
 ```
 
 ### Tailscale

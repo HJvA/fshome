@@ -72,7 +72,7 @@ class txtLogger(object):
 				logger.warning("changing qsource '{}'->'{}' for:{}".format(self.qsource(ikey),isource,ikey))
 		self.items.update({ikey:itemrec(iname,isource,itype)})
 		if isnew:
-			logger.info('%slogitem %s,%s,%s with qid=%s' % ("new " if isnew else "",iname,isource,itype,ikey))
+			logger.debug('%slogitem %s,%s,%s with qid=%s' % ("new " if isnew else "",iname,isource,itype,ikey))
 		return isnew
 	
 	def sources(self, quantities=None):
@@ -211,8 +211,15 @@ class sqlLogger(txtLogger):
 			else:
 				cur.execute(sql)
 			recs = cur.fetchall()
+			#breakpoint()
 			logger.debug("SQL:%s with(%s) run in %.3fs nrecs=%d" % (sql,params,time.perf_counter()-tm, len(recs)))
-			return recs
+			if recs and sql.lower().startswith('select'):
+				fields = [column[0] for column in cur.description]
+				nmTup = namedtuple('dbtup',fields)
+				nmRecs = [nmTup(*rec) for rec in recs]
+				return nmRecs
+			else:
+				return recs
 		
 	def fetch(self, name, daysback=100, source=None, fields='ddJulian,numval,strval,source'):
 		''' fetch logged messages from the log store '''

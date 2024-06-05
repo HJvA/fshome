@@ -227,7 +227,8 @@ def quantity_put():
 				#qkey = bottle.request.params.get('qkey')
 				qid=int(bottle.request.query.qkey)
 				if qid:  # make sure qid exists in db
-					dbStore.additem(qid,qDEF[qid][0], qSrc(qid), qDEF[qid][1])
+					adi = dbStore.additem(qid,qDEF[qid][0], qSrc(qid), qDEF[qid][1])
+					logger.info("rest put:{}->{}->{}".format(qid,adi,bottle.request.query))
 				qval=float(bottle.request.query.qval)
 				#data = json.load(utf8reader(bottle.request.body))
 				logger.info('rest put:qid:{}={} qsize:{}'.format(qid,qval,queue.qsize()))
@@ -237,8 +238,8 @@ def quantity_put():
 				else:
 					logger.warning("no queue for watchdog for qid:{}".format(qid))
 			except Exception as ex:
-				logger.error("unable to rest save qid:{}={} ex:{}".format(qid,qval,ex))
-				raise	ValueError
+				logger.error("unable to rest save qid:{} ex:{}".format(qid,ex))
+				return  # raise	ValueError
 		else:
 			logger.warning("unable to get rest locked for put:{}".format(qid))
 			

@@ -212,7 +212,7 @@ class HueBaseDev (object):
 		if HueBaseDev.Semaphore is None:
 			HueBaseDev.Semaphore = asyncio.Semaphore()
 			logger.info('setting up hueSemaphore')
-		#logger.info('creating hue dev:%s for %s' % (hueId,userid))
+		logger.info('creating hue dev:%s for %s' % (hueId,userid))
 		#urllib.disable_warnings(InsecureRequestWarning)
 	
 	@property
@@ -624,10 +624,10 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	#HueBaseDev.semaphore = hueSemaphore
 
 	CONF={	# defaults when not in config file
-		#"hueuser": "",
-		"hueuser":  secret.keySIGNIFY,
-		#"huebridge": "192.168.1.21"
-		"huebridge": "192.168.44.21"
+		"hueuser": secret.keyDECONZ,
+		"huebridge": "192.168.44.20"
+		#"hueuser":  secret.keySIGNIFY,
+		#"huebridge": "192.168.44.21"
 	}
 	#CONF['huebridge'] =ipadrGET()
 	
@@ -652,8 +652,10 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 		logger.info('could not get sensors from %s (%s) with user %s' % (ipadr,sns,user))
 		input("creating user?")
 		#user = asyncio.create_task(createUser('homekit','fshome',ipadr=ipadr))
+		print("press Authenticate button in Phoscon-GW app ")
 		user =  _loop.run_until_complete(createUser('homekit','fshome',ipadr=ipadr,deCONZ=True))
-		print('put hueuser in the config file:\n%s' % user.result())
+		print('put hueuser in the secret.py file:\n%s' % user[0])
+		breakpoint()
 	else:
 		logger.info("sensors:{}".format(sns))
 		for adr,rec in sns[0].items():

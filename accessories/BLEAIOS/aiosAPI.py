@@ -4,7 +4,7 @@
 """
 import time
 import asyncio
-from bluepy import btle
+from bluepy import btle  # submod.bluepy.
 
 if __name__ == "__main__":  # testing this module
 	import sys,os,logging

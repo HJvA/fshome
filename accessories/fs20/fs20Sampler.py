@@ -11,7 +11,7 @@ if __name__ == "__main__":
 	import fstls
 else:
 	import accessories.fs20.fstls as fstls
-from lib.serComm import serComm
+from submod.pyCommon.serComm import serComm
 from lib.sampleCollector import DBsampleCollector,forever
 from lib.devConst import DEVT,qSRC
 from submod.pyCommon.tls import get_logger

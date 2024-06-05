@@ -86,7 +86,7 @@ class hueSampler(DBsampleCollector):
 				if self.deCONZ and dev.deCONZ:  # deCONZ bridge
 					#await asyncio.sleep(30)
 					devName = await dev.name()
-					logger.info('waiting for events on %s for %s with %s' % (qid,devName,self))
+					logger.debug('waiting for events on %s for %s with %s' % (qid,devName,self))
 					while True:
 						msg = await dev.eventListener()  # calls websocket
 						if msg and 'id' in msg:
@@ -108,7 +108,8 @@ class hueSampler(DBsampleCollector):
 							else:
 								mcnt +=1
 						else:
-							await asyncio.sleep(0.01)
+							logger.debug("dev:{} evmsg:{}".format(devName,msg))
+							await asyncio.sleep(0.04)
 		logger.warning('no eventListener in %s, deCONZ:%s' % (self,self.deCONZ))
 			
 		
@@ -137,7 +138,7 @@ if __name__ == "__main__":
 	logger = get_logger(__file__,logging.INFO,logging.DEBUG) 
 	conf={	# to be loaded from json file
 		"hueuser":secret.keyDECONZ,
-		"huebridge": "192.168.1.20",	
+		"huebridge": "192.168.44.20",	
 		#"dbFile": "/mnt/extssd/storage/fs20store.sqlite"
 		"dbFile": '~/fs20store.sqlite'
 	}

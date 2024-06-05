@@ -20,7 +20,8 @@ class sounder(DBsampleCollector):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.minqid=qSRC['SND']
-		pygame.mixer.init()
+		pygame.init()
+		#pygame.mixer.init()
 		self.defSignaller()
 	
 	async def eventListener(self, signaller):

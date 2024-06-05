@@ -20,6 +20,7 @@ else:
 from lib.fsHapper import HAP_accessory,fsBridge
 from lib.devConfig import devConfig
 from lib.devConst import DEVT
+import secret
 #from accessories.hue.hueAPIv2 import DEBUG
 
 DEBUG=0
@@ -77,9 +78,11 @@ class hue_happer(hueSampler.hueSampler):
 def add_HUE_to_bridge(bridge, config="hue.json"):
 	conf = devConfig(config)
 	if 'deCONZ' in config:
-		sampler = hue_happer(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=0)
+		apikey = conf['hueuser'] if conf['hueuser'] else secret.keyDECONZ  
+		sampler = hue_happer(conf['huebridge'], apikey, dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=0)
 	else:
-		sampler = hue_happerV2(conf['huebridge'], conf['hueuser'], dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=2, debug=DEBUG)
+		apikey = conf['hueuser'] if conf['hueuser'] else secret.keySIGNIFY  
+		sampler = hue_happerV2(conf['huebridge'], apikey, dbFile=conf['dbFile'], quantities=conf.itstore, minNr=1, maxNr=2, minDevPerc=2, debug=DEBUG)
 	#sampler.minqid=None  # do not auto create
 	bridge.add_sampler(sampler, conf.itstore)	
 

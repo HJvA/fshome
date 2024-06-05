@@ -8,11 +8,13 @@
 
 import asyncio, aiohttp #, functools
 
-MDNS = 'meethue'
+MDNS = None # 'meethue'
 if MDNS:
 	import requests
 else:
+	#import ssl,certifi
 	from http.client import HTTPSConnection
+	#sslcontext = ssl.create_default_context(cafile=certifi.where())
 
 import math
 import time,os,sys,json
@@ -39,8 +41,8 @@ ENDPOINTS = ['bridge', 'device', 'light', 'motion', 'button', 'scene', 'room']
 
 class HueTyps(Enum): 
 	light,grouped_light,scene,button, bridge,device,room,relative_rotary, bridge_home, \
-	temperature,motion,light_level,device_power, zigbee_connectivity, \
-	unknown	= range(1,16) 
+	temperature,motion,light_level,device_power, zigbee_connectivity, grouped_light_level, \
+	unknown	= range(1,17) 
 	@property
 	def qTyp(self) -> int:
 		if self is HueTyps.light:
@@ -68,6 +70,7 @@ class HueTyps(Enum):
 HUETYP = {
 	 HueTyps.light:{'prop':['dimming.brightness','on.on','color.xy.x', 'color.xy.y', 'color_temperature.mirek'], 'qtyp':DEVT['lamp']},
 	 HueTyps.grouped_light:{'prop':['dimming.brightness'], 'qtyp':DEVT['unknown']},   # 'on.on'
+	 HueTyps.grouped_light_level:{'prop':['light.light_level_report.light_level'], 'qtyp':DEVT['unknown']},
 	 HueTyps.temperature:{'prop':['temperature.temperature'], 'qtyp':DEVT['temperature']},
 	 HueTyps.motion:{'prop':['motion.motion'], 'qtyp':DEVT['motion']},
 	 HueTyps.light_level:{'prop':['light.light_level'], 'qtyp':DEVT['illuminance']},
@@ -123,6 +126,26 @@ def createUser(ipadr:str, ssl=False):
 	if (stuff):
 		return stuff['success']['username']
 
+async def newHueUser(ipadr:str, timeout=8, ssl=False):
+	"""	get new apikey from bridge
+		press button on bridge before ..
+	"""
+	url=('https://' if ssl else 'http://') +ipadr+'/api' #https://<bridge ip address>/clip/v2/resource/device
+	#params = 	{"devicetype":"fshome#hiFony"}
+	headers = {'Content-Type': 'application/json'}
+	body = b'{"devicetype":"fshome#Rasper3", "generateclientkey":true}'
+	async with aiohttp.ClientSession(headers=headers) as session:
+		async with session.post( url=url, timeout=timeout, data=body) as response:
+			if response.status==200:
+				stuff = await response.json()
+				logger.info("user:{}:on:{}:".format(stuff, ipadr))
+				return stuff
+			else:
+				logger.warning('bad response :%s on %s' % (response.status,url))
+				await session.close()
+				await asyncio.sleep(0.2)
+
+	
 async def hueGET(ipadr:str,appkey:str,resource='',rid='',timeout=2, ssl=True) -> dict:
 	''' get state info from hue bridge '''
 	global Semaphore
@@ -142,7 +165,7 @@ async def hueGET(ipadr:str,appkey:str,resource='',rid='',timeout=2, ssl=True) ->
 	#auth = aiohttp.BasicAuth(user, pwd)
 	try:
 		tic = time.perf_counter()
-		async with aiohttp.ClientSession(headers=headers) as session:
+		async with aiohttp.ClientSession(headers=headers, connector=aiohttp.TCPConnector(ssl=False)) as session:
 			async with Semaphore, session.get( url=url, timeout=timeout, ssl=ssl) as response:
 				if response.status==200:
 					try:
@@ -162,7 +185,7 @@ async def hueGET(ipadr:str,appkey:str,resource='',rid='',timeout=2, ssl=True) ->
 		await asyncio.sleep(10)
 		stuff={}
 	except Exception as e:
-		logger.exception("hueGET unknown exception!!! %s :on:%s" % (e,url))
+		logger.exception("hueGET unknown exception!!! {} :on:{} with:{}".format(e,url,appkey))
 	#logger.debug('hueGET resource:%s with %s ret:%d' % (resource,r.url,r.status_code))
 	return stuff
 
@@ -399,6 +422,8 @@ async def evListener(ipadr:str, appkey:str, evCallback, chDat:ChDat) ->None:
 						if DEBUG:
 							logger.debug("event from {}->{}".format(event_source._event_id, dat))
 						lastid = event_source._event_id
+						if not dat:
+							logger.warning("no data in event:{}".format(event))
 						for dt in dat: # is a list
 							tm = dt['creationtime'] # ISO 8601						
 							if 'Z' in tm:  # The timezone offset for UTC is 0 and would be indicated with the letter Z
@@ -445,6 +470,8 @@ async def evListener(ipadr:str, appkey:str, evCallback, chDat:ChDat) ->None:
 													logger.debug("no prop:{} for ev:{} of:{} in:{}".format(key,nam,tp,val))
 												evCallback(oid,loct,nam,num,htyp)
 												break
+									else:
+										logger.warning("no key in event:{}".format(HUETYP[htyp]))
 								else:
 									logger.warning("unknown ev-HueTyp:{} for {} with {} in {}".format(tp,nam,htyp,dati))
 				except aiohttp.client_exceptions.ClientPayloadError as aex:
@@ -474,20 +501,30 @@ if __name__ == '__main__':	# just testing the API and gets userId if neccesary
 	import secret
 	#logger.critical("### running %s dd %s ###" % (__file__,time.strftime("%y%m%d %H:%M:%S%z")))
 	
-	CONF={	# defaults when not in config file
-		"hueuser":  secret.keySIGNIFY,
-		"huebridge": getIP() # "192.168.44.21"
-	}
+	if True:
+		CONF={	# defaults when not in config file
+		"hueuser": secret.keySIGNIFY,
+		"huebridge": "192.168.44.21"
+		}
+	else:
+		CONF={
+			"hueuser":None,
+			"huebridge": getIP() # "192.168.44.21"
+		}
 	
 	ipadr=CONF['huebridge']
-	user= CONF['hueuser'] if CONF['hueuser'] else createUser(ipadr)
+	#user= CONF['hueuser'] if CONF['hueuser'] else createUser(ipadr)
 	
-	_loop = asyncio.get_event_loop()
-	_loop.run_until_complete(main(ipadr, user))
-	
-	lightid='02a77987-ed59-42c1-8d1b-fb86da1881da' # id of a light as example
-	ret = _loop.run_until_complete(hueSET(ipadr,appkey=user,resource='light',rid=lightid, reskey='on', prop='on',val=True))
-	logger.info('light on:{}'.format(ret))
-	ret = _loop.run_until_complete(hueSET(ipadr,appkey=user,resource='light',rid=lightid, reskey='dimming', prop='brightness',val=80))
+	_loop = asyncio.get_event_loop()	
+	user= CONF['hueuser'] if CONF['hueuser'] else  _loop.run_until_complete(newHueUser(ipadr))
+	if user and not user is list:
+		_loop.run_until_complete(main(ipadr, user))
+
+		lightid='02a77987-ed59-42c1-8d1b-fb86da1881da' # id of a light as example
+		ret = _loop.run_until_complete(hueSET(ipadr,appkey=user,resource='light',rid=lightid, reskey='on', prop='on',val=True))
+		logger.info('light on:{}'.format(ret))
+		ret = _loop.run_until_complete(hueSET(ipadr,appkey=user,resource='light',rid=lightid, reskey='dimming', prop='brightness',val=80))
+	else:
+		print("press button on bridge before creating user")
 else:
 	logger = tls.get_logger()
