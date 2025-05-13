@@ -38,10 +38,12 @@ qkCO2 = const(804)
 qkPRS = const(806)
 qkVOC = const(807)
 qkT117 = const(808)
+qkTtuin = const(243)
 qknms = {
 	qkOWT:"Tpin",
 	qkTBME:"Tbme",
 	qkT117:"T117",
+	qkTtuin:"Ttuin",
 	qkHUM:"humidity",
 	qkCO2:"CO2",
 	#qkECO2:"ECO2",
@@ -90,6 +92,7 @@ qUNTS ={	231  : (20,70,  12,'T buro','°C',  1),
 			qkOWT: (20,70,  12,'T pin', '°C',  1),
 			qkTBME:(20,70,  12,'T bme', '°C',  1),
 			qkT117:(20,70,  12,'T 117', '°C',  1),
+			qkTtuin:(20,220,  12,'Ttuin', '°C',  1),
 			574  : (20,220, 12,'T terr','°C',  1),
 			qkCO2: (scrWDTH-380,70, 12,'CO2',  'ppm',0.01),   # 403
 			915  : (scrWDTH-380,220,12,'O3',   'ppm',0.1),
@@ -99,7 +102,7 @@ qUNTS ={	231  : (20,70,  12,'T buro','°C',  1),
 			300  : (scrWDTH-181,scrHGTH-80 , 5,'pow', 'W',  1)
 		  }
 
-qkSHOW = (574,912,915,300)  # for FLDS
+qkSHOW = (qkTtuin,912,915,300)  # for FLDS
 grKEY  = qkCO2   # 403
 
 def showRest(qk, qval):

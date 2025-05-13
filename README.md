@@ -71,6 +71,23 @@ WNDR (netgear WNDR4300 router) reporting LAN traffic. Either "rxToday" or "rxYes
 ### Inkplate
 For the moment the inkplate is connected to a stand alone raspberry, and the inkplate operates in peripheral mode. this means the raspberry is querying the fshome database (using a rest api over the network) and builds an inkplate screen by sending some serial commands to the inkplate.
 Now the inkplate is running micropython, on its esp32 microcontroler, and builds the display itself, getting data from the fshome restfull api. The inkplate also captures a onewire temperature sensor, and sends the results to the fshome server.
+#### setup
+´´´.screenrc
+screen -t tty /dev/ttyUSB0 115200 -Logfile tty.log
+´´´
+´´´bash
+cd ~/inkpl
+git clone https://github.com/e-radionicacom/Inkplate-micropython
+cd ~/fshome
+ln 
+source ~/venv/bin/activate
+python pyboard.py -d /dev/ttyUSB0 -b 115200 -f cp inkplate/main.py :
+python3 pyboard.py --device /dev/ttyUSB0 -f cp mcp23017.py inkplate6.py image.py shapes.py gfx.py gfx_standard_font_01.py :
+
+screen /dev/ttyUSB0 115200
+^d
+
+´´´
 
 ## Installation <a name="Installation"></a>
 
