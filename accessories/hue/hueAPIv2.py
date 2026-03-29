@@ -42,7 +42,7 @@ ENDPOINTS = ['bridge', 'device', 'light', 'motion', 'button', 'scene', 'room']
 class HueTyps(Enum): 
 	light,grouped_light,scene,button, bridge,device,room,relative_rotary, bridge_home, \
 	temperature,motion,light_level,device_power, zigbee_connectivity, grouped_light_level, \
-	unknown	= range(1,17) 
+	convenience_area_motion, grouped_motion,camera_motion, unknown	= range(1,20) 
 	@property
 	def qTyp(self) -> int:
 		if self is HueTyps.light:
@@ -54,7 +54,7 @@ class HueTyps(Enum):
 		#bridge,device,room,relative_rotary, bridge_home, \
 		if self is HueTyps.temperature: 
 			return DEVT['temperature']
-		if self is HueTyps.motion: 
+		if self is HueTyps.motion or self is HueTyps.convenience_area_motion or self is HueTyps.grouped_motion: 
 			return DEVT['motion']
 		if self is HueTyps.light_level: 
 			return DEVT['illuminance']
@@ -73,6 +73,9 @@ HUETYP = {
 	 HueTyps.grouped_light_level:{'prop':['light.light_level_report.light_level'], 'qtyp':DEVT['unknown']},
 	 HueTyps.temperature:{'prop':['temperature.temperature'], 'qtyp':DEVT['temperature']},
 	 HueTyps.motion:{'prop':['motion.motion'], 'qtyp':DEVT['motion']},
+	 HueTyps.convenience_area_motion:{'prop':['motion.motion'], 'qtyp':DEVT['motion']},
+	 HueTyps.grouped_motion:{'prop':['motion.motion'], 'qtyp':DEVT['motion']},
+	 HueTyps.camera_motion:{'prop':['motion.motion'], 'qtyp':DEVT['motion']}, 
 	 HueTyps.light_level:{'prop':['light.light_level'], 'qtyp':DEVT['illuminance']},
 	 HueTyps.device_power:{'prop':['power_state.battery_level'], 'qtyp':DEVT['unknown']},
 	 HueTyps.button:{'prop':['button.last_event'], 'qtyp':DEVT['button']},
